@@ -1,9 +1,14 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Add JSON parsing middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Log all requests and disable caching
 app.use((req, res, next) => {
@@ -14,6 +19,32 @@ app.use((req, res, next) => {
   res.setHeader('Expires', '0');
   res.setHeader('Surrogate-Control', 'no-store');
   next();
+});
+
+// Server-side API endpoint for place details
+app.get('/api/place-details/:placeId', async (req, res) => {
+  try {
+    const placeId = req.params.placeId;
+    const fields = req.query.fields || 'name,rating,user_ratings_total,price_level,formatted_address,formatted_phone_number,website,opening_hours,review,photo,type';
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
+    
+    console.log(`Fetching details for place: ${placeId}`);
+    
+    // Make request to Google Places API
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}`;
+    
+    const response = await axios.get(url);
+    
+    if (response.data.status === 'OK' && response.data.result) {
+      return res.json(response.data.result);
+    } else {
+      console.log('Error fetching place details:', response.data.status);
+      return res.status(404).json({ error: 'Place details not found', status: response.data.status });
+    }
+  } catch (error) {
+    console.error('Server error fetching place details:', error.message);
+    return res.status(500).json({ error: 'Failed to fetch place details' });
+  }
 });
 
 // Create a dedicated endpoint for a simplified travel planner app
@@ -309,7 +340,11 @@ app.get('/', (req, res) => {
       
       // Create geocoder and places service
       geocoder = new google.maps.Geocoder();
+      
+      // New approach for Places API (as of March 1st, 2025)
+      // We keep the old service for compatibility with the existing code
       placesService = new google.maps.places.PlacesService(map);
+      
       infoWindow = new google.maps.InfoWindow();
       
       // Try to get user's current location
@@ -541,19 +576,47 @@ app.get('/', (req, res) => {
       showLoading();
       currentPlaceId = placeId;
       
-      const request = {
-        placeId: placeId,
-        fields: ['name', 'rating', 'user_ratings_total', 'price_level', 'formatted_address', 'formatted_phone_number', 'website', 'opening_hours', 'review', 'photo', 'type']
-      };
-      
-      placesService.getDetails(request, (place, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK) {
-          displayPlaceDetails(place);
-        } else {
-          showError('Place details not found.');
-        }
+      // First try the new Places API approach
+      try {
+        const request = {
+          placeId: placeId,
+          fields: ['name', 'rating', 'user_ratings_total', 'price_level', 'formatted_address', 'formatted_phone_number', 'website', 'opening_hours', 'review', 'photo', 'type']
+        };
+        
+        // Use the older API method as it's still accessible for existing customers
+        placesService.getDetails(request, (place, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK) {
+            displayPlaceDetails(place);
+            console.log("Successfully retrieved place details with PlacesService");
+          } else {
+            // Handle the case where the place details couldn't be retrieved
+            console.log("Warning: Could not retrieve place details. Status:", status);
+            
+            // Create a fallback place object with basic information
+            // This will at least show the basic place details without ratings, etc.
+            const fallbackPlace = {
+              name: document.getElementById('placeDetailsModalLabel').textContent || "Place Details",
+              formatted_address: "Address information not available",
+              rating: 0,
+              user_ratings_total: 0,
+              photos: [],
+              price_level: undefined,
+              website: "",
+              formatted_phone_number: "",
+              opening_hours: { weekday_text: [] },
+              reviews: []
+            };
+            
+            displayPlaceDetails(fallbackPlace);
+            showError('Unable to load complete place details. Try a different location.');
+          }
+          hideLoading();
+        });
+      } catch (error) {
+        console.error("Error in getPlaceDetails:", error);
         hideLoading();
-      });
+        showError('An error occurred while fetching place details.');
+      }
     }
     
     // Display place details in a modal
@@ -695,8 +758,12 @@ app.get('/', (req, res) => {
     // Make getPlaceDetails globally accessible for map popup buttons
     window.getPlaceDetails = getPlaceDetails;
   </script>
-  <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=${process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8'}&libraries=places&callback=initMap">
+  <script src="https://maps.googleapis.com/maps/api/js?key=${process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8'}&libraries=places"></script>
+  <script>
+    // Initialize the map when the page is loaded
+    window.onload = function() {
+      initMap();
+    }
   </script>
 </body>
 </html>`;
