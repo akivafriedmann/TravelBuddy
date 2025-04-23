@@ -696,7 +696,7 @@ app.get('/', (req, res) => {
     window.getPlaceDetails = getPlaceDetails;
   </script>
   <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8&libraries=places&callback=initMap">
+    src="https://maps.googleapis.com/maps/api/js?key=${process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8'}&libraries=places&callback=initMap">
   </script>
 </body>
 </html>`;
