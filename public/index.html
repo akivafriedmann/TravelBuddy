@@ -29,14 +29,32 @@
     </div>
     
     <div class="row mt-4">
-      <div class="col-md-4 mb-3">
-        <div class="category-select d-flex justify-content-between">
-          <button class="btn btn-outline-primary category-btn active" data-type="restaurant">Restaurants</button>
-          <button class="btn btn-outline-primary category-btn" data-type="tourist_attraction">Attractions</button>
-          <button class="btn btn-outline-primary category-btn" data-type="lodging">Hotels</button>
+      <div class="col-md-12 mb-3">
+        <div class="category-select d-flex flex-wrap gap-2">
+          <button class="btn btn-outline-primary category-btn active" data-type="restaurant">
+            <i class="fas fa-utensils"></i> Restaurants
+          </button>
+          <button class="btn btn-outline-primary category-btn" data-type="cafe">
+            <i class="fas fa-coffee"></i> Cafes
+          </button>
+          <button class="btn btn-outline-primary category-btn" data-type="bar">
+            <i class="fas fa-glass-martini-alt"></i> Bars
+          </button>
+          <button class="btn btn-outline-info category-btn" data-type="restaurant" data-keyword="cheap">
+            <i class="fas fa-dollar-sign"></i> Cheap Eats
+          </button>
+          <button class="btn btn-outline-success category-btn" data-type="tourist_attraction">
+            <i class="fas fa-landmark"></i> Attractions
+          </button>
+          <button class="btn btn-outline-warning category-btn" data-type="lodging">
+            <i class="fas fa-bed"></i> Hotels
+          </button>
         </div>
       </div>
-      <div class="col-md-8 mb-3 text-end">
+    </div>
+    
+    <div class="row mb-2">
+      <div class="col-12 text-end">
         <div class="sort-indicator">
           <small class="text-muted">
             <i class="fas fa-info-circle"></i> 

@@ -38,28 +38,98 @@ function initMap() {
       infoWindow.setPosition(event.latLng);
       infoWindow.open(map);
       
-      // Get details for the clicked place
+      // Get comprehensive details for the clicked place
       placesService.getDetails({
         placeId: event.placeId,
-        fields: ['name', 'place_id', 'rating', 'user_ratings_total']
+        fields: [
+          'name', 'place_id', 'rating', 'user_ratings_total',
+          'formatted_address', 'photos', 'price_level', 'types',
+          'vicinity', 'geometry'
+        ]
       }, (place, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+          // Format rating stars for display in info window
+          let ratingStars = '';
+          if (place.rating) {
+            const fullStars = Math.floor(place.rating);
+            const hasHalfStar = place.rating % 1 >= 0.5;
+            
+            // Full stars
+            for (let i = 0; i < fullStars; i++) {
+              ratingStars += '<i class="fas fa-star text-warning"></i>';
+            }
+            
+            // Half star
+            if (hasHalfStar) {
+              ratingStars += '<i class="fas fa-star-half-alt text-warning"></i>';
+            }
+            
+            // Empty stars
+            const emptyStars = 5 - Math.ceil(place.rating);
+            for (let i = 0; i < emptyStars; i++) {
+              ratingStars += '<i class="far fa-star text-warning"></i>';
+            }
+          }
+          
           // Create a view details button that calls our showPlaceDetails function
           const viewDetailsButton = document.createElement('button');
-          viewDetailsButton.className = 'btn btn-primary btn-sm mt-2';
-          viewDetailsButton.textContent = 'View Details';
+          viewDetailsButton.className = 'btn btn-primary btn-sm mt-2 w-100';
+          viewDetailsButton.textContent = 'View Full Details';
           viewDetailsButton.onclick = () => {
             showPlaceDetails(place.place_id);
             infoWindow.close();
           };
           
+          // Format place type
+          let placeType = '';
+          if (place.types && place.types.length > 0) {
+            // Get the most relevant type
+            const relevantTypes = place.types.filter(type => 
+              type !== 'point_of_interest' && 
+              type !== 'establishment' && 
+              type !== 'food'
+            );
+            
+            if (relevantTypes.length > 0) {
+              placeType = formatPlaceType(relevantTypes[0]);
+            }
+          }
+          
+          // Format price level
+          let priceLevel = '';
+          if (place.price_level) {
+            for (let i = 0; i < place.price_level; i++) {
+              priceLevel += '$';
+            }
+          }
+          
+          // Create photo HTML if available
+          let photoHtml = '';
+          if (place.photos && place.photos.length > 0) {
+            const photoUrl = `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=300`;
+            photoHtml = `<img src="${photoUrl}" class="img-fluid mb-2 rounded" alt="${place.name}">`;
+          }
+          
           // Create info window content
           const content = document.createElement('div');
           content.className = 'p-2';
+          content.style.maxWidth = '300px';
+          
+          // Add content with enhanced styling
           content.innerHTML = `
-            <strong>${place.name}</strong><br>
-            ${place.rating ? `Rating: ${place.rating}/5 (${place.user_ratings_total || 0} reviews)<br>` : ''}
+            ${photoHtml}
+            <h5 class="mb-1">${place.name}</h5>
+            ${placeType ? `<div class="badge bg-secondary mb-2">${placeType}</div>` : ''}
+            ${priceLevel ? `<div class="ms-2 badge bg-success">${priceLevel}</div>` : ''}
+            <div class="mb-2">
+              ${ratingStars} <strong>${place.rating || 'No rating'}</strong>
+              ${place.user_ratings_total ? 
+                `<span class="text-muted">(${place.user_ratings_total} reviews)</span>` : 
+                ''}
+            </div>
+            <small class="text-muted d-block mb-2">${place.vicinity || place.formatted_address || ''}</small>
           `;
+          
           content.appendChild(viewDetailsButton);
           
           // Update info window content
@@ -87,7 +157,12 @@ function initMap() {
       
       // Update current place type and search again
       currentPlaceType = button.dataset.type;
-      loadNearbyPlaces(currentLocation);
+      
+      // Check if there's a keyword (for special categories like "cheap eats")
+      const keyword = button.dataset.keyword || '';
+      
+      // Pass both type and keyword to loadNearbyPlaces
+      loadNearbyPlaces(currentLocation, keyword);
     });
   });
   
@@ -161,15 +236,23 @@ async function searchLocation() {
 }
 
 // Load nearby places from our API endpoint
-async function loadNearbyPlaces(location) {
+async function loadNearbyPlaces(location, keyword = '') {
   showLoading();
   
   // Clear existing markers
   clearMarkers();
   
   try {
+    // Build API URL with optional keyword parameter
+    let apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}`;
+    
+    // Add keyword if provided (for special categories like "cheap eats")
+    if (keyword) {
+      apiUrl += `&keyword=${encodeURIComponent(keyword)}`;
+    }
+    
     // Call our backend API to get nearby places
-    const response = await fetch(`/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}`);
+    const response = await fetch(apiUrl);
     const data = await response.json();
     
     if (data.status === 'OK' && data.results && data.results.length > 0) {
@@ -234,7 +317,7 @@ function renderPlaces(places) {
   
   sortedPlaces.forEach((place, index) => {
     // Create a card for each place
-    const card = createPlaceCard(place);
+    const card = createPlaceCard(place, index);
     container.appendChild(card);
     
     // Add a marker for this place
@@ -243,9 +326,12 @@ function renderPlaces(places) {
 }
 
 // Create a card for a place
-function createPlaceCard(place) {
+function createPlaceCard(place, index) {
   const col = document.createElement('div');
   col.className = 'col-md-4 mb-4';
+  
+  // Add numerical identifier for this place
+  const placeNumber = index + 1;
   
   // Format rating stars
   let ratingHtml = '';
@@ -305,11 +391,21 @@ function createPlaceCard(place) {
     photoHtml = `<img src="${photoUrl}" class="card-img-top place-image" alt="${place.name}">`;
   }
   
+  // Create a numbered badge for the place
+  const numberBadgeHtml = `
+    <div class="place-number-badge">${placeNumber}</div>
+  `;
+  
   col.innerHTML = `
     <div class="card place-card h-100">
-      ${photoHtml}
+      <div class="position-relative">
+        ${photoHtml}
+        <div class="position-absolute top-0 start-0 mt-2 ms-2 bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-weight: bold;">
+          ${placeNumber}
+        </div>
+      </div>
       <div class="card-body">
-        <h5 class="card-title">${place.name}</h5>
+        <h5 class="card-title">${placeNumber}. ${place.name}</h5>
         ${ratingHtml}
         ${priceHtml}
         <p class="card-text">${place.vicinity || ''}</p>
@@ -342,12 +438,29 @@ function addMarker(place, index) {
     lng: place.geometry.location.lng
   };
   
+  // Create a custom marker with a number
+  const markerNumber = index + 1;
+  
+  // Create the marker with labeled content
   const marker = new google.maps.Marker({
     position: position,
     map: map,
-    title: place.name,
-    animation: google.maps.Animation.DROP
-    // Removed the numbered labels for a cleaner interface
+    title: `${markerNumber}. ${place.name}`,
+    animation: google.maps.Animation.DROP,
+    label: {
+      text: markerNumber.toString(),
+      color: 'white',
+      fontSize: '12px',
+      fontWeight: 'bold'
+    },
+    // Set marker color to red
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      fillColor: '#E21818',
+      fillOpacity: 0.9,
+      strokeWeight: 0,
+      scale: 12
+    }
   });
   
   markers.push(marker);
@@ -393,10 +506,30 @@ async function showPlaceDetails(placeId) {
         photoHtml = `<img src="${photoUrl}" class="modal-img" alt="${place.name}">`;
       }
       
-      // Format rating stars
+      // Get TripAdvisor data in parallel
+      let tripAdvisorDataPromise = null;
+      if (place.name && place.formatted_address) {
+        // Extract city/location from address
+        const addressParts = place.formatted_address.split(',');
+        const location = addressParts.length > 1 ? addressParts[1].trim() : addressParts[0].trim();
+        
+        // Fetch TripAdvisor data
+        tripAdvisorDataPromise = fetch(`/api/tripadvisor?place_name=${encodeURIComponent(place.name)}&location=${encodeURIComponent(location)}`)
+          .then(res => res.json())
+          .catch(err => {
+            console.error('Error fetching TripAdvisor data:', err);
+            return null;
+          });
+      }
+      
+      // Format Google rating stars
       let ratingHtml = '';
       if (place.rating) {
         ratingHtml = '<div class="star-rating mb-3 fs-5">';
+        ratingHtml += '<div class="d-flex align-items-center mb-2">';
+        ratingHtml += '<img src="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png" alt="Google" height="20" class="me-2">';
+        ratingHtml += '<strong>Google Rating:</strong>';
+        ratingHtml += '</div>';
         
         // Full stars
         for (let i = 0; i < Math.floor(place.rating); i++) {
@@ -722,7 +855,7 @@ async function loadNearbyRecommendations(place) {
       // Create HTML for recommendations
       let recommendationsHtml = '<div class="row">';
       
-      topRecommendations.forEach(recommendation => {
+      topRecommendations.forEach((recommendation, index) => {
         // Use the more specific display type for more accurate icons and labels
         const type = recommendation.displayType;
         
@@ -741,6 +874,9 @@ async function loadNearbyRecommendations(place) {
 
         const typeLabel = formatPlaceType(type);
         
+        // Add numerical identifier for this recommendation
+        const recNumber = index + 1;
+        
         // Prepare photo HTML
         let photoHtml = '<div class="bg-light text-center py-2">No Image</div>';
         if (recommendation.photos && recommendation.photos.length > 0) {
@@ -751,9 +887,14 @@ async function loadNearbyRecommendations(place) {
         recommendationsHtml += `
           <div class="col-md-4 col-6 mb-3">
             <div class="card recommendation-card h-100" data-place-id="${recommendation.place_id}">
-              ${photoHtml}
+              <div class="position-relative">
+                ${photoHtml}
+                <div class="position-absolute top-0 start-0 mt-1 ms-1 bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-weight: bold; font-size: 12px;">
+                  ${recNumber}
+                </div>
+              </div>
               <div class="card-body p-2">
-                <h6 class="card-title mb-1">${recommendation.name}</h6>
+                <h6 class="card-title mb-1">${recNumber}. ${recommendation.name}</h6>
                 <div class="small mb-1">
                   <i class="fas ${typeIcon} text-secondary me-1"></i> ${typeLabel}
                 </div>

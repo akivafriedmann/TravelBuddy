@@ -1,0 +1,316 @@
+
+1. .env
+dotenv
+Copy
+Edit
+GOOGLE_API_KEY=YOUR_SECURED_KEY_HERE
+Replace YOUR_SECURED_KEY_HERE with the new key you generated and restricted to your Replit domain.
+
+2. server.js
+js
+Copy
+Edit
+require('dotenv').config();
+const express = require('express');
+const fetch   = require('node-fetch');
+const path    = require('path');
+
+const app     = express();
+const API_KEY = process.env.GOOGLE_API_KEY;
+
+// Serve static front-end
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 1) Geocode address → lat/lng
+app.get('/api/geocode', async (req, res) => {
+  const { address } = req.query;
+  const url = `https://maps.googleapis.com/maps/api/geocode/json`
+            + `?address=${encodeURIComponent(address)}`
+            + `&key=${API_KEY}`;
+  const result = await fetch(url).then(r => r.json());
+  res.json(result);
+});
+
+// 2) Nearby Search (strictly type=restaurant)
+app.get('/api/nearby', async (req, res) => {
+  const { lat, lng, type='restaurant' } = req.query;
+  const url = new URL('https://maps.googleapis.com/maps/api/place/nearbysearch/json');
+  url.search = new URLSearchParams({
+    location: `${lat},${lng}`,
+    radius: 1500,
+    type,
+    key: API_KEY
+  });
+  const result = await fetch(url).then(r => r.json());
+  res.json(result);
+});
+
+// 3) Place Details (name, address, phone, website, photos…)
+app.get('/api/details', async (req, res) => {
+  const { place_id } = req.query;
+  const fields = [
+    'name','rating','formatted_address','formatted_phone_number',
+    'website','photos'
+  ].join(',');
+  const url = `https://maps.googleapis.com/maps/api/place/details/json`
+            + `?place_id=${place_id}`
+            + `&fields=${fields}`
+            + `&key=${API_KEY}`;
+  const result = await fetch(url).then(r => r.json());
+  res.json(result);
+});
+
+// 4) Photo Proxy (redirect to Google’s photo endpoint)
+app.get('/api/photo', (req, res) => {
+  const { photoreference, maxwidth=200 } = req.query;
+  const photoUrl = `https://maps.googleapis.com/maps/api/place/photo`
+                 + `?photoreference=${photoreference}`
+                 + `&maxwidth=${maxwidth}`
+                 + `&key=${API_KEY}`;
+  res.redirect(photoUrl);
+});
+
+// Listen on the port Replit provides
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+3. public/index.html
+html
+Copy
+Edit
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Travel Planner</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    #map { height: 400px; width: 100%; border-radius:8px; margin-bottom:20px }
+    .place-card { cursor:pointer; transition: transform .2s, box-shadow .2s }
+    .place-card:hover { transform: translateY(-5px); box-shadow:0 5px 15px rgba(0,0,0,0.1) }
+    .place-image { height:150px; object-fit:cover }
+    .rating-stars { color:#FFC107 }
+    .loading-indicator { display:none; text-align:center; margin:20px 0 }
+  </style>
+</head>
+<body>
+  <div class="container py-3">
+    <h1 class="text-center mb-3">
+      <i class="fas fa-map-marked-alt"></i> Travel Planner
+    </h1>
+
+    <!-- Search Bar -->
+    <div class="input-group mb-3">
+      <input
+        type="text"
+        id="search-input"
+        class="form-control"
+        placeholder="Search location (e.g. Paris)"
+      />
+      <button class="btn btn-primary" id="search-button">
+        <i class="fas fa-search"></i> Search
+      </button>
+    </div>
+
+    <!-- Map -->
+    <div id="map"></div>
+
+    <!-- Loading Spinner -->
+    <div id="loading-indicator" class="loading-indicator">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p>Loading...</p>
+    </div>
+
+    <!-- Places List -->
+    <div class="row" id="places-container"></div>
+  </div>
+
+  <!-- Details Modal -->
+  <div class="modal fade" id="place-modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-title">Place Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="modal-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap & Google Maps JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_MAPS_JS_KEY&libraries=places"
+    defer
+    onload="initMap()"
+  ></script>
+  <script src="script.js" defer></script>
+</body>
+</html>
+Remember to replace YOUR_MAPS_JS_KEY with the same restricted key (restricted to your Replit domain and only the Maps JavaScript API).
+
+4. public/script.js
+js
+Copy
+Edit
+let map, geocoder, infoWindow, markers = [];
+
+function initMap() {
+  const defaultLoc = { lat: 40.7128, lng: -74.0060 };
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: defaultLoc,
+    zoom: 13,
+    mapTypeControl: true,
+    fullscreenControl: true,
+    streetViewControl: true,
+    zoomControl: true
+  });
+  geocoder   = new google.maps.Geocoder();
+  infoWindow = new google.maps.InfoWindow();
+
+  // Try browser geolocation
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      map.setCenter(loc);
+      loadNearby(loc);
+    }, () => loadNearby(defaultLoc));
+  } else loadNearby(defaultLoc);
+
+  document.getElementById('search-button').addEventListener('click', () => {
+    const address = document.getElementById('search-input').value;
+    if (address) geocodeAddress(address);
+  });
+}
+
+async function geocodeAddress(address) {
+  showLoading(true);
+  const resp = await fetch(`/api/geocode?address=${encodeURIComponent(address)}`);
+  const data = await resp.json();
+  showLoading(false);
+
+  if (data.status === 'OK' && data.results.length) {
+    const loc = data.results[0].geometry.location;
+    map.setCenter(loc);
+    clearMarkers();
+    loadNearby(loc);
+  } else {
+    alert('Location not found');
+  }
+}
+
+async function loadNearby(loc) {
+  showLoading(true);
+  const resp = await fetch(`/api/nearby?lat=${loc.lat}&lng=${loc.lng}&type=restaurant`);
+  const data = await resp.json();
+  showLoading(false);
+
+  if (data.status === 'OK') {
+    renderPlaces(data.results);
+  } else {
+    console.error('NearbySearch error:', data.status);
+  }
+}
+
+function clearMarkers() {
+  markers.forEach(m => m.setMap(null));
+  markers = [];
+  document.getElementById('places-container').innerHTML = '';
+}
+
+function renderPlaces(places) {
+  const container = document.getElementById('places-container');
+  places.forEach(place => {
+    // Enforce strict restaurant type
+    if (!place.types.includes('restaurant')) return;
+
+    // Map marker
+    const marker = new google.maps.Marker({
+      map, position: place.geometry.location,
+      title: place.name
+    });
+    marker.addListener('click', () => showDetails(place.place_id));
+    markers.push(marker);
+
+    // Card
+    const col = document.createElement('div');
+    col.className = 'col-md-4 mb-3';
+    const photoRef = place.photos?.[0]?.photo_reference || '';
+    const imgSrc  = photoRef
+      ? `/api/photo?photoreference=${photoRef}&maxwidth=300`
+      : 'https://via.placeholder.com/300x150?text=No+Image';
+    col.innerHTML = `
+      <div class="card place-card">
+        <img src="${imgSrc}" class="card-img-top place-image"/>
+        <div class="card-body">
+          <h5 class="card-title">${place.name}</h5>
+          <p class="card-text">
+            <span class="rating-stars">${'★'.repeat(Math.round(place.rating||0))}</span>
+            (${place.rating || 'N/A'})
+          </p>
+        </div>
+      </div>`;
+    col.querySelector('.place-card')
+       .addEventListener('click', () => showDetails(place.place_id));
+    container.appendChild(col);
+  });
+}
+
+async function showDetails(placeId) {
+  showLoading(true);
+  const resp = await fetch(`/api/details?place_id=${placeId}`);
+  const data = await resp.json();
+  showLoading(false);
+
+  if (data.status === 'OK') {
+    const p = data.result;
+    document.getElementById('modal-title').textContent = p.name;
+    let html = `
+      <p><i class="fas fa-map-marker-alt"></i> ${p.formatted_address || ''}</p>
+      <p><i class="fas fa-phone"></i> ${p.formatted_phone_number || ''}</p>
+      <p><a href="${p.website || '#'}" target="_blank">${p.website || ''}</a></p>
+    `;
+    if (p.photos) {
+      html += '<div class="row">';
+      p.photos.slice(0,4).forEach(photo => {
+        html += `
+          <div class="col-6 mb-2">
+            <img
+              src="/api/photo?photoreference=${photo.photo_reference}&maxwidth=400"
+              class="img-fluid rounded"
+            />
+          </div>`;
+      });
+      html += '</div>';
+    }
+    document.getElementById('modal-body').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('place-modal')).show();
+  } else {
+    console.error('Details error:', data.status);
+  }
+}
+
+function showLoading(yes) {
+  document.getElementById('loading-indicator')
+          .style.display = yes ? 'block' : 'none';
+}
+🚀 How to Run
+Paste these files into your Replit Node.js project.
+
+Add your restricted API key to .env.
+
+Run the repl.
+
+Open the published URL (drop the :5000—Replit will proxy it).
+
+Search for a city, tap a marker or card, and enjoy only true restaurants (no more gas stations!).
+
+This setup keeps your key safe, avoids CORS/referrer headaches, and enforces type=restaurant so only real restaurants appear. You’re all set!

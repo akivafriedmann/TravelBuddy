@@ -1,164 +1,196 @@
-const http = require('http');
-const fs = require('fs');
+require('dotenv').config();
+const express = require('express');
+const fetch = require('node-fetch');
 const path = require('path');
-const url = require('url');
+const { spawn } = require('child_process');
 
-// API key (from environment or default value)
-const API_KEY = process.env.GOOGLE_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
+const app = express();
+const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
-// MIME types for serving static files
-const MIME_TYPES = {
-  '.html': 'text/html',
-  '.css': 'text/css',
-  '.js': 'text/javascript',
-  '.json': 'application/json',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon'
-};
+// Serve static front-end
+app.use(express.static(path.join(__dirname, 'public')));
 
-// Server port
-const PORT = 5000;
-
-// Create HTTP server
-const server = http.createServer(async (req, res) => {
-  const parsedUrl = url.parse(req.url, true);
-  const pathname = parsedUrl.pathname;
-  const query = parsedUrl.query;
-  
-  console.log(`${new Date().toISOString()} - ${req.method} ${pathname}`);
-
-  // API routes
-  if (pathname === '/api/nearby') {
-    try {
-      const { lat, lng, type = 'restaurant' } = query;
-      
-      if (!lat || !lng) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'ERROR', error: 'Missing required parameters' }));
-        return;
-      }
-      
-      const apiUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=1500&type=${type}&key=${API_KEY}`;
-      
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-      
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(data));
-    } catch (error) {
-      console.error('Error fetching nearby places:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ERROR', error: 'Failed to fetch nearby places' }));
-    }
-    return;
-  }
-  
-  // Place details endpoint
-  if (pathname === '/api/details') {
-    try {
-      const { place_id } = query;
-      
-      if (!place_id) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'ERROR', error: 'Missing place_id parameter' }));
-        return;
-      }
-      
-      const fields = [
-        'name', 'rating', 'formatted_address', 'photos',
-        'formatted_phone_number', 'website', 'price_level',
-        'types', 'reviews', 'user_ratings_total'
-      ].join(',');
-      
-      const apiUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=${fields}&key=${API_KEY}`;
-      
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-      
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(data));
-    } catch (error) {
-      console.error('Error fetching place details:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ERROR', error: 'Failed to fetch place details' }));
-    }
-    return;
-  }
-  
-  // Photo proxy endpoint
-  if (pathname === '/api/photo') {
-    try {
-      const { photoreference, maxwidth = 400 } = query;
-      
-      if (!photoreference) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ status: 'ERROR', error: 'Missing photoreference parameter' }));
-        return;
-      }
-      
-      const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photoreference}&maxwidth=${maxwidth}&key=${API_KEY}`;
-      
-      // Redirect to Google's photo URL
-      res.writeHead(302, { 'Location': photoUrl });
-      res.end();
-    } catch (error) {
-      console.error('Error with photo proxy:', error);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ERROR', error: 'Failed to proxy photo request' }));
-    }
-    return;
-  }
-  
-  // Serve static files from public directory
-  let filePath = pathname;
-  
-  // Convert URL path to file path
-  if (pathname === '/') {
-    filePath = '/index.html';
-  }
-  
-  filePath = path.join(__dirname, 'public', filePath);
-  
-  // Check if file exists
-  fs.access(filePath, fs.constants.F_OK, (err) => {
-    if (err) {
-      // File not found, serve index.html (for SPA routing)
-      const indexPath = path.join(__dirname, 'public', 'index.html');
-      
-      fs.readFile(indexPath, (err, data) => {
-        if (err) {
-          res.writeHead(500, { 'Content-Type': 'text/plain' });
-          res.end('Internal Server Error');
-          return;
-        }
-        
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(data);
-      });
-      return;
+// 1) Geocode address → lat/lng
+app.get('/api/geocode', async (req, res) => {
+  try {
+    const { address } = req.query;
+    if (!address) {
+      return res.status(400).json({ status: 'ERROR', error: 'Missing address parameter' });
     }
     
-    // Read and serve the file
-    fs.readFile(filePath, (err, data) => {
-      if (err) {
-        res.writeHead(500, { 'Content-Type': 'text/plain' });
-        res.end('Internal Server Error');
-        return;
-      }
-      
-      // Determine content type based on file extension
-      const extname = path.extname(filePath);
-      const contentType = MIME_TYPES[extname] || 'application/octet-stream';
-      
-      res.writeHead(200, { 'Content-Type': contentType });
-      res.end(data);
-    });
-  });
+    const url = `https://maps.googleapis.com/maps/api/geocode/json`
+              + `?address=${encodeURIComponent(address)}`
+              + `&key=${API_KEY}`;
+    
+    const response = await fetch(url);
+    const result = await response.json();
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error with geocoding:', error);
+    res.status(500).json({ status: 'ERROR', error: 'Failed to geocode address' });
+  }
 });
 
-// Start the server
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Travel Planner server running on http://0.0.0.0:${PORT}`);
+// 2) Nearby Search with enhanced parameters
+app.get('/api/nearby', async (req, res) => {
+  try {
+    const { lat, lng, type = 'restaurant', radius = 1500, keyword } = req.query;
+    
+    if (!lat || !lng) {
+      return res.status(400).json({ status: 'ERROR', error: 'Missing required location parameters' });
+    }
+    
+    // Build URL with optional parameters
+    const url = new URL('https://maps.googleapis.com/maps/api/place/nearbysearch/json');
+    const params = {
+      location: `${lat},${lng}`,
+      radius,
+      type,
+      key: API_KEY
+    };
+    
+    // Add keyword if provided
+    if (keyword) {
+      params.keyword = keyword;
+    }
+    
+    url.search = new URLSearchParams(params);
+    
+    console.log(`Fetching nearby places: ${url.toString().replace(API_KEY, 'API_KEY')}`);
+    
+    const response = await fetch(url);
+    const result = await response.json();
+    
+    console.log(`Nearby places response: status=${result.status}, results=${result.results ? result.results.length : 0}`);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching nearby places:', error);
+    res.status(500).json({ status: 'ERROR', error: 'Failed to fetch nearby places' });
+  }
 });
+
+// 3) Place Details with comprehensive fields
+app.get('/api/details', async (req, res) => {
+  try {
+    const { place_id } = req.query;
+    
+    if (!place_id) {
+      return res.status(400).json({ status: 'ERROR', error: 'Missing place_id parameter' });
+    }
+    
+    const fields = [
+      'name', 'rating', 'formatted_address', 'photos',
+      'formatted_phone_number', 'website', 'price_level',
+      'types', 'reviews', 'user_ratings_total', 'vicinity',
+      'geometry', 'opening_hours'
+    ].join(',');
+    
+    const url = `https://maps.googleapis.com/maps/api/place/details/json`
+              + `?place_id=${place_id}`
+              + `&fields=${fields}`
+              + `&key=${API_KEY}`;
+    
+    const response = await fetch(url);
+    const result = await response.json();
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching place details:', error);
+    res.status(500).json({ status: 'ERROR', error: 'Failed to fetch place details' });
+  }
+});
+
+// 4) Photo Proxy (redirect to Google's photo endpoint)
+app.get('/api/photo', (req, res) => {
+  try {
+    const { photoreference, maxwidth = 400 } = req.query;
+    
+    if (!photoreference) {
+      return res.status(400).json({ status: 'ERROR', error: 'Missing photoreference parameter' });
+    }
+    
+    const photoUrl = `https://maps.googleapis.com/maps/api/place/photo`
+                   + `?photoreference=${photoreference}`
+                   + `&maxwidth=${maxwidth}`
+                   + `&key=${API_KEY}`;
+    
+    res.redirect(photoUrl);
+  } catch (error) {
+    console.error('Error with photo proxy:', error);
+    res.status(500).json({ status: 'ERROR', error: 'Failed to proxy photo request' });
+  }
+});
+
+// 5) TripAdvisor API (uses Python script for web scraping)
+app.get('/api/tripadvisor', (req, res) => {
+  try {
+    const { place_name, location } = req.query;
+    
+    if (!place_name || !location) {
+      return res.status(400).json({ 
+        status: 'ERROR', 
+        error: 'Missing required parameters: place_name and location'
+      });
+    }
+    
+    console.log(`Fetching TripAdvisor data for ${place_name} in ${location}`);
+    
+    // Spawn a Python process to run the scraper
+    const pythonProcess = spawn('python', [
+      'tripadvisor_scraper.py',
+      '--place', place_name,
+      '--location', location
+    ]);
+    
+    let dataString = '';
+    let errorString = '';
+    
+    // Collect data from stdout
+    pythonProcess.stdout.on('data', (data) => {
+      dataString += data.toString();
+    });
+    
+    // Collect any errors from stderr
+    pythonProcess.stderr.on('data', (data) => {
+      errorString += data.toString();
+    });
+    
+    // Send the response when the process exits
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`TripAdvisor scraper error (${code}): ${errorString}`);
+        return res.status(500).json({ 
+          status: 'ERROR', 
+          error: 'Failed to retrieve TripAdvisor data',
+          details: errorString
+        });
+      }
+      
+      try {
+        const result = JSON.parse(dataString);
+        res.json({
+          status: 'OK',
+          result
+        });
+      } catch (parseError) {
+        console.error('Error parsing TripAdvisor data:', parseError);
+        res.status(500).json({ 
+          status: 'ERROR', 
+          error: 'Failed to parse TripAdvisor data'
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error with TripAdvisor API:', error);
+    res.status(500).json({ 
+      status: 'ERROR', 
+      error: 'Failed to process TripAdvisor request'
+    });
+  }
+});
+
+// Listen on the port Replit provides
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => console.log(`Server listening on port ${PORT}`));
