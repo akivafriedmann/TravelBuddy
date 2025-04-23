@@ -286,9 +286,49 @@ function renderPlaces(places) {
   
   // Minimum required reviews for statistical significance
   const MIN_REVIEWS = 20;
+  // Minimum required rating to display
+  const MIN_RATING = 4.1;
+  
+  // Define unwanted business types
+  const unwantedTypes = [
+    "gas_station", 
+    "convenience_store", 
+    "car_repair", 
+    "car_wash",
+    "car_dealer"
+  ];
+  
+  // Filter out gas stations, car dealerships, etc. and low rated places
+  const filteredPlaces = places.filter(place => {
+    // Check if this has a disqualifying business type
+    if (place.types) {
+      for (const type of unwantedTypes) {
+        if (place.types.includes(type)) {
+          return false;
+        }
+      }
+    }
+    
+    // Filter out places with rating below 4.1
+    if (place.rating && place.rating < MIN_RATING) {
+      return false;
+    }
+    
+    return true;
+  });
+  
+  // Display message if no places meet the filtering criteria
+  if (filteredPlaces.length === 0) {
+    container.innerHTML = `
+      <div class="col-12">
+        <div class="alert alert-info">No ${formatPlaceType(currentPlaceType)} found matching your criteria. Try another location or category.</div>
+      </div>
+    `;
+    return;
+  }
   
   // Sort places by rating but only consider places with at least MIN_REVIEWS
-  const sortedPlaces = [...places].sort((a, b) => {
+  const sortedPlaces = [...filteredPlaces].sort((a, b) => {
     const aSignificant = a.user_ratings_total >= MIN_REVIEWS;
     const bSignificant = b.user_ratings_total >= MIN_REVIEWS;
     
@@ -314,6 +354,9 @@ function renderPlaces(places) {
     // Keep original order if no sorting criteria apply
     return 0;
   });
+  
+  // Reset markers before adding new ones
+  clearMarkers();
   
   sortedPlaces.forEach((place, index) => {
     // Create a card for each place
