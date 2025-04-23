@@ -157,6 +157,47 @@ body {
   margin-right: 5px;
 }
 
+/* Nearby recommendations styles */
+.nearby-recommendations {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+  border-left: 3px solid #0d6efd;
+}
+
+.recommendation-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.recommendation-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.recommendation-image {
+  height: 100px;
+  object-fit: cover;
+}
+
+.recommendation-card .card-body {
+  padding: 8px 10px;
+}
+
+.recommendation-card .card-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @media (max-width: 768px) {
   .category-btn {
     font-size: 14px;

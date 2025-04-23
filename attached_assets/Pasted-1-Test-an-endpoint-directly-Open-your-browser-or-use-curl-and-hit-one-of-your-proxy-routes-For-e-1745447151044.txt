@@ -1,0 +1,85 @@
+1. Test an endpoint directly
+Open your browser (or use curl) and hit one of your proxy routes. For example, using New York’s coords:
+
+bash
+Copy
+Edit
+curl "https://f121b68b-d9ea-4b66-b7e7-8db9c4216f9a-00-2i6s4hz00dq98.janeway.replit.dev:5000/api/nearby?lat=40.7128&lng=-74.0060&type=restaurant"
+You should get back a JSON payload like:
+
+json
+Copy
+Edit
+{
+  "results": [
+    { "name": "Joe’s Pizza", "place_id": "ChIJ...", "rating": 4.5, … },
+    …
+  ],
+  "status": "OK"
+}
+If you see that, your server and key are working correctly.
+
+2. Update your Express listener for Replit
+Replit dynamically assigns the port via the PORT environment variable. Make sure your app.listen looks like this in server.js:
+
+js
+Copy
+Edit
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
+});
+This ensures Replit will route HTTP(S) traffic properly—otherwise your server might only listen on port 5000 locally, which won’t get public requests.
+
+3. Wire your front-end to the proxy
+In your client code (e.g. script.js), switch all direct Google calls to your proxy, and use relative URLs so they automatically point to your Replit origin:
+
+js
+Copy
+Edit
+// Instead of:
+// fetch('https://maps.googleapis.com/maps/api/place/nearbysearch/json?key=…')
+
+// Do:
+async function loadNearby(lat, lng) {
+  const resp = await fetch(`/api/nearby?lat=${lat}&lng=${lng}&type=restaurant`);
+  const { results } = await resp.json();
+  // render markers & cards...
+}
+Because you’re on https://f121b68b-…:5000/, that fetch('/api/nearby…') will resolve to
+https://f121b68b-…:5000/api/nearby… automatically.
+
+4. Redeploy and Retest
+Commit/save your changes.
+
+Restart your Replit.
+
+In your browser, navigate to your app URL (drop the :5000 if Replit proxies port 5000 to 443 for you), e.g.:
+
+arduino
+Copy
+Edit
+https://f121b68b-d9ea-4b66-b7e7-8db9c4216f9a-00-2i6s4hz00dq98.janeway.replit.dev/
+Use your UI to perform a search—open the console and network tab to confirm calls to /api/nearby and /api/details are succeeding.
+
+If all is green, your front end will display markers, cards, photos and ratings—all powered by your secure, backend-proxied Places API!
+
+
+
+
+
+
+
+
+
+
+
+
+Search
+
+Deep research
+
+Create image
+
+
+

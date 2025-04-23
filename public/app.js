@@ -555,6 +555,19 @@ async function showPlaceDetails(placeId) {
         photosHtml += '</div></div>';
       }
       
+      // Add nearby recommendations section
+      let nearbyRecommendationsHtml = `
+        <div class="mt-4 nearby-recommendations">
+          <h5><i class="fas fa-compass text-primary me-2"></i>Nearby Recommendations</h5>
+          <div id="nearby-places-container" class="mt-3">
+            <div class="text-center py-3">
+              <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+              <span class="ms-2">Loading recommendations...</span>
+            </div>
+          </div>
+        </div>
+      `;
+      
       // Put it all together
       document.getElementById('place-details').innerHTML = `
         ${photoHtml}
@@ -569,7 +582,13 @@ async function showPlaceDetails(placeId) {
         ${typesHtml}
         ${reviewsHtml}
         ${photosHtml}
+        ${nearbyRecommendationsHtml}
       `;
+      
+      // After rendering the place details, load nearby recommendations
+      if (place.geometry && place.geometry.location) {
+        loadNearbyRecommendations(place);
+      }
     } else {
       document.getElementById('place-details').innerHTML = `
         <div class="alert alert-warning">
@@ -582,6 +601,198 @@ async function showPlaceDetails(placeId) {
     document.getElementById('place-details').innerHTML = `
       <div class="alert alert-danger">
         Error loading place details. Please try again later.
+      </div>
+    `;
+  }
+}
+
+// Load nearby recommendations for a place
+async function loadNearbyRecommendations(place) {
+  const container = document.getElementById('nearby-places-container');
+  
+  try {
+    // Get place location
+    const location = {
+      lat: place.geometry.location.lat,
+      lng: place.geometry.location.lng
+    };
+    
+    // Define restaurant-related types for better categorization
+    const restaurantTypes = [
+      'restaurant', 'food', 'bakery', 'bar', 'cafe', 'meal_delivery', 
+      'meal_takeaway', 'night_club', 'ice_cream', 'coffee'
+    ];
+    
+    // More specific categorization of place types
+    const isRestaurant = place.types && place.types.some(type => restaurantTypes.includes(type));
+    const isLodging = place.types && place.types.includes('lodging');
+    const isAttraction = place.types && (
+      place.types.includes('tourist_attraction') || 
+      place.types.includes('museum') ||
+      place.types.includes('amusement_park') ||
+      place.types.includes('aquarium') ||
+      place.types.includes('zoo') ||
+      place.types.includes('art_gallery')
+    );
+    
+    // Determine recommended place types based on the current place's type
+    let recommendedTypes = [];
+    
+    if (isRestaurant) {
+      // If this is a restaurant, recommend attractions and lodging
+      recommendedTypes = ['tourist_attraction', 'lodging'];
+    } else if (isLodging) {
+      // If this is a hotel, recommend restaurants and attractions
+      recommendedTypes = ['restaurant', 'tourist_attraction'];
+    } else if (isAttraction) {
+      // If this is an attraction, recommend restaurants and lodging
+      recommendedTypes = ['restaurant', 'lodging'];
+    } else {
+      // Default to recommending restaurants
+      recommendedTypes = ['restaurant'];
+    }
+    
+    // Create an empty array to store all nearby places
+    let allNearbyPlaces = [];
+    
+    // Fetch nearby places for each recommended type
+    for (const type of recommendedTypes) {
+      const response = await fetch(`/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${type}&radius=500`);
+      const data = await response.json();
+      
+      if (data.status === 'OK' && data.results && data.results.length > 0) {
+        // Add type information to each place for display purposes
+        const placesWithType = data.results.map(place => ({
+          ...place,
+          recommendationType: type
+        }));
+        
+        // Add places to the combined array
+        allNearbyPlaces = [...allNearbyPlaces, ...placesWithType];
+      }
+    }
+    
+    // Remove the current place from recommendations if it's included
+    allNearbyPlaces = allNearbyPlaces.filter(nearbyPlace => 
+      nearbyPlace.place_id !== place.place_id
+    );
+    
+    // Generate a more accurate display type for each place
+    allNearbyPlaces = allNearbyPlaces.map(place => {
+      let displayType = place.recommendationType;
+      
+      // Check if this is a real restaurant or a more specific food-related place
+      if (displayType === 'restaurant' && place.types) {
+        // Check for more specific food types
+        if (place.types.includes('cafe')) {
+          displayType = 'cafe';
+        } else if (place.types.includes('bar')) {
+          displayType = 'bar';
+        } else if (place.types.includes('bakery')) {
+          displayType = 'bakery';
+        } else if (place.types.includes('meal_takeaway')) {
+          displayType = 'meal_takeaway';
+        }
+      }
+      
+      // For attractions, check for more specific types
+      if (displayType === 'tourist_attraction' && place.types) {
+        if (place.types.includes('museum')) {
+          displayType = 'museum';
+        } else if (place.types.includes('amusement_park')) {
+          displayType = 'amusement_park';
+        } else if (place.types.includes('zoo')) {
+          displayType = 'zoo';
+        } else if (place.types.includes('art_gallery')) {
+          displayType = 'art_gallery';
+        }
+      }
+      
+      return {
+        ...place,
+        displayType: displayType
+      };
+    });
+    
+    // Sort by rating and limit to 6 places
+    allNearbyPlaces.sort((a, b) => b.rating - a.rating);
+    const topRecommendations = allNearbyPlaces.slice(0, 6);
+    
+    if (topRecommendations.length > 0) {
+      // Create HTML for recommendations
+      let recommendationsHtml = '<div class="row">';
+      
+      topRecommendations.forEach(recommendation => {
+        // Use the more specific display type for more accurate icons and labels
+        const type = recommendation.displayType;
+        
+        // Choose appropriate icon based on more specific place type
+        let typeIcon = 'fa-map-marker-alt';
+        if (type === 'restaurant') typeIcon = 'fa-utensils';
+        else if (type === 'cafe') typeIcon = 'fa-coffee';
+        else if (type === 'bar') typeIcon = 'fa-glass-cheers';
+        else if (type === 'bakery') typeIcon = 'fa-cookie';
+        else if (type === 'lodging') typeIcon = 'fa-bed';
+        else if (type === 'museum') typeIcon = 'fa-landmark-alt';
+        else if (type === 'zoo') typeIcon = 'fa-paw';
+        else if (type === 'art_gallery') typeIcon = 'fa-paint-brush';
+        else if (type === 'amusement_park') typeIcon = 'fa-ticket-alt';
+        else if (type === 'tourist_attraction') typeIcon = 'fa-landmark';
+
+        const typeLabel = formatPlaceType(type);
+        
+        // Prepare photo HTML
+        let photoHtml = '<div class="bg-light text-center py-2">No Image</div>';
+        if (recommendation.photos && recommendation.photos.length > 0) {
+          const photoUrl = `/api/photo?photoreference=${recommendation.photos[0].photo_reference}&maxwidth=200`;
+          photoHtml = `<img src="${photoUrl}" class="card-img-top recommendation-image" alt="${recommendation.name}">`;
+        }
+        
+        recommendationsHtml += `
+          <div class="col-md-4 col-6 mb-3">
+            <div class="card recommendation-card h-100" data-place-id="${recommendation.place_id}">
+              ${photoHtml}
+              <div class="card-body p-2">
+                <h6 class="card-title mb-1">${recommendation.name}</h6>
+                <div class="small mb-1">
+                  <i class="fas ${typeIcon} text-secondary me-1"></i> ${typeLabel}
+                </div>
+                ${recommendation.rating ? 
+                  `<div class="star-rating small">
+                    <i class="fas fa-star"></i> ${recommendation.rating}
+                    ${recommendation.user_ratings_total ? 
+                      `<span class="text-muted">(${recommendation.user_ratings_total})</span>` : 
+                      ''}
+                  </div>` : 
+                  ''}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      recommendationsHtml += '</div>';
+      container.innerHTML = recommendationsHtml;
+      
+      // Add click event to each recommendation card
+      document.querySelectorAll('.recommendation-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const placeId = card.getAttribute('data-place-id');
+          showPlaceDetails(placeId);
+        });
+      });
+    } else {
+      container.innerHTML = `
+        <div class="alert alert-info">
+          No nearby recommendations found.
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.error('Error fetching nearby recommendations:', error);
+    container.innerHTML = `
+      <div class="alert alert-warning">
+        Error loading recommendations. Please try again later.
       </div>
     `;
   }
