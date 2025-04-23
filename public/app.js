@@ -147,6 +147,9 @@ function initMap() {
     if (e.key === 'Enter') searchLocation();
   });
   
+  // Set up use my location button
+  document.getElementById('use-location-button').addEventListener('click', useMyLocation);
+  
   // Set up category buttons
   const categoryButtons = document.querySelectorAll('.category-btn');
   categoryButtons.forEach(button => {
@@ -192,6 +195,79 @@ function initMap() {
     console.log('Geolocation not supported');
     loadNearbyPlaces(currentLocation);
   }
+}
+
+// Use my location
+function useMyLocation() {
+  if (!navigator.geolocation) {
+    alert('Geolocation is not supported by your browser. Please enter a location manually.');
+    return;
+  }
+  
+  // Show loading indicator
+  showLoading();
+  
+  // Show status in button
+  const locationButton = document.getElementById('use-location-button');
+  const originalText = locationButton.innerHTML;
+  locationButton.disabled = true;
+  locationButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
+  
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      // Success - we have the location
+      currentLocation = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      };
+      
+      // Update map center
+      map.setCenter(currentLocation);
+      
+      // Load nearby places
+      loadNearbyPlaces(currentLocation);
+      
+      // Restore button
+      locationButton.innerHTML = originalText;
+      locationButton.disabled = false;
+      
+      // Try to get address for location
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({
+        location: currentLocation
+      }, (results, status) => {
+        if (status === google.maps.GeocoderStatus.OK && results[0]) {
+          // Update input field with readable address
+          document.getElementById('location-input').value = results[0].formatted_address;
+        }
+      });
+    },
+    error => {
+      hideLoading();
+      locationButton.innerHTML = originalText;
+      locationButton.disabled = false;
+      
+      // Handle specific error codes
+      switch(error.code) {
+        case error.PERMISSION_DENIED:
+          alert('Location permission denied. Please allow access to your location or enter a location manually.');
+          break;
+        case error.POSITION_UNAVAILABLE:
+          alert('Location information is unavailable. Please try again later or enter a location manually.');
+          break;
+        case error.TIMEOUT:
+          alert('Location request timed out. Please try again later or enter a location manually.');
+          break;
+        default:
+          alert('An unknown error occurred while getting location. Please enter a location manually.');
+      }
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  );
 }
 
 // Search for a location
@@ -798,129 +874,108 @@ async function loadNearbyRecommendations(place) {
       lng: place.geometry.location.lng
     };
     
-    // Define restaurant-related types for better categorization
-    const restaurantTypes = [
-      'restaurant', 'food', 'bakery', 'bar', 'cafe', 'meal_delivery', 
-      'meal_takeaway', 'night_club', 'ice_cream', 'coffee'
-    ];
+    // Always focus on restaurant recommendations
+    const recommendedType = 'restaurant';
+    const radius = 500; // 500 meters radius
     
-    // More specific categorization of place types
-    const isRestaurant = place.types && place.types.some(type => restaurantTypes.includes(type));
-    const isLodging = place.types && place.types.includes('lodging');
-    const isAttraction = place.types && (
-      place.types.includes('tourist_attraction') || 
-      place.types.includes('museum') ||
-      place.types.includes('amusement_park') ||
-      place.types.includes('aquarium') ||
-      place.types.includes('zoo') ||
-      place.types.includes('art_gallery')
-    );
+    // Fetch nearby restaurants
+    const response = await fetch(`/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${recommendedType}&radius=${radius}`);
+    const data = await response.json();
     
-    // Determine recommended place types based on the current place's type
-    let recommendedTypes = [];
-    
-    if (isRestaurant) {
-      // If this is a restaurant, recommend attractions and lodging
-      recommendedTypes = ['tourist_attraction', 'lodging'];
-    } else if (isLodging) {
-      // If this is a hotel, recommend restaurants and attractions
-      recommendedTypes = ['restaurant', 'tourist_attraction'];
-    } else if (isAttraction) {
-      // If this is an attraction, recommend restaurants and lodging
-      recommendedTypes = ['restaurant', 'lodging'];
-    } else {
-      // Default to recommending restaurants
-      recommendedTypes = ['restaurant'];
+    if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-info">
+          No nearby restaurants found within ${radius}m.
+        </div>
+      `;
+      return;
     }
     
-    // Create an empty array to store all nearby places
-    let allNearbyPlaces = [];
-    
-    // Fetch nearby places for each recommended type
-    for (const type of recommendedTypes) {
-      const response = await fetch(`/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${type}&radius=500`);
-      const data = await response.json();
-      
-      if (data.status === 'OK' && data.results && data.results.length > 0) {
-        // Add type information to each place for display purposes
-        const placesWithType = data.results.map(place => ({
-          ...place,
-          recommendationType: type
-        }));
-        
-        // Add places to the combined array
-        allNearbyPlaces = [...allNearbyPlaces, ...placesWithType];
-      }
-    }
-    
-    // Remove the current place from recommendations if it's included
-    allNearbyPlaces = allNearbyPlaces.filter(nearbyPlace => 
+    // Remove the current place from recommendations
+    let nearbyRestaurants = data.results.filter(nearbyPlace => 
       nearbyPlace.place_id !== place.place_id
     );
     
-    // Generate a more accurate display type for each place
-    allNearbyPlaces = allNearbyPlaces.map(place => {
-      let displayType = place.recommendationType;
-      
-      // Check if this is a real restaurant or a more specific food-related place
-      if (displayType === 'restaurant' && place.types) {
-        // Check for more specific food types
-        if (place.types.includes('cafe')) {
-          displayType = 'cafe';
-        } else if (place.types.includes('bar')) {
-          displayType = 'bar';
-        } else if (place.types.includes('bakery')) {
-          displayType = 'bakery';
-        } else if (place.types.includes('meal_takeaway')) {
-          displayType = 'meal_takeaway';
+    // Define unwanted business types
+    const unwantedTypes = [
+      "gas_station", 
+      "convenience_store", 
+      "car_repair", 
+      "car_wash",
+      "car_dealer"
+    ];
+    
+    // Filter out unwanted businesses and apply minimum rating
+    const MIN_RATING = 4.1;
+    nearbyRestaurants = nearbyRestaurants.filter(restaurant => {
+      // Check if this is a gas station or similar
+      if (restaurant.types) {
+        for (const type of unwantedTypes) {
+          if (restaurant.types.includes(type)) {
+            return false;
+          }
         }
       }
       
-      // For attractions, check for more specific types
-      if (displayType === 'tourist_attraction' && place.types) {
-        if (place.types.includes('museum')) {
-          displayType = 'museum';
-        } else if (place.types.includes('amusement_park')) {
-          displayType = 'amusement_park';
-        } else if (place.types.includes('zoo')) {
-          displayType = 'zoo';
-        } else if (place.types.includes('art_gallery')) {
-          displayType = 'art_gallery';
-        }
+      // Filter by minimum rating
+      if (restaurant.rating && restaurant.rating < MIN_RATING) {
+        return false;
       }
       
-      return {
-        ...place,
-        displayType: displayType
-      };
+      return true;
     });
     
-    // Sort by rating and limit to 6 places
-    allNearbyPlaces.sort((a, b) => b.rating - a.rating);
-    const topRecommendations = allNearbyPlaces.slice(0, 6);
+    if (nearbyRestaurants.length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-info">
+          No high-quality restaurants found nearby within ${radius}m.
+        </div>
+      `;
+      return;
+    }
+    
+    // Minimum required reviews for statistical significance
+    const MIN_REVIEWS = 20;
+    
+    // Sort places by rating but only consider places with at least MIN_REVIEWS
+    nearbyRestaurants.sort((a, b) => {
+      const aSignificant = a.user_ratings_total >= MIN_REVIEWS;
+      const bSignificant = b.user_ratings_total >= MIN_REVIEWS;
+      
+      // If both places have significant number of reviews, sort by rating
+      if (aSignificant && bSignificant) {
+        return b.rating - a.rating;
+      }
+      // If only one has significant reviews, prioritize that one
+      else if (aSignificant) {
+        return -1;
+      }
+      else if (bSignificant) {
+        return 1;
+      }
+      // If neither has significant reviews, sort by number of reviews
+      else if (a.user_ratings_total && b.user_ratings_total) {
+        return b.user_ratings_total - a.user_ratings_total;
+      }
+      // Fallback to rating if available
+      else if (a.rating && b.rating) {
+        return b.rating - a.rating;
+      }
+      // Keep original order if no sorting criteria apply
+      return 0;
+    });
+    
+    // Limit to top 6 recommendations
+    const topRecommendations = nearbyRestaurants.slice(0, 6);
     
     if (topRecommendations.length > 0) {
       // Create HTML for recommendations
       let recommendationsHtml = '<div class="row">';
       
       topRecommendations.forEach((recommendation, index) => {
-        // Use the more specific display type for more accurate icons and labels
-        const type = recommendation.displayType;
-        
-        // Choose appropriate icon based on more specific place type
-        let typeIcon = 'fa-map-marker-alt';
-        if (type === 'restaurant') typeIcon = 'fa-utensils';
-        else if (type === 'cafe') typeIcon = 'fa-coffee';
-        else if (type === 'bar') typeIcon = 'fa-glass-cheers';
-        else if (type === 'bakery') typeIcon = 'fa-cookie';
-        else if (type === 'lodging') typeIcon = 'fa-bed';
-        else if (type === 'museum') typeIcon = 'fa-landmark-alt';
-        else if (type === 'zoo') typeIcon = 'fa-paw';
-        else if (type === 'art_gallery') typeIcon = 'fa-paint-brush';
-        else if (type === 'amusement_park') typeIcon = 'fa-ticket-alt';
-        else if (type === 'tourist_attraction') typeIcon = 'fa-landmark';
-
-        const typeLabel = formatPlaceType(type);
+        // For restaurant recommendations, use consistent utensils icon
+        const typeIcon = 'fa-utensils';
+        const typeLabel = 'Restaurant';
         
         // Add numerical identifier for this recommendation
         const recNumber = index + 1;
