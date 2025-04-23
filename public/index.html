@@ -170,9 +170,6 @@
     let geocoder;
     let itineraryItems = [];
     let currentPlaceId = null;
-    const API_BASE_URL = 'http://localhost:8000';
-    // This will be replaced with the actual API key by our server
-    const googleMapsApiKey = 'GOOGLE_MAPS_API_KEY';
     
     // Helper functions for UI
     function showLoading() {
@@ -398,26 +395,28 @@
     // Add markers for places on the map
     function addPlaceMarkers(places) {
       places.forEach(place => {
-        const marker = new google.maps.Marker({
-          position: place.geometry.location,
-          map: map,
-          title: place.name,
-          animation: google.maps.Animation.DROP
-        });
-        
-        markers.push(marker);
-        
-        // Add click listener to marker
-        marker.addListener('click', () => {
-          infoWindow.setContent(`
-            <div>
-              <strong>${place.name}</strong>
-              <p>${place.vicinity || ''}</p>
-              <button class="btn btn-sm btn-outline-primary" onclick="getPlaceDetails('${place.place_id}')">View Details</button>
-            </div>
-          `);
-          infoWindow.open(map, marker);
-        });
+        if (place.geometry && place.geometry.location) {
+          const marker = new google.maps.Marker({
+            position: place.geometry.location,
+            map: map,
+            title: place.name,
+            animation: google.maps.Animation.DROP
+          });
+          
+          markers.push(marker);
+          
+          // Add click listener to marker
+          marker.addListener('click', () => {
+            infoWindow.setContent(`
+              <div>
+                <strong>${place.name}</strong>
+                <p>${place.vicinity || ''}</p>
+                <button onclick="getPlaceDetails('${place.place_id}')">View Details</button>
+              </div>
+            `);
+            infoWindow.open(map, marker);
+          });
+        }
       });
     }
     
@@ -615,6 +614,9 @@
         });
       });
     }
+    
+    // Make getPlaceDetails globally accessible for map popup buttons
+    window.getPlaceDetails = getPlaceDetails;
   </script>
   <script async defer
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8&libraries=places&callback=initMap">
