@@ -20,6 +20,57 @@ function initMap() {
   // Initialize modal
   placeModal = new bootstrap.Modal(document.getElementById('place-modal'));
   
+  // Initialize Places Service for the map
+  const placesService = new google.maps.places.PlacesService(map);
+  
+  // Initialize InfoWindow for place clicks
+  const infoWindow = new google.maps.InfoWindow();
+  
+  // Add click listener to the map for any POIs (points of interest)
+  map.addListener('click', (event) => {
+    // Check if a POI (point of interest) was clicked
+    if (event.placeId) {
+      // Prevent the default info window from showing
+      event.stop();
+      
+      // Show loading in info window
+      infoWindow.setContent('<div class="p-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</div>');
+      infoWindow.setPosition(event.latLng);
+      infoWindow.open(map);
+      
+      // Get details for the clicked place
+      placesService.getDetails({
+        placeId: event.placeId,
+        fields: ['name', 'place_id', 'rating', 'user_ratings_total']
+      }, (place, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+          // Create a view details button that calls our showPlaceDetails function
+          const viewDetailsButton = document.createElement('button');
+          viewDetailsButton.className = 'btn btn-primary btn-sm mt-2';
+          viewDetailsButton.textContent = 'View Details';
+          viewDetailsButton.onclick = () => {
+            showPlaceDetails(place.place_id);
+            infoWindow.close();
+          };
+          
+          // Create info window content
+          const content = document.createElement('div');
+          content.className = 'p-2';
+          content.innerHTML = `
+            <strong>${place.name}</strong><br>
+            ${place.rating ? `Rating: ${place.rating}/5 (${place.user_ratings_total || 0} reviews)<br>` : ''}
+          `;
+          content.appendChild(viewDetailsButton);
+          
+          // Update info window content
+          infoWindow.setContent(content);
+        } else {
+          infoWindow.setContent('<div class="p-2">Unable to load place details</div>');
+        }
+      });
+    }
+  });
+  
   // Set up event listeners
   document.getElementById('search-button').addEventListener('click', searchLocation);
   document.getElementById('location-input').addEventListener('keypress', e => {
@@ -150,20 +201,30 @@ function renderPlaces(places) {
   const container = document.getElementById('places-container');
   container.innerHTML = '';
   
-  // Sort places by user_ratings_total (number of reviews) in descending order
+  // Minimum required reviews for statistical significance
+  const MIN_REVIEWS = 20;
+  
+  // Sort places by rating but only consider places with at least MIN_REVIEWS
   const sortedPlaces = [...places].sort((a, b) => {
-    // If user_ratings_total exists for both places, sort by that
-    if (a.user_ratings_total && b.user_ratings_total) {
-      return b.user_ratings_total - a.user_ratings_total;
+    const aSignificant = a.user_ratings_total >= MIN_REVIEWS;
+    const bSignificant = b.user_ratings_total >= MIN_REVIEWS;
+    
+    // If both places have significant number of reviews, sort by rating
+    if (aSignificant && bSignificant) {
+      return b.rating - a.rating;
     }
-    // If only one has user_ratings_total, prioritize the one that has it
-    else if (a.user_ratings_total) {
+    // If only one has significant reviews, prioritize that one
+    else if (aSignificant) {
       return -1;
     }
-    else if (b.user_ratings_total) {
+    else if (bSignificant) {
       return 1;
     }
-    // If neither has user_ratings_total, sort by rating if available
+    // If neither has significant reviews, sort by number of reviews
+    else if (a.user_ratings_total && b.user_ratings_total) {
+      return b.user_ratings_total - a.user_ratings_total;
+    }
+    // Fallback to rating if available
     else if (a.rating && b.rating) {
       return b.rating - a.rating;
     }
@@ -210,11 +271,15 @@ function createPlaceCard(place) {
     
     // Add a more prominent display for the number of reviews
     if (place.user_ratings_total) {
-      // Add badge indicating very popular places with lots of reviews
+      // Add badge indicating statistically significant ratings (at least 20 reviews)
+      const MIN_REVIEWS = 20;
+      
       if (place.user_ratings_total > 500) {
         ratingHtml += ` <span class="badge bg-danger ms-2"><i class="fas fa-fire"></i> ${place.user_ratings_total} reviews</span>`;
       } else if (place.user_ratings_total > 200) {
         ratingHtml += ` <span class="badge bg-success ms-2">${place.user_ratings_total} reviews</span>`;
+      } else if (place.user_ratings_total >= MIN_REVIEWS) {
+        ratingHtml += ` <span class="badge bg-primary ms-2">${place.user_ratings_total} reviews</span>`;
       } else {
         ratingHtml += ` <span class="text-muted">(${place.user_ratings_total} reviews)</span>`;
       }
@@ -351,11 +416,15 @@ async function showPlaceDetails(placeId) {
         ratingHtml += ` <span class="ms-2">${place.rating}</span>`;
         
         if (place.user_ratings_total) {
-          // Add badge indicating very popular places with lots of reviews
+          // Add badge indicating statistically significant ratings (at least 20 reviews)
+          const MIN_REVIEWS = 20;
+          
           if (place.user_ratings_total > 500) {
             ratingHtml += ` <span class="badge bg-danger ms-2"><i class="fas fa-fire"></i> ${place.user_ratings_total} reviews</span>`;
           } else if (place.user_ratings_total > 200) {
             ratingHtml += ` <span class="badge bg-success ms-2">${place.user_ratings_total} reviews</span>`;
+          } else if (place.user_ratings_total >= MIN_REVIEWS) {
+            ratingHtml += ` <span class="badge bg-primary ms-2">${place.user_ratings_total} reviews</span>`;
           } else {
             ratingHtml += ` <span class="text-muted">(${place.user_ratings_total} reviews)</span>`;
           }
