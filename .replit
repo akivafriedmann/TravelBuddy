@@ -25,7 +25,7 @@ args = "ModernPlacesApp"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "SimpleTravelApp"
+args = "ProxyServer"
 
 [[workflows.workflow]]
 name = "Server"
@@ -73,7 +73,7 @@ args = "node modern-places-app.js"
 waitForPort = 5000
 
 [[workflows.workflow]]
-name = "SimpleTravelApp"
+name = "ProxyServer"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -84,7 +84,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node simple-modern-app.js"
+args = "node server.js"
 waitForPort = 5000
 
 [deployment]
