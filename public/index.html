@@ -128,12 +128,37 @@
     <div class="itinerary-section" id="itinerarySection" style="display: none;">
       <div class="itinerary-header">
         <h3>My Itinerary</h3>
-        <button class="btn btn-outline-primary btn-sm btn-icon">
+        <button class="btn btn-outline-primary btn-sm btn-icon" id="saveItineraryBtn">
           <i class="fas fa-save"></i> Save Itinerary
         </button>
       </div>
       <div id="itineraryItems">
         <!-- Itinerary items will be added here dynamically -->
+      </div>
+      
+      <!-- Save Itinerary Modal -->
+      <div class="modal fade" id="saveItineraryModal" tabindex="-1" aria-labelledby="saveItineraryModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="saveItineraryModalLabel">Save Your Itinerary</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="saveItineraryForm">
+                <div class="mb-3">
+                  <label for="itineraryName" class="form-label">Name your itinerary</label>
+                  <input type="text" class="form-control" id="itineraryName" required 
+                    placeholder="e.g., Weekend in Paris, NYC Food Tour">
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-primary" id="confirmSaveItinerary">Save</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -614,6 +639,58 @@
         });
       });
     }
+    
+    // Save itinerary to the database
+    function saveItineraryToDatabase(name) {
+      if (itineraryItems.length === 0) {
+        showError('Cannot save an empty itinerary. Add some places first.');
+        return;
+      }
+      
+      showLoading();
+      
+      // Create the data object to send to the server
+      const itineraryData = {
+        name: name,
+        places: itineraryItems
+      };
+      
+      // Make the API request
+      axios.post('/itineraries', itineraryData)
+        .then(response => {
+          hideLoading();
+          const modal = bootstrap.Modal.getInstance(document.getElementById('saveItineraryModal'));
+          modal.hide();
+          
+          // Show success message
+          showError(`Itinerary "${name}" saved successfully!`);
+          document.getElementById('itineraryName').value = '';
+        })
+        .catch(error => {
+          hideLoading();
+          console.error('Error saving itinerary:', error);
+          showError('Failed to save itinerary. Please try again.');
+        });
+    }
+    
+    // Set up save itinerary button click handler
+    document.getElementById('saveItineraryBtn').addEventListener('click', () => {
+      // Show the save itinerary modal
+      const saveModal = new bootstrap.Modal(document.getElementById('saveItineraryModal'));
+      saveModal.show();
+    });
+    
+    // Set up confirm save button click handler
+    document.getElementById('confirmSaveItinerary').addEventListener('click', () => {
+      const itineraryName = document.getElementById('itineraryName').value.trim();
+      
+      if (!itineraryName) {
+        document.getElementById('itineraryName').focus();
+        return;
+      }
+      
+      saveItineraryToDatabase(itineraryName);
+    });
     
     // Make getPlaceDetails globally accessible for map popup buttons
     window.getPlaceDetails = getPlaceDetails;

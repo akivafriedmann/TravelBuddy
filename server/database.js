@@ -62,8 +62,6 @@ async function createTables() {
 
 // Save itinerary to database
 async function saveItinerary(name, places) {
-  const client = await pool.connect();
-  
   try {
     await client.query('BEGIN');
     
@@ -101,8 +99,6 @@ async function saveItinerary(name, places) {
     await client.query('ROLLBACK');
     console.error('Error saving itinerary:', error);
     throw error;
-  } finally {
-    client.release();
   }
 }
 

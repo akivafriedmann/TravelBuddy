@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const placesRoutes = require('./routes/places');
 const geocodingRoutes = require('./routes/geocoding');
+const itineraryRoutes = require('./routes/itineraries');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -49,10 +50,12 @@ app.use((req, res, next) => {
 // API routes - update to non-prefixed paths for client compatibility
 app.use('/places', placesRoutes);
 app.use('/geocoding', geocodingRoutes);
+app.use('/itineraries', itineraryRoutes);
 
 // Keep prefixed routes for backward compatibility
 app.use('/api/places', placesRoutes);
 app.use('/api/geocoding', geocodingRoutes);
+app.use('/api/itineraries', itineraryRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
