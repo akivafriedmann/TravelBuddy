@@ -285,9 +285,15 @@ async function searchLocation() {
     // Use geocoding to convert address to coordinates
     const geocoder = new google.maps.Geocoder();
     
-    geocoder.geocode({ address: locationInput }, (results, status) => {
+    // Create geocoding options
+    const geocodingOptions = { 
+      address: locationInput
+    };
+    
+    geocoder.geocode(geocodingOptions, (results, status) => {
       if (status === google.maps.GeocoderStatus.OK && results[0]) {
-        const location = results[0].geometry.location;
+        const result = results[0];
+        const location = result.geometry.location;
         
         currentLocation = {
           lat: location.lat(),
@@ -297,8 +303,19 @@ async function searchLocation() {
         // Update map center
         map.setCenter(currentLocation);
         
-        // Load nearby places
-        loadNearbyPlaces(currentLocation);
+        // Determine if this is a specific locality/neighborhood by checking the result types
+        const isSpecificArea = results[0].types.some(type => 
+          ['sublocality', 'neighborhood', 'postal_code'].includes(type)
+        );
+        
+        // Use a smaller radius for more specific area searches to keep results relevant
+        if (isSpecificArea) {
+          // Smaller radius for specific areas like neighborhoods (700m)
+          loadNearbyPlaces(currentLocation, '', 700);
+        } else {
+          // Use default radius for broader areas like cities
+          loadNearbyPlaces(currentLocation);
+        }
       } else {
         hideLoading();
         alert('Location not found. Please try another search term.');
@@ -312,7 +329,7 @@ async function searchLocation() {
 }
 
 // Load nearby places from our API endpoint
-async function loadNearbyPlaces(location, keyword = '') {
+async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
   showLoading();
   
   // Clear existing markers
@@ -320,7 +337,7 @@ async function loadNearbyPlaces(location, keyword = '') {
   
   try {
     // Build API URL with optional keyword parameter
-    let apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}`;
+    let apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}&radius=${radius}`;
     
     // Add keyword if provided (for special categories like "cheap eats")
     if (keyword) {
