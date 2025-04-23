@@ -8,13 +8,13 @@ const path = require('path');
 
 /**
  * Get TripAdvisor data for a place
- * GET /tripadvisor?place=Restaurant Name&location=Amsterdam
+ * GET /tripadvisor?place_name=Restaurant Name&location=Amsterdam
  */
 router.get('/', async (req, res) => {
   try {
-    const { place, location } = req.query;
+    const { place_name, location } = req.query;
     
-    if (!place || !location) {
+    if (!place_name || !location) {
       return res.status(400).json({
         status: 'ERROR',
         message: 'Both place name and location must be provided'
@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
     
     // Call the Python script to scrape TripAdvisor data
     const pythonPath = path.join(process.cwd(), 'tripadvisor_scraper.py');
-    const command = `python ${pythonPath} --place "${place}" --location "${location}"`;
+    const command = `python ${pythonPath} --place "${place_name}" --location "${location}"`;
     
     exec(command, (error, stdout, stderr) => {
       if (error) {

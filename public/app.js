@@ -680,7 +680,7 @@ async function showPlaceDetails(placeId) {
         
         if (placeName && location) {
           console.log(`Fetching TripAdvisor data for ${placeName} in ${location}`);
-          const taResponse = await fetch(`/api/tripadvisor?place=${encodeURIComponent(placeName)}&location=${encodeURIComponent(location)}`);
+          const taResponse = await fetch(`/api/tripadvisor?place_name=${encodeURIComponent(placeName)}&location=${encodeURIComponent(location)}`);
           const taData = await taResponse.json();
           
           if (taData.status === 'OK' && taData.result && taData.result.tripadvisor_data) {
@@ -732,21 +732,7 @@ async function showPlaceDetails(placeId) {
         window.currentPlacePhotos = place.photos;
       }
       
-      // Get TripAdvisor data in parallel
-      let tripAdvisorDataPromise = null;
-      if (place.name && place.formatted_address) {
-        // Extract city/location from address
-        const addressParts = place.formatted_address.split(',');
-        const location = addressParts.length > 1 ? addressParts[1].trim() : addressParts[0].trim();
-        
-        // Fetch TripAdvisor data
-        tripAdvisorDataPromise = fetch(`/api/tripadvisor?place_name=${encodeURIComponent(place.name)}&location=${encodeURIComponent(location)}`)
-          .then(res => res.json())
-          .catch(err => {
-            console.error('Error fetching TripAdvisor data:', err);
-            return null;
-          });
-      }
+      // TripAdvisor data is already fetched at the beginning of this function
       
       // Format Google rating stars
       let ratingHtml = '';
