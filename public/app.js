@@ -20,7 +20,7 @@ function initMap() {
   // Initialize modal
   placeModal = new bootstrap.Modal(document.getElementById('place-modal'));
   
-  // Initialize Places Service for the map
+  // Initialize Places Service for the map with more fields
   const placesService = new google.maps.places.PlacesService(map);
   
   // Initialize InfoWindow for place clicks
