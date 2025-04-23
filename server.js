@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 
 const app = express();
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+const WEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
 
 // Serve static front-end
 app.use(express.static(path.join(__dirname, 'public')));
@@ -187,6 +188,117 @@ app.get('/api/tripadvisor', (req, res) => {
     res.status(500).json({ 
       status: 'ERROR', 
       error: 'Failed to process TripAdvisor request'
+    });
+  }
+});
+
+// 6) Weather Forecast API (OpenWeather)
+app.get('/api/weather', async (req, res) => {
+  try {
+    const { lat, lng } = req.query;
+    
+    if (!lat || !lng) {
+      return res.status(400).json({ 
+        status: 'ERROR', 
+        error: 'Missing required parameters: lat and lng'
+      });
+    }
+    
+    // Call OpenWeather API for 5-day forecast with 3-hour intervals
+    const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lng}&units=metric&appid=${WEATHER_API_KEY}`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.cod !== '200') {
+      return res.status(500).json({
+        status: 'ERROR',
+        error: `Weather API error: ${data.message || 'Unknown error'}`
+      });
+    }
+    
+    // Process and structure the data for the next 3 days (today, tomorrow, day after)
+    const forecasts = [];
+    const now = new Date();
+    const today = now.getDate();
+    const uniqueDays = new Set();
+    
+    // Group forecast by day (we want 3 days)
+    data.list.forEach(item => {
+      const forecastDate = new Date(item.dt * 1000);
+      const forecastDay = forecastDate.getDate();
+      
+      // Skip if it's not within next 3 days or if we already have this day
+      if (forecastDay < today || forecastDay > today + 2) {
+        return;
+      }
+      
+      // For each day, find the forecast for midday (around 12-15pm) which is most representative
+      const hours = forecastDate.getHours();
+      if (hours >= 12 && hours <= 15 && !uniqueDays.has(forecastDay)) {
+        uniqueDays.add(forecastDay);
+        
+        // Get day name
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayName = dayNames[forecastDate.getDay()];
+        
+        forecasts.push({
+          date: forecastDate.toISOString().split('T')[0],
+          day: dayName,
+          temp: Math.round(item.main.temp),
+          feels_like: Math.round(item.main.feels_like),
+          description: item.weather[0].description,
+          icon: item.weather[0].icon,
+          wind_speed: item.wind.speed,
+          humidity: item.main.humidity
+        });
+      }
+    });
+    
+    // If we don't have exactly 3 days (due to API data structure), we need to fill in
+    if (forecasts.length < 3) {
+      // Just get the first 3 items from the list (not ideal but will work)
+      const used = new Set(forecasts.map(f => f.date));
+      
+      for (const item of data.list) {
+        const forecastDate = new Date(item.dt * 1000);
+        const dateStr = forecastDate.toISOString().split('T')[0];
+        
+        if (!used.has(dateStr) && forecasts.length < 3) {
+          used.add(dateStr);
+          
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const dayName = dayNames[forecastDate.getDay()];
+          
+          forecasts.push({
+            date: dateStr,
+            day: dayName,
+            temp: Math.round(item.main.temp),
+            feels_like: Math.round(item.main.feels_like),
+            description: item.weather[0].description,
+            icon: item.weather[0].icon,
+            wind_speed: item.wind.speed,
+            humidity: item.main.humidity
+          });
+        }
+      }
+    }
+    
+    // Sort by date
+    forecasts.sort((a, b) => a.date.localeCompare(b.date));
+    
+    // Return only the necessary data
+    res.json({
+      status: 'OK',
+      city: data.city.name,
+      country: data.city.country,
+      forecasts: forecasts.slice(0, 3) // Limit to 3 days
+    });
+  } catch (error) {
+    console.error('Error fetching weather data:', error);
+    res.status(500).json({ 
+      status: 'ERROR', 
+      error: 'Failed to fetch weather forecast'
     });
   }
 });

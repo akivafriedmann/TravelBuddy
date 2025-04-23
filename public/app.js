@@ -623,11 +623,40 @@ async function showPlaceDetails(placeId) {
     if (data.status === 'OK' && data.result) {
       const place = data.result;
       
-      // Prepare photo HTML
+      // Prepare photo carousel HTML
       let photoHtml = '';
       if (place.photos && place.photos.length > 0) {
-        const photoUrl = `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=600`;
-        photoHtml = `<img src="${photoUrl}" class="modal-img" alt="${place.name}">`;
+        photoHtml = `
+          <div class="photo-carousel">
+            <div class="carousel-container">
+              <div class="carousel-slide">
+                <img src="/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=800" alt="${place.name}">
+              </div>
+              ${place.photos.length > 1 ? `
+                <div class="carousel-nav carousel-prev">
+                  <i class="bi bi-chevron-left"></i>
+                </div>
+                <div class="carousel-nav carousel-next">
+                  <i class="bi bi-chevron-right"></i>
+                </div>
+                <div class="carousel-counter">1 / ${place.photos.length}</div>
+              ` : ''}
+            </div>
+            ${place.photos.length > 1 ? `
+              <div class="thumbnail-container">
+                ${place.photos.map((photo, index) => `
+                  <img src="/api/photo?photoreference=${photo.photo_reference}&maxwidth=120" 
+                       class="thumbnail ${index === 0 ? 'active' : ''}" 
+                       data-index="${index}" 
+                       alt="Thumbnail ${index + 1}">
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+        
+        // Store photos data for later use
+        window.currentPlacePhotos = place.photos;
       }
       
       // Get TripAdvisor data in parallel
@@ -825,6 +854,22 @@ async function showPlaceDetails(placeId) {
         </div>
       `;
       
+      // Add Google Maps link
+      const googleMapsLink = place.geometry && place.geometry.location ? 
+        `https://www.google.com/maps/search/?api=1&query=${place.geometry.location.lat},${place.geometry.location.lng}&query_place_id=${place.place_id}` : null;
+      
+      let mapsLinkHtml = '';
+      if (googleMapsLink) {
+        mapsLinkHtml = `
+          <div class="mb-3">
+            <i class="fab fa-google text-primary me-2"></i>
+            <a href="${googleMapsLink}" target="_blank" class="btn btn-sm btn-outline-primary">
+              <i class="fas fa-map-marked-alt me-1"></i> View on Google Maps
+            </a>
+          </div>
+        `;
+      }
+      
       // Put it all together
       document.getElementById('place-details').innerHTML = `
         ${photoHtml}
@@ -834,6 +879,7 @@ async function showPlaceDetails(placeId) {
           <i class="fas fa-map-marker-alt text-danger me-2"></i>
           <strong>Address:</strong> ${place.formatted_address || 'Not available'}
         </div>
+        ${mapsLinkHtml}
         ${priceHtml}
         ${contactHtml}
         ${typesHtml}
@@ -841,6 +887,11 @@ async function showPlaceDetails(placeId) {
         ${photosHtml}
         ${nearbyRecommendationsHtml}
       `;
+      
+      // Initialize photo carousel if there are multiple photos
+      if (place.photos && place.photos.length > 1) {
+        initPhotoCarousel();
+      }
       
       // After rendering the place details, load nearby recommendations
       if (place.geometry && place.geometry.location) {
@@ -987,6 +1038,10 @@ async function loadNearbyRecommendations(place) {
           photoHtml = `<img src="${photoUrl}" class="card-img-top recommendation-image" alt="${recommendation.name}">`;
         }
         
+        // Create Google Maps link
+        const googleMapsLink = recommendation.geometry && recommendation.geometry.location ? 
+          `https://www.google.com/maps/search/?api=1&query=${recommendation.geometry.location.lat},${recommendation.geometry.location.lng}&query_place_id=${recommendation.place_id}` : null;
+
         recommendationsHtml += `
           <div class="col-md-4 col-6 mb-3">
             <div class="card recommendation-card h-100" data-place-id="${recommendation.place_id}">
@@ -1007,6 +1062,13 @@ async function loadNearbyRecommendations(place) {
                     ${recommendation.user_ratings_total ? 
                       `<span class="text-muted">(${recommendation.user_ratings_total})</span>` : 
                       ''}
+                  </div>` : 
+                  ''}
+                ${googleMapsLink ? 
+                  `<div class="mt-2">
+                    <a href="${googleMapsLink}" target="_blank" class="btn btn-sm btn-outline-secondary w-100" onclick="event.stopPropagation();">
+                      <i class="fas fa-map-marker-alt"></i> Maps
+                    </a>
                   </div>` : 
                   ''}
               </div>
@@ -1058,4 +1120,64 @@ function showLoading() {
 // Hide loading indicator
 function hideLoading() {
   document.getElementById('loading-indicator').classList.add('d-none');
+}
+
+// Initialize photo carousel
+function initPhotoCarousel() {
+  // Get carousel elements
+  const container = document.querySelector('.carousel-slide');
+  const prevBtn = document.querySelector('.carousel-prev');
+  const nextBtn = document.querySelector('.carousel-next');
+  const counter = document.querySelector('.carousel-counter');
+  const thumbnails = document.querySelectorAll('.thumbnail');
+  
+  // Store current index
+  let currentIndex = 0;
+  const photos = window.currentPlacePhotos || [];
+  
+  if (!photos || photos.length <= 1 || !container) return;
+  
+  // Function to update carousel display
+  function updateCarousel() {
+    // Update image
+    container.innerHTML = `<img src="/api/photo?photoreference=${photos[currentIndex].photo_reference}&maxwidth=800" alt="Place photo ${currentIndex + 1}">`;
+    
+    // Update counter
+    if (counter) {
+      counter.textContent = `${currentIndex + 1} / ${photos.length}`;
+    }
+    
+    // Update thumbnails
+    thumbnails.forEach((thumb, idx) => {
+      if (idx === currentIndex) {
+        thumb.classList.add('active');
+      } else {
+        thumb.classList.remove('active');
+      }
+    });
+  }
+  
+  // Previous button click
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      currentIndex = (currentIndex - 1 + photos.length) % photos.length;
+      updateCarousel();
+    });
+  }
+  
+  // Next button click
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      currentIndex = (currentIndex + 1) % photos.length;
+      updateCarousel();
+    });
+  }
+  
+  // Thumbnail clicks
+  thumbnails.forEach((thumb, idx) => {
+    thumb.addEventListener('click', () => {
+      currentIndex = idx;
+      updateCarousel();
+    });
+  });
 }
