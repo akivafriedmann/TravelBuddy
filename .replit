@@ -15,6 +15,10 @@ author = "agent"
 task = "workflow.run"
 args = "Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "SimpleServer"
+
 [[workflows.workflow]]
 name = "Server"
 author = "agent"
@@ -29,6 +33,21 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "cd server && npm install && node index.js"
 waitForPort = 8000
+
+[[workflows.workflow]]
+name = "SimpleServer"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node simple-server.js"
+waitForPort = 5000
 
 [deployment]
 run = ["sh", "-c", "cd server && npm install && node index.js"]
