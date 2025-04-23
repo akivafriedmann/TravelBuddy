@@ -17,11 +17,15 @@ args = "Server"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "SimpleServer"
+args = "BasicServer"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "BasicServer"
+args = "ModernPlacesApp"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "SimpleTravelApp"
 
 [[workflows.workflow]]
 name = "Server"
@@ -39,21 +43,6 @@ args = "cd server && npm install && node index.js"
 waitForPort = 8000
 
 [[workflows.workflow]]
-name = "SimpleServer"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node simple-travel-app.js"
-waitForPort = 5000
-
-[[workflows.workflow]]
 name = "BasicServer"
 author = "agent"
 
@@ -68,12 +57,46 @@ task = "shell.exec"
 args = "node basic-server.js"
 waitForPort = 5000
 
+[[workflows.workflow]]
+name = "ModernPlacesApp"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node modern-places-app.js"
+waitForPort = 5000
+
+[[workflows.workflow]]
+name = "SimpleTravelApp"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node simple-modern-app.js"
+waitForPort = 5000
+
 [deployment]
 run = ["sh", "-c", "cd server && npm install && node index.js"]
 
 [[ports]]
 localPort = 5000
 externalPort = 5000
+
+[[ports]]
+localPort = 5001
+externalPort = 3000
 
 [[ports]]
 localPort = 8000
