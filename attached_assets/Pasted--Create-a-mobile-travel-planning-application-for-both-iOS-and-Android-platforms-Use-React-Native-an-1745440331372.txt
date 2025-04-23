@@ -1,0 +1,29 @@
+"Create a mobile travel planning application for both iOS and Android platforms. Use React Native and Expo for the development framework.
+The main screen of the app should feature an interactive map that defaults to the user's current geographical location. Integrate the Google Maps SDK for this map interface.
+As the user navigates the map, dynamically display map markers for nearby restaurants and hotels. Fetch this place information using the Google Maps Places API.
+When a user taps on a restaurant or hotel marker, a detail panel should appear. This panel must display the following information retrieved from the Google Maps Places API:
+Place Name
+Full Address
+Overall Google Maps user rating (e.g., displayed as stars or a number like 4.5)
+Total number of Google Maps reviews
+Google Maps price level indicator (e.g., $, $$, $$$).
+Include a search bar at the top of the map screen. This search bar should allow users to search for specific locations (cities, addresses) or place names, and the map should update to show the searched area or place. Use the Google Maps Geocoding API and Places API for this search functionality.
+Ensure the user interface is clean, intuitive, and optimized for mobile use, suitable for easy travel planning.
+For all Google Maps API interactions (Places, Geocoding, Maps SDK), I will provide the necessary API key after the initial setup."
+This prompt focuses on a single data source (Google Maps) for the initial build, testing Replit Agent's ability to handle the fundamental map integration and API data display before introducing the complexity of merging multiple sources.
+4.3 Guidance on Iterative Refinement with the AI
+Once the MVP based on the prompt above is functional, features can be added incrementally through further chat interactions with Replit Agent. This requires careful monitoring of the Agent's success, especially when tackling data integration challenges.
+Step 1 (Adding TripAdvisor Data):
+Prompt: "Modify the place detail panel. Below the Google Maps information, add a new section to display data from TripAdvisor for the same location. Fetch the overall TripAdvisor rating (e.g., 4/5 bubbles) and the total number of TripAdvisor reviews using the TripAdvisor Content API (I will provide the API key). Attempt to match the location currently displayed using its name and address. If a reliable match is found in TripAdvisor, display its rating and review count. If no match is found, indicate that TripAdvisor data is unavailable for this place."
+Monitoring: Closely observe if Replit Agent can implement the logic to query the TripAdvisor API and handle the matching process based on name/address. This is where the limitations identified in 6 might surface. Be prepared for potential issues or the need for simplification (e.g., adding a separate button to "Search on TripAdvisor").
+Step 2 (Adding Booking.com Data for Hotels):
+Prompt: "For locations identified as hotels, enhance the detail panel further. Add information from Booking.com using the Affiliate/Demand API (I will provide necessary credentials/keys). Display the Booking.com user rating score if available, and try to show an indicative price range or a 'Check Availability' link. Again, match the hotel based on name and address."
+Monitoring: Similar to TripAdvisor, assess if the Agent can handle the matching and API call. Also, verify that the implementation respects any limitations on displaying Booking.com data 29 and aligns with the understanding that direct personal account login is likely not feasible.28
+Step 3 (Nearby Recommendations):
+Prompt: "Add a 'Recommendations' feature. When a user is viewing the detail panel for a place (restaurant or hotel), display a list of 3-5 similar places located nearby. Use the Google Maps Places API's Nearby Search functionality to find these recommendations based on the current place's type and location."
+Step 4 (Flight Search - Experimental):
+Prompt: "Introduce a basic flight search capability as a separate section in the app. Add fields for the user to enter an origin airport/city, destination airport/city, departure date, and return date (optional for one-way). Use the to fetch and display a list of flight options, showing airline, departure/arrival times, duration, and price."
+Monitoring: Treat this as highly experimental within the no-code context due to the complexity of third-party flight APIs. Success is less certain compared to integrating Google Maps data.
+Step 5 (Booking.com 'Connection' - Limited Scope):
+Prompt: "On the detail panel for hotels, refine the Booking.com integration. Add a prominent button labeled 'Check Price & Availability on Booking.com'. When tapped, this button should open the Booking.com website or mobile app (if installed), ideally pre-populated with the hotel's details and the user's potential travel dates (if they can be inferred or entered elsewhere in the app). Use the Booking.com Affiliate API to generate the correct deep link."
+Monitoring: Ensure this implementation focuses on linking out, managing user expectations that it won't provide in-app access to their personal Booking.com account.
