@@ -15,20 +15,35 @@ app.use(cors());
 // Parse JSON request bodies
 app.use(express.json());
 
-// Log all requests
+// Log all requests and disable caching
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  // Disable caching to ensure fresh content
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
   next();
 });
 
-// Serve static files from the public directory
-app.use(express.static(path.join(__dirname, '../public')));
+// Serve static files from the public directory with no caching
+app.use(express.static(path.join(__dirname, '../public'), {
+  etag: false,
+  lastModified: false,
+  maxAge: 0,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+}));
 
 // Dynamically inject the Google Maps API key into the HTML
 app.use((req, res, next) => {
   if (req.path === '/' || req.path === '/index.html') {
     const filePath = path.join(__dirname, '../public/index.html');
     
+    // Always read the file directly to get the latest version (no caching)
     fs.readFile(filePath, 'utf8', (err, data) => {
       if (err) {
         console.error('Error reading index.html:', err);
@@ -37,10 +52,13 @@ app.use((req, res, next) => {
       
       // Replace the placeholders with the actual API key
       const html = data
-        .replace('GOOGLE_MAPS_API_KEY_PLACEHOLDER', process.env.GOOGLE_MAPS_API_KEY)
-        .replace('const googleMapsApiKey = \'\';', `const googleMapsApiKey = '${process.env.GOOGLE_MAPS_API_KEY}';`);
+        .replace('GOOGLE_MAPS_API_KEY_PLACEHOLDER', process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8')
+        .replace('const googleMapsApiKey = \'\';', `const googleMapsApiKey = '${process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8'}';`);
       
+      // Ensure we're sending the latest content
+      res.type('text/html');
       res.send(html);
+      console.log('Sent fresh index.html with injected API key');
     });
   } else {
     next();
