@@ -286,52 +286,9 @@ function renderPlaces(places) {
   
   // Minimum required reviews for statistical significance
   const MIN_REVIEWS = 20;
-  // Minimum required rating to display
-  const MIN_RATING = 4.1;
-  
-  // Define unwanted business types
-  const unwantedTypes = [
-    "gas_station", 
-    "convenience_store", 
-    "car_repair", 
-    "car_wash",
-    "car_dealer"
-  ];
-  
-  // Filter out gas stations, car dealerships, etc.
-  const businessTypeFiltered = places.filter(place => {
-    // Check if this has a disqualifying business type
-    if (place.types) {
-      for (const type of unwantedTypes) {
-        if (place.types.includes(type)) {
-          return false;
-        }
-      }
-    }
-    return true;
-  });
-  
-  // If we have zero places after filtering unwanted business types
-  if (businessTypeFiltered.length === 0) {
-    container.innerHTML = `
-      <div class="col-12">
-        <div class="alert alert-info">No ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.</div>
-      </div>
-    `;
-    return;
-  }
-  
-  // Try to find places with rating 4.1 or higher
-  const highRatedPlaces = businessTypeFiltered.filter(place => 
-    place.rating && place.rating >= MIN_RATING
-  );
-  
-  // Use high-rated places if we have at least 3, otherwise use all places
-  const filteredPlaces = highRatedPlaces.length >= 3 ? 
-    highRatedPlaces : businessTypeFiltered;
   
   // Sort places by rating but only consider places with at least MIN_REVIEWS
-  const sortedPlaces = [...filteredPlaces].sort((a, b) => {
+  const sortedPlaces = [...places].sort((a, b) => {
     const aSignificant = a.user_ratings_total >= MIN_REVIEWS;
     const bSignificant = b.user_ratings_total >= MIN_REVIEWS;
     
