@@ -5,11 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Travel Planner</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .app-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
     #map {
       height: 500px;
       width: 100%;
       margin-top: 20px;
+      border-radius: 8px;
+      overflow: hidden;
     }
     .search-container {
       margin: 20px 0;
@@ -21,9 +32,11 @@
       margin-bottom: 15px;
       cursor: pointer;
       transition: transform 0.2s;
+      height: 100%;
     }
     .place-card:hover {
       transform: translateY(-5px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
     .loading {
       display: none;
@@ -34,19 +47,65 @@
       display: none;
       color: #dc3545;
       margin: 20px 0;
+      padding: 10px;
+      border-radius: 4px;
+      background-color: #f8d7da;
+    }
+    .card-img-top {
+      height: 180px;
+      object-fit: cover;
+    }
+    .header-logo {
+      font-size: 2.5rem;
+      margin-right: 10px;
+      color: #0d6efd;
+    }
+    .itinerary-section {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+    }
+    .itinerary-item {
+      padding: 10px;
+      margin-bottom: 10px;
+      background-color: white;
+      border-radius: 4px;
+      border-left: 4px solid #0d6efd;
+    }
+    .badge {
+      margin-right: 5px;
+    }
+    .itinerary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .btn-icon {
+      display: inline-flex;
+      align-items: center;
+    }
+    .btn-icon i {
+      margin-right: 5px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
+  <div class="app-container">
     <header class="py-3 mb-4 border-bottom">
-      <h1 class="text-center">Travel Planner</h1>
+      <div class="d-flex align-items-center justify-content-center">
+        <i class="fas fa-map-marked-alt header-logo"></i>
+        <h1>Travel Planner</h1>
+      </div>
     </header>
 
     <div class="search-container">
       <div class="input-group">
-        <input type="text" id="searchInput" class="form-control" placeholder="Search for a location...">
-        <button class="btn btn-primary" id="searchButton">Search</button>
+        <input type="text" id="searchInput" class="form-control" placeholder="Search for a location (e.g., New York, Paris, Tokyo)...">
+        <button class="btn btn-primary" id="searchButton">
+          <i class="fas fa-search"></i> Search
+        </button>
       </div>
     </div>
 
@@ -54,46 +113,90 @@
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
+      <p class="mt-2">Searching for places...</p>
     </div>
 
     <div class="error-message" id="errorMessage"></div>
 
     <div id="map"></div>
 
-    <div class="results-container row" id="placesResults"></div>
+    <div class="results-container">
+      <h3 class="mb-3 mt-4" id="resultsTitle">Places of Interest</h3>
+      <div class="row" id="placesResults"></div>
+    </div>
+
+    <div class="itinerary-section" id="itinerarySection" style="display: none;">
+      <div class="itinerary-header">
+        <h3>My Itinerary</h3>
+        <button class="btn btn-outline-primary btn-sm btn-icon">
+          <i class="fas fa-save"></i> Save Itinerary
+        </button>
+      </div>
+      <div id="itineraryItems">
+        <!-- Itinerary items will be added here dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Place Details Modal -->
+  <div class="modal fade" id="placeDetailsModal" tabindex="-1" aria-labelledby="placeDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="placeDetailsModalLabel">Place Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="placeDetailsBody">
+          <!-- Place details will be loaded here -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="addToItineraryBtn">
+            <i class="fas fa-plus"></i> Add to Itinerary
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script>
-    // Initialize variables
+    // Global variables
     let map;
     let markers = [];
+    let infoWindow;
+    let placesService;
+    let geocoder;
+    let itineraryItems = [];
+    let currentPlaceId = null;
     const API_BASE_URL = 'http://localhost:8000';
+    // This will be replaced with the actual API key by our server
+    const googleMapsApiKey = 'GOOGLE_MAPS_API_KEY';
     
-    // Helper to show loading indicator
+    // Helper functions for UI
     function showLoading() {
       document.getElementById('loadingIndicator').style.display = 'block';
     }
     
-    // Helper to hide loading indicator
     function hideLoading() {
       document.getElementById('loadingIndicator').style.display = 'none';
     }
     
-    // Helper to show error message
     function showError(message) {
       const errorElement = document.getElementById('errorMessage');
       errorElement.textContent = message;
       errorElement.style.display = 'block';
+      setTimeout(() => {
+        errorElement.style.display = 'none';
+      }, 5000);
     }
     
-    // Helper to hide error message
     function hideError() {
       document.getElementById('errorMessage').style.display = 'none';
     }
     
-    // Initialize the Google Map
+    // Initialize Google Maps
     function initMap() {
       // Default location (New York City)
       const defaultLocation = { lat: 40.7128, lng: -74.0060 };
@@ -102,7 +205,17 @@
       map = new google.maps.Map(document.getElementById('map'), {
         center: defaultLocation,
         zoom: 12,
+        mapTypeControl: true,
+        streetViewControl: true,
+        fullscreenControl: true,
+        zoomControl: true,
+        mapTypeId: google.maps.MapTypeId.ROADMAP
       });
+      
+      // Create geocoder and places service
+      geocoder = new google.maps.Geocoder();
+      placesService = new google.maps.places.PlacesService(map);
+      infoWindow = new google.maps.InfoWindow();
       
       // Try to get user's current location
       if (navigator.geolocation) {
@@ -125,12 +238,19 @@
                 url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
               }
             });
+            
+            // Search for places near the user's location
+            searchNearbyPlaces(userLocation);
           },
           () => {
             // Handle geolocation error silently, use default location
             console.log('Geolocation failed, using default location');
+            searchNearbyPlaces(defaultLocation);
           }
         );
+      } else {
+        // Browser doesn't support geolocation, use default location
+        searchNearbyPlaces(defaultLocation);
       }
       
       // Set up search functionality
@@ -143,7 +263,7 @@
     }
     
     // Search for a location
-    async function searchLocation() {
+    function searchLocation() {
       const searchInput = document.getElementById('searchInput').value.trim();
       
       if (!searchInput) {
@@ -155,14 +275,9 @@
       showLoading();
       clearMarkers();
       
-      try {
-        // Get location coordinates from search text
-        const response = await axios.get(`${API_BASE_URL}/geocoding`, {
-          params: { address: searchInput }
-        });
-        
-        if (response.data && response.data.results && response.data.results.length > 0) {
-          const location = response.data.results[0].geometry.location;
+      geocoder.geocode({ address: searchInput }, (results, status) => {
+        if (status === google.maps.GeocoderStatus.OK && results.length > 0) {
+          const location = results[0].geometry.location;
           
           // Center map on the searched location
           map.setCenter(location);
@@ -172,10 +287,14 @@
           const marker = new google.maps.Marker({
             position: location,
             map: map,
-            title: response.data.results[0].formatted_address
+            title: results[0].formatted_address
           });
           
           markers.push(marker);
+          
+          // Open info window with location name
+          infoWindow.setContent(`<div><strong>${results[0].formatted_address}</strong></div>`);
+          infoWindow.open(map, marker);
           
           // Search for nearby places
           searchNearbyPlaces(location);
@@ -183,36 +302,26 @@
           showError('Location not found. Please try a different search term.');
           hideLoading();
         }
-      } catch (error) {
-        console.error('Error searching location:', error);
-        showError('Error searching location. Please try again later.');
-        hideLoading();
-      }
+      });
     }
     
     // Search for nearby places
-    async function searchNearbyPlaces(location) {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/places`, {
-          params: {
-            location: `${location.lat},${location.lng}`,
-            radius: 1500,
-            type: 'restaurant,lodging,tourist_attraction'
-          }
-        });
-        
-        if (response.data && response.data.results) {
-          displayPlaces(response.data.results);
-          addPlaceMarkers(response.data.results);
+    function searchNearbyPlaces(location) {
+      const request = {
+        location: location,
+        radius: 1500,
+        type: ['tourist_attraction', 'lodging', 'restaurant']
+      };
+      
+      placesService.nearbySearch(request, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+          displayPlaces(results);
+          addPlaceMarkers(results);
         } else {
           showError('No places found near this location.');
         }
-      } catch (error) {
-        console.error('Error searching nearby places:', error);
-        showError('Error finding nearby places. Please try again later.');
-      } finally {
         hideLoading();
-      }
+      });
     }
     
     // Display places in the results container
@@ -227,22 +336,52 @@
       
       places.forEach(place => {
         const placeCard = document.createElement('div');
-        placeCard.className = 'col-md-4 col-sm-6';
+        placeCard.className = 'col-md-4 col-sm-6 mb-4';
         
         const photoUrl = place.photos && place.photos.length > 0 
-          ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${place.photos[0].photo_reference}&key=${googleMapsApiKey}`
-          : 'https://via.placeholder.com/400x300?text=No+Image';
+          ? place.photos[0].getUrl({ maxWidth: 300, maxHeight: 200 })
+          : 'https://via.placeholder.com/300x200?text=No+Image';
+        
+        let placeType = 'point_of_interest';
+        let typeIcon = 'fas fa-map-marker-alt';
+        let typeBadge = 'secondary';
+        
+        if (place.types) {
+          // Determine primary type and icon
+          if (place.types.includes('restaurant') || place.types.includes('food')) {
+            placeType = 'restaurant';
+            typeIcon = 'fas fa-utensils';
+            typeBadge = 'danger';
+          } else if (place.types.includes('lodging') || place.types.includes('hotel')) {
+            placeType = 'hotel';
+            typeIcon = 'fas fa-bed';
+            typeBadge = 'info';
+          } else if (place.types.includes('tourist_attraction') || place.types.includes('museum')) {
+            placeType = 'attraction';
+            typeIcon = 'fas fa-landmark';
+            typeBadge = 'warning';
+          } else if (place.types.includes('park') || place.types.includes('natural_feature')) {
+            placeType = 'nature';
+            typeIcon = 'fas fa-tree';
+            typeBadge = 'success';
+          }
+        }
         
         placeCard.innerHTML = `
-          <div class="card place-card" data-place-id="${place.place_id}">
-            <img src="${photoUrl}" class="card-img-top" alt="${place.name}" onerror="this.src='https://via.placeholder.com/400x300?text=No+Image'">
-            <div class="card-body">
+          <div class="card place-card shadow-sm h-100" data-place-id="${place.place_id}">
+            <img src="${photoUrl}" class="card-img-top" alt="${place.name}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
+            <div class="card-body d-flex flex-column">
               <h5 class="card-title">${place.name}</h5>
-              <p class="card-text">
-                ${place.vicinity || ''}
-                ${place.rating ? `<br>Rating: ${place.rating}/5` : ''}
-              </p>
-              <button class="btn btn-sm btn-outline-primary view-details">View Details</button>
+              <div class="mb-2">
+                <span class="badge bg-${typeBadge}"><i class="${typeIcon}"></i> ${placeType.replace('_', ' ')}</span>
+                ${place.rating ? `<span class="badge bg-primary"><i class="fas fa-star"></i> ${place.rating}/5</span>` : ''}
+              </div>
+              <p class="card-text text-muted">${place.vicinity || ''}</p>
+              <div class="mt-auto">
+                <button class="btn btn-sm btn-outline-primary view-details">
+                  <i class="fas fa-info-circle"></i> View Details
+                </button>
+              </div>
             </div>
           </div>
         `;
@@ -259,88 +398,63 @@
     // Add markers for places on the map
     function addPlaceMarkers(places) {
       places.forEach(place => {
-        if (place.geometry && place.geometry.location) {
-          const marker = new google.maps.Marker({
-            position: place.geometry.location,
-            map: map,
-            title: place.name,
-            animation: google.maps.Animation.DROP
-          });
-          
-          markers.push(marker);
-          
-          // Add click listener to marker
-          marker.addListener('click', () => {
-            getPlaceDetails(place.place_id);
-          });
-        }
+        const marker = new google.maps.Marker({
+          position: place.geometry.location,
+          map: map,
+          title: place.name,
+          animation: google.maps.Animation.DROP
+        });
+        
+        markers.push(marker);
+        
+        // Add click listener to marker
+        marker.addListener('click', () => {
+          infoWindow.setContent(`
+            <div>
+              <strong>${place.name}</strong>
+              <p>${place.vicinity || ''}</p>
+              <button class="btn btn-sm btn-outline-primary" onclick="getPlaceDetails('${place.place_id}')">View Details</button>
+            </div>
+          `);
+          infoWindow.open(map, marker);
+        });
       });
     }
     
     // Get details for a specific place
-    async function getPlaceDetails(placeId) {
+    function getPlaceDetails(placeId) {
       showLoading();
+      currentPlaceId = placeId;
       
-      try {
-        const response = await axios.get(`${API_BASE_URL}/places/details`, {
-          params: {
-            place_id: placeId,
-            fields: 'name,rating,formatted_address,formatted_phone_number,website,opening_hours,reviews,photos'
-          }
-        });
-        
-        if (response.data && response.data.result) {
-          displayPlaceDetails(response.data.result);
+      const request = {
+        placeId: placeId,
+        fields: ['name', 'rating', 'formatted_address', 'formatted_phone_number', 'website', 'opening_hours', 'review', 'photo', 'type']
+      };
+      
+      placesService.getDetails(request, (place, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+          displayPlaceDetails(place);
         } else {
           showError('Place details not found.');
         }
-      } catch (error) {
-        console.error('Error getting place details:', error);
-        showError('Error getting place details. Please try again later.');
-      } finally {
         hideLoading();
-      }
+      });
     }
     
     // Display place details in a modal
     function displayPlaceDetails(place) {
-      // Create modal if it doesn't exist
-      let modal = document.getElementById('placeDetailsModal');
-      if (!modal) {
-        modal = document.createElement('div');
-        modal.className = 'modal fade';
-        modal.id = 'placeDetailsModal';
-        modal.setAttribute('tabindex', '-1');
-        modal.setAttribute('aria-labelledby', 'placeDetailsModalLabel');
-        modal.setAttribute('aria-hidden', 'true');
-        
-        modal.innerHTML = `
-          <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="placeDetailsModalLabel"></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-              </div>
-              <div class="modal-body"></div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="addToItineraryBtn">Add to Itinerary</button>
-              </div>
-            </div>
-          </div>
-        `;
-        
-        document.body.appendChild(modal);
+      if (!place) {
+        showError('Place details not available');
+        return;
       }
       
-      // Update modal content
       const modalTitle = document.getElementById('placeDetailsModalLabel');
-      const modalBody = modal.querySelector('.modal-body');
+      const modalBody = document.getElementById('placeDetailsBody');
       
       modalTitle.textContent = place.name;
       
       const photoUrl = place.photos && place.photos.length > 0 
-        ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${place.photos[0].photo_reference}&key=${googleMapsApiKey}`
+        ? place.photos[0].getUrl({ maxWidth: 800, maxHeight: 400 })
         : 'https://via.placeholder.com/800x400?text=No+Image';
       
       let reviewsHtml = '';
@@ -350,8 +464,14 @@
           reviewsHtml += `
             <div class="card mb-2">
               <div class="card-body">
-                <h6>${review.author_name} - ${review.rating}/5</h6>
-                <p>${review.text}</p>
+                <div class="d-flex justify-content-between">
+                  <h6>${review.author_name}</h6>
+                  <div>
+                    ${Array(Math.floor(review.rating)).fill(`<i class="fas fa-star text-warning"></i>`).join('')}
+                    ${review.rating % 1 !== 0 ? `<i class="fas fa-star-half-alt text-warning"></i>` : ''}
+                  </div>
+                </div>
+                <p class="mb-0">${review.text}</p>
               </div>
             </div>
           `;
@@ -360,35 +480,40 @@
       
       let hoursHtml = '';
       if (place.opening_hours && place.opening_hours.weekday_text) {
-        hoursHtml = '<h5 class="mt-3">Opening Hours</h5><ul>';
+        hoursHtml = '<h5 class="mt-3">Opening Hours</h5><ul class="list-group mb-3">';
         place.opening_hours.weekday_text.forEach(day => {
-          hoursHtml += `<li>${day}</li>`;
+          hoursHtml += `<li class="list-group-item">${day}</li>`;
         });
         hoursHtml += '</ul>';
       }
       
       modalBody.innerHTML = `
-        <img src="${photoUrl}" class="img-fluid mb-3" alt="${place.name}" onerror="this.src='https://via.placeholder.com/800x400?text=No+Image'">
-        <p><strong>Address:</strong> ${place.formatted_address || 'Not available'}</p>
-        <p><strong>Rating:</strong> ${place.rating ? `${place.rating}/5` : 'Not rated'}</p>
-        <p><strong>Phone:</strong> ${place.formatted_phone_number || 'Not available'}</p>
-        <p>
-          <strong>Website:</strong> 
-          ${place.website ? `<a href="${place.website}" target="_blank">${place.website}</a>` : 'Not available'}
-        </p>
+        <img src="${photoUrl}" class="img-fluid mb-3 rounded" alt="${place.name}" onerror="this.src='https://via.placeholder.com/800x400?text=No+Image'">
+        
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <p><i class="fas fa-map-marker-alt text-danger me-2"></i><strong>Address:</strong> ${place.formatted_address || 'Not available'}</p>
+            <p><i class="fas fa-phone text-success me-2"></i><strong>Phone:</strong> ${place.formatted_phone_number || 'Not available'}</p>
+          </div>
+          <div class="col-md-6">
+            <p>
+              <i class="fas fa-star text-warning me-2"></i><strong>Rating:</strong> 
+              ${place.rating ? `${place.rating}/5` : 'Not rated'}
+            </p>
+            <p>
+              <i class="fas fa-globe text-primary me-2"></i><strong>Website:</strong> 
+              ${place.website ? `<a href="${place.website}" target="_blank">${place.website}</a>` : 'Not available'}
+            </p>
+          </div>
+        </div>
+        
         ${hoursHtml}
         ${reviewsHtml}
       `;
       
       // Show the modal
-      const modalInstance = new bootstrap.Modal(modal);
-      modalInstance.show();
-      
-      // Add event listener to "Add to Itinerary" button
-      document.getElementById('addToItineraryBtn').addEventListener('click', () => {
-        // To be implemented: Add selected place to a user's itinerary
-        alert('This feature will be implemented in a future version.');
-      });
+      const modal = new bootstrap.Modal(document.getElementById('placeDetailsModal'));
+      modal.show();
     }
     
     // Clear all markers from the map
@@ -396,11 +521,103 @@
       markers.forEach(marker => marker.setMap(null));
       markers = [];
     }
+    
+    // Add place to itinerary
+    document.getElementById('addToItineraryBtn').addEventListener('click', () => {
+      if (!currentPlaceId) return;
+      
+      const request = {
+        placeId: currentPlaceId,
+        fields: ['name', 'vicinity', 'rating', 'types', 'photos']
+      };
+      
+      placesService.getDetails(request, (place, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK) {
+          // Check if place is already in itinerary
+          if (itineraryItems.some(item => item.place_id === currentPlaceId)) {
+            showError('This place is already in your itinerary.');
+            return;
+          }
+          
+          // Add to itinerary
+          itineraryItems.push({
+            place_id: currentPlaceId,
+            name: place.name,
+            vicinity: place.vicinity,
+            types: place.types,
+            rating: place.rating,
+            photo: place.photos && place.photos.length > 0 ? place.photos[0].getUrl({ maxWidth: 100, maxHeight: 100 }) : null
+          });
+          
+          updateItinerary();
+          
+          // Show itinerary section if it's hidden
+          document.getElementById('itinerarySection').style.display = 'block';
+          
+          // Close the modal
+          const modal = bootstrap.Modal.getInstance(document.getElementById('placeDetailsModal'));
+          modal.hide();
+        } else {
+          showError('Could not add place to itinerary.');
+        }
+      });
+    });
+    
+    // Update itinerary display
+    function updateItinerary() {
+      const container = document.getElementById('itineraryItems');
+      container.innerHTML = '';
+      
+      if (itineraryItems.length === 0) {
+        container.innerHTML = '<p>Your itinerary is empty. Add places by clicking "Add to Itinerary" when viewing place details.</p>';
+        return;
+      }
+      
+      itineraryItems.forEach((item, index) => {
+        const itemElement = document.createElement('div');
+        itemElement.className = 'itinerary-item d-flex justify-content-between align-items-center';
+        
+        const placeType = item.types && item.types.length > 0 ? item.types[0] : 'place';
+        let typeIcon = 'fas fa-map-marker-alt';
+        
+        if (placeType.includes('restaurant') || placeType.includes('food')) {
+          typeIcon = 'fas fa-utensils';
+        } else if (placeType.includes('lodging') || placeType.includes('hotel')) {
+          typeIcon = 'fas fa-bed';
+        } else if (placeType.includes('tourist_attraction') || placeType.includes('museum')) {
+          typeIcon = 'fas fa-landmark';
+        } else if (placeType.includes('park') || placeType.includes('natural_feature')) {
+          typeIcon = 'fas fa-tree';
+        }
+        
+        itemElement.innerHTML = `
+          <div>
+            <h5><i class="${typeIcon} me-2"></i> ${item.name}</h5>
+            <p class="text-muted mb-0">${item.vicinity || ''}</p>
+          </div>
+          <button class="btn btn-sm btn-outline-danger remove-item" data-index="${index}">
+            <i class="fas fa-times"></i>
+          </button>
+        `;
+        
+        container.appendChild(itemElement);
+        
+        // Add event listener to remove button
+        itemElement.querySelector('.remove-item').addEventListener('click', (e) => {
+          const idx = parseInt(e.currentTarget.getAttribute('data-index'));
+          itineraryItems.splice(idx, 1);
+          updateItinerary();
+          
+          // Hide itinerary section if empty
+          if (itineraryItems.length === 0) {
+            document.getElementById('itinerarySection').style.display = 'none';
+          }
+        });
+      });
+    }
   </script>
-  <script>
-    // This placeholder will be replaced with the actual Google Maps API key in our workflow
-    const googleMapsApiKey = '';
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8&libraries=places&callback=initMap">
   </script>
-  <script src="https://maps.googleapis.com/maps/api/js?key=GOOGLE_MAPS_API_KEY_PLACEHOLDER&libraries=places&callback=initMap" async defer></script>
 </body>
 </html>
