@@ -1,9 +1,37 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const axios = require('axios');
+const https = require('https');
+const http = require('http');
 
 const app = express();
+
+// Helper function to make HTTP requests
+function makeRequest(url) {
+  return new Promise((resolve, reject) => {
+    const client = url.startsWith('https') ? https : http;
+    const req = client.get(url, (res) => {
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        return reject(new Error(`Status Code: ${res.statusCode}`));
+      }
+      
+      const data = [];
+      res.on('data', chunk => {
+        data.push(chunk);
+      });
+      
+      res.on('end', () => {
+        try {
+          const result = JSON.parse(Buffer.concat(data).toString());
+          resolve(result);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+    
+    req.on('error', reject);
+    req.end();
+  });
+}
 const PORT = process.env.PORT || 5000;
 
 // Add JSON parsing middleware
@@ -25,7 +53,7 @@ app.use((req, res, next) => {
 app.get('/api/place-details/:placeId', async (req, res) => {
   try {
     const placeId = req.params.placeId;
-    const fields = req.query.fields || 'name,rating,user_ratings_total,price_level,formatted_address,formatted_phone_number,website,opening_hours,review,photo,type';
+    const fields = req.query.fields || 'name,rating,user_ratings_total,price_level,formatted_address,formatted_phone_number,website,opening_hours,reviews,photos,types';
     const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
     
     console.log(`Fetching details for place: ${placeId}`);
@@ -33,16 +61,15 @@ app.get('/api/place-details/:placeId', async (req, res) => {
     // Make request to Google Places API
     const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${apiKey}`;
     
-    const response = await axios.get(url);
+    const responseData = await makeRequest(url);
     
-    if (response.data.status === 'OK' && response.data.result) {
+    if (responseData.status === 'OK' && responseData.result) {
       // Add API key to the result to use for photos
-      const result = response.data.result;
-      result.api_key = apiKey;
+      const result = responseData.result;
       return res.json(result);
     } else {
-      console.log('Error fetching place details:', response.data.status);
-      return res.status(404).json({ error: 'Place details not found', status: response.data.status });
+      console.log('Error fetching place details:', responseData.status);
+      return res.status(404).json({ error: 'Place details not found', status: responseData.status });
     }
   } catch (error) {
     console.error('Server error fetching place details:', error.message);
@@ -371,8 +398,7 @@ app.get('/', (req, res) => {
       // Create geocoder and places service
       geocoder = new google.maps.Geocoder();
       
-      // New approach for Places API (as of March 1st, 2025)
-      // We keep the old service for compatibility with the existing code
+      // Use PlacesService for compatibility
       placesService = new google.maps.places.PlacesService(map);
       
       infoWindow = new google.maps.InfoWindow();
@@ -453,7 +479,7 @@ app.get('/', (req, res) => {
           markers.push(marker);
           
           // Open info window with location name
-          infoWindow.setContent(\`<div><strong>\${results[0].formatted_address}</strong></div>\`);
+          infoWindow.setContent('<div><strong>' + results[0].formatted_address + '</strong></div>');
           infoWindow.open(map, marker);
           
           // Search for nearby places
@@ -527,37 +553,44 @@ app.get('/', (req, res) => {
           }
         }
         
-        placeCard.innerHTML = \`
-          <div class="card place-card shadow-sm h-100" data-place-id="\${place.place_id}">
-            <div class="position-relative">
-              <img src="\${photoUrl}" class="card-img-top" alt="\${place.name}" onerror="this.src='https://via.placeholder.com/300x200?text=No+Image'">
-              <span class="badge bg-\${typeBadge} position-absolute top-0 start-0 m-2">
-                <i class="\${typeIcon}"></i> \${placeType.replace('_', ' ')}
-              </span>
-              \${place.price_level ? \`<span class="badge bg-dark position-absolute top-0 end-0 m-2">\${getPriceLevel(place.price_level)}</span>\` : ''}
-            </div>
-            <div class="card-body d-flex flex-column">
-              <h5 class="card-title">\${place.name}</h5>
-              <div class="mb-2">
-                \${place.rating ? 
-                  \`<div class="text-warning mb-1">
-                    \${Array(Math.floor(place.rating)).fill('<i class="fas fa-star"></i>').join('')}
-                    \${place.rating % 1 >= 0.5 ? '<i class="fas fa-star-half-alt"></i>' : ''}
-                    <span class="text-dark ms-1">\${place.rating}/5</span>
-                    \${place.user_ratings_total ? \`<small class="text-muted">(\${place.user_ratings_total})</small>\` : ''}
-                  </div>\` 
-                  : ''}
-              </div>
-              <p class="card-text text-muted small">\${place.vicinity || ''}</p>
-              <div class="mt-auto">
-                <button class="btn btn-sm btn-primary view-details w-100">
-                  <i class="fas fa-info-circle"></i> View Details
-                </button>
-              </div>
-            </div>
-          </div>
-        \`;
+        let cardHtml = '<div class="card place-card shadow-sm h-100" data-place-id="' + place.place_id + '">';
+        cardHtml += '<div class="position-relative">';
+        cardHtml += '<img src="' + photoUrl + '" class="card-img-top" alt="' + place.name + '" onerror="this.src=\'https://via.placeholder.com/300x200?text=No+Image\'">';
+        cardHtml += '<span class="badge bg-' + typeBadge + ' position-absolute top-0 start-0 m-2">';
+        cardHtml += '<i class="' + typeIcon + '"></i> ' + placeType.replace('_', ' ') + '</span>';
         
+        if (place.price_level) {
+          cardHtml += '<span class="badge bg-dark position-absolute top-0 end-0 m-2">' + getPriceLevel(place.price_level) + '</span>';
+        }
+        
+        cardHtml += '</div>';
+        cardHtml += '<div class="card-body d-flex flex-column">';
+        cardHtml += '<h5 class="card-title">' + place.name + '</h5>';
+        cardHtml += '<div class="mb-2">';
+        
+        if (place.rating) {
+          cardHtml += '<div class="text-warning mb-1">';
+          for (let i = 0; i < Math.floor(place.rating); i++) {
+            cardHtml += '<i class="fas fa-star"></i>';
+          }
+          if (place.rating % 1 >= 0.5) {
+            cardHtml += '<i class="fas fa-star-half-alt"></i>';
+          }
+          cardHtml += '<span class="text-dark ms-1">' + place.rating + '/5</span>';
+          if (place.user_ratings_total) {
+            cardHtml += '<small class="text-muted">(' + place.user_ratings_total + ')</small>';
+          }
+          cardHtml += '</div>';
+        }
+        
+        cardHtml += '</div>';
+        cardHtml += '<p class="card-text text-muted small">' + (place.vicinity || '') + '</p>';
+        cardHtml += '<div class="mt-auto">';
+        cardHtml += '<button class="btn btn-sm btn-primary view-details w-100">';
+        cardHtml += '<i class="fas fa-info-circle"></i> View Details</button>';
+        cardHtml += '</div></div></div>';
+        
+        placeCard.innerHTML = cardHtml;
         resultsContainer.appendChild(placeCard);
         
         // Add event listener to view details button
@@ -582,19 +615,18 @@ app.get('/', (req, res) => {
           
           // Add click listener to marker
           marker.addListener('click', () => {
-            infoWindow.setContent(\`
-              <div style="width: 200px; text-align: center; padding: 5px;">
-                <strong style="font-size: 14px;">\${place.name}</strong>
-                <p style="font-size: 12px; margin: 5px 0;">\${place.vicinity || ''}</p>
-                \${place.rating ? \`<div style="margin-bottom: 5px;"><span style="color: #FFD700;"><i class="fas fa-star"></i></span> <strong>\${place.rating}</strong>/5</div>\` : ''}
-                <button 
-                  onclick="getPlaceDetails('\${place.place_id}')" 
-                  style="background-color: #4285F4; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;"
-                >
-                  View Details
-                </button>
-              </div>
-            \`);
+            let infoContent = '<div style="width: 200px; text-align: center; padding: 5px;">';
+            infoContent += '<strong style="font-size: 14px;">' + place.name + '</strong>';
+            infoContent += '<p style="font-size: 12px; margin: 5px 0;">' + (place.vicinity || '') + '</p>';
+            
+            if (place.rating) {
+              infoContent += '<div style="margin-bottom: 5px;"><span style="color: #FFD700;"><i class="fas fa-star"></i></span> <strong>' + place.rating + '</strong>/5</div>';
+            }
+            
+            infoContent += '<button onclick="getPlaceDetails(\'' + place.place_id + '\')" style="background-color: #4285F4; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">View Details</button>';
+            infoContent += '</div>';
+            
+            infoWindow.setContent(infoContent);
             infoWindow.open(map, marker);
           });
         }
@@ -610,7 +642,7 @@ app.get('/', (req, res) => {
       fetch("/api/place-details/" + placeId)
         .then(response => {
           if (!response.ok) {
-            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+            throw new Error("Server returned " + response.status + ": " + response.statusText);
           }
           return response.json();
         })
@@ -621,10 +653,11 @@ app.get('/', (req, res) => {
           if (place.photos && place.photos.length > 0) {
             place.photos = place.photos.map(photo => {
               // Add a getUrl method that returns the photo reference URL
-              photo.getUrl = (options) => {
+              photo.getUrl = function(options) {
                 const width = options.maxWidth || 800;
                 const height = options.maxHeight || 600;
-                return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${width}&maxheight=${height}&photoreference=${photo.photo_reference}&key=${place.api_key || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8'}`;
+                return "/api/place-photo?photo_reference=" + photo.photo_reference + 
+                       "&maxwidth=" + width + "&maxheight=" + height;
               };
               return photo;
             });
@@ -639,7 +672,7 @@ app.get('/', (req, res) => {
           try {
             const request = {
               placeId: placeId,
-              fields: ['name', 'rating', 'user_ratings_total', 'price_level', 'formatted_address', 'formatted_phone_number', 'website', 'opening_hours', 'review', 'photo', 'type']
+              fields: ['name', 'rating', 'user_ratings_total', 'price_level', 'formatted_address', 'formatted_phone_number', 'website', 'opening_hours', 'reviews', 'photos', 'types']
             };
             
             placesService.getDetails(request, (place, status) => {
@@ -695,20 +728,24 @@ app.get('/', (req, res) => {
       if (place.reviews && place.reviews.length > 0) {
         reviewsHtml = '<h5 class="mt-4">Reviews</h5>';
         place.reviews.slice(0, 3).forEach(review => {
-          reviewsHtml += \`
-            <div class="card mb-2">
-              <div class="card-body">
-                <div class="d-flex justify-content-between">
-                  <h6>\${review.author_name}</h6>
-                  <div>
-                    \${Array(Math.floor(review.rating)).fill(\`<i class="fas fa-star text-warning"></i>\`).join('')}
-                    \${review.rating % 1 !== 0 ? \`<i class="fas fa-star-half-alt text-warning"></i>\` : ''}
-                  </div>
-                </div>
-                <p class="mb-0">\${review.text}</p>
-              </div>
-            </div>
-          \`;
+          let reviewHtml = '<div class="card mb-2"><div class="card-body">';
+          reviewHtml += '<div class="d-flex justify-content-between">';
+          reviewHtml += '<h6>' + review.author_name + '</h6>';
+          reviewHtml += '<div>';
+          
+          for (let i = 0; i < Math.floor(review.rating); i++) {
+            reviewHtml += '<i class="fas fa-star text-warning"></i>';
+          }
+          
+          if (review.rating % 1 !== 0) {
+            reviewHtml += '<i class="fas fa-star-half-alt text-warning"></i>';
+          }
+          
+          reviewHtml += '</div></div>';
+          reviewHtml += '<p class="mb-0">' + review.text + '</p>';
+          reviewHtml += '</div></div>';
+          
+          reviewsHtml += reviewHtml;
         });
       }
       
@@ -716,89 +753,104 @@ app.get('/', (req, res) => {
       if (place.opening_hours && place.opening_hours.weekday_text) {
         hoursHtml = '<h5 class="mt-3">Opening Hours</h5><ul class="list-group mb-3">';
         place.opening_hours.weekday_text.forEach(day => {
-          hoursHtml += \`<li class="list-group-item">\${day}</li>\`;
+          hoursHtml += '<li class="list-group-item">' + day + '</li>';
         });
         hoursHtml += '</ul>';
       }
       
       // Create a visual star rating display
-      const starRatingHtml = place.rating ? 
-        \`<div class="star-rating mb-2">
-          \${Array(Math.floor(place.rating)).fill('<i class="fas fa-star"></i>').join('')}
-          \${place.rating % 1 >= 0.5 ? '<i class="fas fa-star-half-alt"></i>' : ''}
-          \${Array(5 - Math.ceil(place.rating)).fill('<i class="far fa-star"></i>').join('')}
-          <span class="ms-2 rating-text">\${place.rating.toFixed(1)}</span>
-          <span class="text-muted ms-1 reviews-count">\${place.user_ratings_total ? \`(\${place.user_ratings_total} reviews)\` : ''}</span>
-        </div>\` : 
-        '<p class="text-muted">No ratings available</p>';
+      let starRatingHtml = '';
+      if (place.rating) {
+        starRatingHtml = '<div class="star-rating mb-2">';
         
+        for (let i = 0; i < Math.floor(place.rating); i++) {
+          starRatingHtml += '<i class="fas fa-star"></i>';
+        }
+        
+        if (place.rating % 1 >= 0.5) {
+          starRatingHtml += '<i class="fas fa-star-half-alt"></i>';
+        }
+        
+        for (let i = 0; i < (5 - Math.ceil(place.rating)); i++) {
+          starRatingHtml += '<i class="far fa-star"></i>';
+        }
+        
+        starRatingHtml += '<span class="ms-2 rating-text">' + place.rating.toFixed(1) + '</span>';
+        
+        if (place.user_ratings_total) {
+          starRatingHtml += '<span class="text-muted ms-1 reviews-count">(' + place.user_ratings_total + ' reviews)</span>';
+        }
+        
+        starRatingHtml += '</div>';
+      } else {
+        starRatingHtml = '<p class="text-muted">No ratings available</p>';
+      }
+      
       // Format the price level more visually
-      const priceLevelHtml = place.price_level !== undefined ? 
-        \`<div class="price-level">
-          <span class="\${place.price_level >= 1 ? 'text-success' : 'text-muted'}">$</span>
-          <span class="\${place.price_level >= 2 ? 'text-success' : 'text-muted'}">$</span>
-          <span class="\${place.price_level >= 3 ? 'text-success' : 'text-muted'}">$</span>
-          <span class="\${place.price_level >= 4 ? 'text-success' : 'text-muted'}">$</span>
-        </div>\` : 
-        '<span class="text-muted">Price not available</span>';
+      let priceLevelHtml = '';
+      if (place.price_level !== undefined) {
+        priceLevelHtml = '<div class="price-level">';
+        priceLevelHtml += '<span class="' + (place.price_level >= 1 ? 'text-success' : 'text-muted') + '">$</span>';
+        priceLevelHtml += '<span class="' + (place.price_level >= 2 ? 'text-success' : 'text-muted') + '">$</span>';
+        priceLevelHtml += '<span class="' + (place.price_level >= 3 ? 'text-success' : 'text-muted') + '">$</span>';
+        priceLevelHtml += '<span class="' + (place.price_level >= 4 ? 'text-success' : 'text-muted') + '">$</span>';
+        priceLevelHtml += '</div>';
+      } else {
+        priceLevelHtml = '<span class="text-muted">Price not available</span>';
+      }
 
-      modalBody.innerHTML = \`
-        <div class="place-detail-img-container position-relative mb-4">
-          <img src="\${photoUrl}" class="img-fluid rounded shadow-sm w-100" alt="\${place.name}" 
-            onerror="this.src='https://via.placeholder.com/800x400?text=No+Image'" style="max-height: 300px; object-fit: cover;">
-          <div class="position-absolute bottom-0 end-0 p-2 bg-dark bg-opacity-75 rounded-start text-white">
-            \${priceLevelHtml}
-          </div>
-        </div>
-        
-        <div class="mb-3">
-          \${starRatingHtml}
-        </div>
-        
-        <div class="row mb-4">
-          <div class="col-md-6">
-            <div class="detail-item mb-3">
-              <i class="fas fa-map-marker-alt text-danger me-2"></i>
-              <div>
-                <strong>Address</strong>
-                <p class="mb-0">\${place.formatted_address || 'Not available'}</p>
-              </div>
-            </div>
-            
-            <div class="detail-item mb-3">
-              <i class="fas fa-phone text-success me-2"></i>
-              <div>
-                <strong>Phone</strong>
-                <p class="mb-0">\${place.formatted_phone_number || 'Not available'}</p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="col-md-6">
-            <div class="detail-item mb-3">
-              <i class="fas fa-globe text-primary me-2"></i>
-              <div>
-                <strong>Website</strong>
-                <p class="mb-0">\${place.website ? 
-                  \`<a href="\${place.website}" target="_blank" class="text-truncate d-inline-block" style="max-width: 100%;">\${place.website}</a>\` : 
-                  'Not available'}
-                </p>
-              </div>
-            </div>
-            
-            <div class="detail-item">
-              <i class="fas fa-tag text-info me-2"></i>
-              <div>
-                <strong>Price Level</strong>
-                <p class="mb-0">\${getPriceLevel(place.price_level)}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        \${hoursHtml}
-        \${reviewsHtml}
-      \`;
+      let modalHtml = '<div class="place-detail-img-container position-relative mb-4">';
+      modalHtml += '<img src="' + photoUrl + '" class="img-fluid rounded shadow-sm w-100" alt="' + place.name + '" ';
+      modalHtml += 'onerror="this.src=\'https://via.placeholder.com/800x400?text=No+Image\'" style="max-height: 300px; object-fit: cover;">';
+      modalHtml += '<div class="position-absolute bottom-0 end-0 p-2 bg-dark bg-opacity-75 rounded-start text-white">';
+      modalHtml += priceLevelHtml;
+      modalHtml += '</div></div>';
+      
+      modalHtml += '<div class="mb-3">' + starRatingHtml + '</div>';
+      
+      modalHtml += '<div class="row mb-4">';
+      modalHtml += '<div class="col-md-6">';
+      
+      modalHtml += '<div class="detail-item mb-3">';
+      modalHtml += '<i class="fas fa-map-marker-alt text-danger me-2"></i>';
+      modalHtml += '<div><strong>Address</strong>';
+      modalHtml += '<p class="mb-0">' + (place.formatted_address || 'Not available') + '</p>';
+      modalHtml += '</div></div>';
+      
+      modalHtml += '<div class="detail-item mb-3">';
+      modalHtml += '<i class="fas fa-phone text-success me-2"></i>';
+      modalHtml += '<div><strong>Phone</strong>';
+      modalHtml += '<p class="mb-0">' + (place.formatted_phone_number || 'Not available') + '</p>';
+      modalHtml += '</div></div>';
+      
+      modalHtml += '</div>';
+      modalHtml += '<div class="col-md-6">';
+      
+      modalHtml += '<div class="detail-item mb-3">';
+      modalHtml += '<i class="fas fa-globe text-primary me-2"></i>';
+      modalHtml += '<div><strong>Website</strong>';
+      modalHtml += '<p class="mb-0">';
+      
+      if (place.website) {
+        modalHtml += '<a href="' + place.website + '" target="_blank" class="text-truncate d-inline-block" style="max-width: 100%;">' + place.website + '</a>';
+      } else {
+        modalHtml += 'Not available';
+      }
+      
+      modalHtml += '</p></div></div>';
+      
+      modalHtml += '<div class="detail-item">';
+      modalHtml += '<i class="fas fa-tag text-info me-2"></i>';
+      modalHtml += '<div><strong>Price Level</strong>';
+      modalHtml += '<p class="mb-0">' + getPriceLevel(place.price_level) + '</p>';
+      modalHtml += '</div></div>';
+      
+      modalHtml += '</div></div>';
+      
+      modalHtml += hoursHtml;
+      modalHtml += reviewsHtml;
+      
+      modalBody.innerHTML = modalHtml;
       
       // Show the modal
       const modal = new bootstrap.Modal(document.getElementById('placeDetailsModal'));
