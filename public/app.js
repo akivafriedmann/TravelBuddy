@@ -286,9 +286,54 @@ function renderPlaces(places) {
   
   // Minimum required reviews for statistical significance
   const MIN_REVIEWS = 20;
+  // Minimum rating to show
+  const MIN_RATING = 4.1;
+  
+  // Define unwanted business types
+  const unwantedTypes = [
+    "gas_station", 
+    "convenience_store", 
+    "car_repair", 
+    "car_wash",
+    "car_dealer"
+  ];
+  
+  // Filter out Shell stations
+  const filteredPlaces = places.filter(place => {
+    // Skip this filter if not restaurant type
+    if (currentPlaceType !== 'restaurant') {
+      return true;
+    }
+    
+    // Check if this is a gas station or similar
+    if (place.types) {
+      for (const type of unwantedTypes) {
+        if (place.types.includes(type)) {
+          return false;
+        }
+      }
+    }
+    
+    // For restaurants only, filter by minimum rating
+    if (currentPlaceType === 'restaurant' && place.rating && place.rating < MIN_RATING) {
+      return false;
+    }
+    
+    return true;
+  });
+  
+  // If no results after filtering, show a message
+  if (filteredPlaces.length === 0) {
+    container.innerHTML = `
+      <div class="col-12">
+        <div class="alert alert-info">No high-rated ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.</div>
+      </div>
+    `;
+    return;
+  }
   
   // Sort places by rating but only consider places with at least MIN_REVIEWS
-  const sortedPlaces = [...places].sort((a, b) => {
+  const sortedPlaces = [...filteredPlaces].sort((a, b) => {
     const aSignificant = a.user_ratings_total >= MIN_REVIEWS;
     const bSignificant = b.user_ratings_total >= MIN_REVIEWS;
     
