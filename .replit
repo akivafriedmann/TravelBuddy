@@ -15,10 +15,6 @@ author = "agent"
 task = "workflow.run"
 args = "Server"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Client"
-
 [[workflows.workflow]]
 name = "Server"
 author = "agent"
@@ -33,21 +29,6 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "cd server && npm install && node index.js"
 waitForPort = 8000
-
-[[workflows.workflow]]
-name = "Client"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "expo start --web --port 5000 --no-dev --minify"
-waitForPort = 5000
 
 [deployment]
 run = ["sh", "-c", "cd server && npm install && node index.js"]

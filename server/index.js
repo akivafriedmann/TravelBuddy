@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
 const placesRoutes = require('./routes/places');
 const geocodingRoutes = require('./routes/geocoding');
 
@@ -18,18 +20,43 @@ app.use((req, res, next) => {
   next();
 });
 
-// API routes
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Dynamically inject the Google Maps API key into the HTML
+app.use((req, res, next) => {
+  if (req.path === '/' || req.path === '/index.html') {
+    const filePath = path.join(__dirname, '../public/index.html');
+    
+    fs.readFile(filePath, 'utf8', (err, data) => {
+      if (err) {
+        console.error('Error reading index.html:', err);
+        return next();
+      }
+      
+      // Replace the placeholders with the actual API key
+      const html = data
+        .replace('GOOGLE_MAPS_API_KEY_PLACEHOLDER', process.env.GOOGLE_MAPS_API_KEY)
+        .replace('const googleMapsApiKey = \'\';', `const googleMapsApiKey = '${process.env.GOOGLE_MAPS_API_KEY}';`);
+      
+      res.send(html);
+    });
+  } else {
+    next();
+  }
+});
+
+// API routes - update to non-prefixed paths for client compatibility
+app.use('/places', placesRoutes);
+app.use('/geocoding', geocodingRoutes);
+
+// Keep prefixed routes for backward compatibility
 app.use('/api/places', placesRoutes);
 app.use('/api/geocoding', geocodingRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
-});
-
-// Root endpoint for checking if server is running
-app.get('/', (req, res) => {
-  res.status(200).send('Travel API Server is running.');
 });
 
 // Handle 404 errors
