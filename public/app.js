@@ -327,6 +327,17 @@ async function loadNearbyPlaces(location, keyword = '') {
       apiUrl += `&keyword=${encodeURIComponent(keyword)}`;
     }
     
+    // Update the sort indicator based on place type
+    const sortIndicator = document.querySelector('.sort-indicator small');
+    if (sortIndicator) {
+      const minReviews = currentPlaceType === 'lodging' ? 8 : 
+                        (currentPlaceType === 'restaurant' ? 20 : 10);
+      sortIndicator.innerHTML = `
+        <i class="fas fa-info-circle"></i> 
+        Places are sorted by rating, prioritizing those with at least ${minReviews} reviews
+      `;
+    }
+    
     // Call our backend API to get nearby places
     const response = await fetch(apiUrl);
     const data = await response.json();
@@ -361,8 +372,16 @@ function renderPlaces(places) {
   container.innerHTML = '';
   
   // Minimum required reviews for statistical significance
-  const MIN_REVIEWS = 20;
-  // Minimum rating to show
+  // Different minimum reviews based on place type
+  const MIN_REVIEWS = {
+    restaurant: 20,
+    lodging: 8,
+    default: 10
+  };
+  const currentMinReviews = currentPlaceType === 'lodging' ? MIN_REVIEWS.lodging : 
+                          (currentPlaceType === 'restaurant' ? MIN_REVIEWS.restaurant : MIN_REVIEWS.default);
+  
+  // Minimum rating to show (only for restaurants)
   const MIN_RATING = 4.1;
   
   // Define unwanted business types
@@ -408,10 +427,10 @@ function renderPlaces(places) {
     return;
   }
   
-  // Sort places by rating but only consider places with at least MIN_REVIEWS
+  // Sort places by rating but only consider places with at least currentMinReviews
   const sortedPlaces = [...filteredPlaces].sort((a, b) => {
-    const aSignificant = a.user_ratings_total >= MIN_REVIEWS;
-    const bSignificant = b.user_ratings_total >= MIN_REVIEWS;
+    const aSignificant = a.user_ratings_total >= currentMinReviews;
+    const bSignificant = b.user_ratings_total >= currentMinReviews;
     
     // If both places have significant number of reviews, sort by rating
     if (aSignificant && bSignificant) {
@@ -481,14 +500,20 @@ function createPlaceCard(place, index) {
     
     // Add a more prominent display for the number of reviews
     if (place.user_ratings_total) {
-      // Add badge indicating statistically significant ratings (at least 20 reviews)
-      const MIN_REVIEWS = 20;
+      // Add badge indicating statistically significant ratings based on place type
+      const minReviews = {
+        restaurant: 20,
+        lodging: 8,
+        default: 10
+      };
+      const currentMin = currentPlaceType === 'lodging' ? minReviews.lodging : 
+                        (currentPlaceType === 'restaurant' ? minReviews.restaurant : minReviews.default);
       
       if (place.user_ratings_total > 500) {
         ratingHtml += ` <span class="badge bg-danger ms-2"><i class="fas fa-fire"></i> ${place.user_ratings_total} reviews</span>`;
       } else if (place.user_ratings_total > 200) {
         ratingHtml += ` <span class="badge bg-success ms-2">${place.user_ratings_total} reviews</span>`;
-      } else if (place.user_ratings_total >= MIN_REVIEWS) {
+      } else if (place.user_ratings_total >= currentMin) {
         ratingHtml += ` <span class="badge bg-primary ms-2">${place.user_ratings_total} reviews</span>`;
       } else {
         ratingHtml += ` <span class="text-muted">(${place.user_ratings_total} reviews)</span>`;
@@ -771,17 +796,19 @@ async function showPlaceDetails(placeId) {
         typesHtml += '</div></div>';
       }
       
-      // Format reviews
+      // Format reviews with carousel
       let reviewsHtml = '';
       
       if (place.reviews && place.reviews.length > 0) {
         reviewsHtml = '<div class="mt-4 mb-3">';
         reviewsHtml += '<h5><i class="fas fa-comment-alt text-primary me-2"></i>Top Reviews</h5>';
         
-        // Show up to 3 reviews
-        const reviewsToShow = place.reviews.slice(0, 3);
+        // Create review carousel
+        reviewsHtml += '<div class="reviews-carousel">';
+        reviewsHtml += '<div class="reviews-container">';
         
-        reviewsToShow.forEach(review => {
+        // Add all reviews to carousel
+        place.reviews.forEach((review, index) => {
           // Format rating stars for this review
           let reviewRating = '<div class="star-rating mb-1">';
           
@@ -800,21 +827,51 @@ async function showPlaceDetails(placeId) {
           const formattedDate = date.toLocaleDateString();
           
           reviewsHtml += `
-            <div class="review">
-              <div class="review-author">
-                <img src="${review.profile_photo_url || 'https://via.placeholder.com/40'}" alt="${review.author_name}">
-                <div>
-                  <strong>${review.author_name}</strong>
-                  <div class="text-muted small">${formattedDate}</div>
+            <div class="reviews-slide ${index === 0 ? 'active' : ''}">
+              <div class="review">
+                <div class="review-author">
+                  <img src="${review.profile_photo_url || 'https://via.placeholder.com/40'}" alt="${review.author_name}">
+                  <div>
+                    <strong>${review.author_name}</strong>
+                    <div class="text-muted small">${formattedDate}</div>
+                  </div>
                 </div>
+                ${reviewRating}
+                <p>${review.text}</p>
               </div>
-              ${reviewRating}
-              <p>${review.text}</p>
             </div>
           `;
         });
         
-        reviewsHtml += '</div>';
+        // Only add navigation if there are multiple reviews
+        if (place.reviews.length > 1) {
+          // Add carousel navigation
+          reviewsHtml += `
+            <div class="reviews-nav reviews-prev">
+              <i class="fas fa-chevron-left"></i>
+            </div>
+            <div class="reviews-nav reviews-next">
+              <i class="fas fa-chevron-right"></i>
+            </div>
+          `;
+        }
+        
+        reviewsHtml += '</div>'; // Close reviews-container
+        
+        // Add counter
+        if (place.reviews.length > 1) {
+          reviewsHtml += `
+            <div class="reviews-counter">
+              <span class="current-review">1</span> / ${place.reviews.length}
+            </div>
+          `;
+        }
+        
+        reviewsHtml += '</div>'; // Close reviews-carousel
+        reviewsHtml += '</div>'; // Close the mt-4 mb-3 div
+        
+        // Store reviews data for later use
+        window.currentPlaceReviews = place.reviews;
       }
       
       // Additional photos
@@ -891,6 +948,11 @@ async function showPlaceDetails(placeId) {
       // Initialize photo carousel if there are multiple photos
       if (place.photos && place.photos.length > 1) {
         initPhotoCarousel();
+      }
+      
+      // Initialize reviews carousel if there are multiple reviews
+      if (place.reviews && place.reviews.length > 1) {
+        initReviewsCarousel();
       }
       
       // After rendering the place details, load nearby recommendations
@@ -986,12 +1048,27 @@ async function loadNearbyRecommendations(place) {
     }
     
     // Minimum required reviews for statistical significance
-    const MIN_REVIEWS = 20;
+    // Different minimum reviews based on place type
+    const MIN_REVIEWS = {
+      restaurant: 20,
+      lodging: 8,
+      default: 10
+    };
     
-    // Sort places by rating but only consider places with at least MIN_REVIEWS
+    // Get the appropriate minimum review count based on place type
+    const getMinReviews = (placeType) => {
+      if (placeType === 'lodging') return MIN_REVIEWS.lodging;
+      if (placeType === 'restaurant') return MIN_REVIEWS.restaurant;
+      return MIN_REVIEWS.default;
+    };
+    
+    // Determine the minimum reviews required for the current place type
+    const currentMinReviews = getMinReviews(currentPlaceType);
+    
+    // Sort places by rating but only consider places with sufficient reviews
     nearbyRestaurants.sort((a, b) => {
-      const aSignificant = a.user_ratings_total >= MIN_REVIEWS;
-      const bSignificant = b.user_ratings_total >= MIN_REVIEWS;
+      const aSignificant = a.user_ratings_total >= currentMinReviews;
+      const bSignificant = b.user_ratings_total >= currentMinReviews;
       
       // If both places have significant number of reviews, sort by rating
       if (aSignificant && bSignificant) {
@@ -1180,4 +1257,57 @@ function initPhotoCarousel() {
       updateCarousel();
     });
   });
+}
+
+// Initialize reviews carousel
+function initReviewsCarousel() {
+  // Get carousel elements
+  const carousel = document.querySelector('.reviews-carousel');
+  if (!carousel) return;
+  
+  const slides = carousel.querySelectorAll('.reviews-slide');
+  const prevBtn = carousel.querySelector('.reviews-prev');
+  const nextBtn = carousel.querySelector('.reviews-next');
+  const counter = carousel.querySelector('.reviews-counter');
+  
+  // Store current index
+  let currentIndex = 0;
+  const reviews = window.currentPlaceReviews || [];
+  
+  if (!reviews || reviews.length <= 1 || slides.length <= 1) return;
+  
+  // Function to update reviews carousel display
+  function updateReviewsCarousel() {
+    // Hide all slides
+    slides.forEach(slide => {
+      slide.classList.remove('active');
+    });
+    
+    // Show current slide
+    slides[currentIndex].classList.add('active');
+    
+    // Update counter if present
+    if (counter) {
+      const currentCounterElement = counter.querySelector('.current-review');
+      if (currentCounterElement) {
+        currentCounterElement.textContent = currentIndex + 1;
+      }
+    }
+  }
+  
+  // Previous button click
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      currentIndex = (currentIndex - 1 + slides.length) % slides.length;
+      updateReviewsCarousel();
+    });
+  }
+  
+  // Next button click
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      currentIndex = (currentIndex + 1) % slides.length;
+      updateReviewsCarousel();
+    });
+  }
 }

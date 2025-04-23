@@ -34,6 +34,26 @@ router.get('/', async (req, res) => {
     
     if (address) {
       params.address = address;
+      
+      // Add components parameter for Netherlands/Amsterdam to improve locality precision
+      // This helps with neighborhood searches like "De Pijp" stay within Amsterdam
+      if (address.toLowerCase().includes('amsterdam') || 
+          address.toLowerCase().includes('de pijp') ||
+          address.toLowerCase().includes('jordaan') ||
+          address.toLowerCase().includes('oud-west') ||
+          address.toLowerCase().includes('oud zuid')) {
+        params.components = 'country:nl';
+        
+        // For specific Amsterdam neighborhoods, add bounds to restrict results
+        // This keeps the search focused on the actual neighborhood
+        if (address.toLowerCase().includes('de pijp')) {
+          // De Pijp area boundaries (approximate)
+          params.bounds = '52.348,4.884|52.358,4.902';
+        } else if (address.toLowerCase().includes('jordaan')) {
+          // Jordaan area boundaries (approximate)
+          params.bounds = '52.365,4.875|52.380,4.890';
+        }
+      }
     } else if (latlng) {
       params.latlng = latlng;
     }
