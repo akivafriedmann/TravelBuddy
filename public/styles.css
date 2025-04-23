@@ -81,6 +81,53 @@ body {
   margin-right: 3px;
 }
 
+/* TripAdvisor Ratings Styles */
+.ratings-container {
+  border-radius: 8px;
+  padding: 15px;
+  background-color: #f9f9fa;
+  margin-bottom: 20px;
+}
+
+.detailed-ratings h6 {
+  margin-bottom: 12px;
+  color: #495057;
+}
+
+.rating-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rating-bar {
+  display: grid;
+  grid-template-columns: 80px 1fr 50px;
+  align-items: center;
+  gap: 10px;
+}
+
+.rating-label {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.rating-count {
+  font-size: 0.8rem;
+  text-align: right;
+  color: #6c757d;
+}
+
+.progress {
+  height: 8px;
+  background-color: #e9ecef;
+}
+
+/* Adjusted color for TripAdvisor circles */
+.text-success {
+  color: #00aa6c !important;
+}
+
 .price-level {
   color: #28a745;
 }

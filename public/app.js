@@ -662,6 +662,37 @@ async function showPlaceDetails(placeId) {
     const response = await fetch(`/api/details?place_id=${placeId}`);
     const data = await response.json();
     
+    // Fetch TripAdvisor data if Google place data is available
+    let tripadvisorData = null;
+    if (data.status === 'OK' && data.result) {
+      try {
+        const place = data.result;
+        const placeName = place.name;
+        // Use city/region from the address as the location
+        let location = '';
+        if (place.formatted_address) {
+          // Extract city/region from address (e.g., "123 Main St, Amsterdam, Netherlands")
+          const addressParts = place.formatted_address.split(',');
+          if (addressParts.length >= 2) {
+            location = addressParts[addressParts.length - 2].trim();
+          }
+        }
+        
+        if (placeName && location) {
+          console.log(`Fetching TripAdvisor data for ${placeName} in ${location}`);
+          const taResponse = await fetch(`/api/tripadvisor?place=${encodeURIComponent(placeName)}&location=${encodeURIComponent(location)}`);
+          const taData = await taResponse.json();
+          
+          if (taData.status === 'OK' && taData.result && taData.result.tripadvisor_data) {
+            tripadvisorData = taData.result.tripadvisor_data;
+            console.log('TripAdvisor data:', tripadvisorData);
+          }
+        }
+      } catch (taError) {
+        console.error('Error fetching TripAdvisor data:', taError);
+      }
+    }
+    
     if (data.status === 'OK' && data.result) {
       const place = data.result;
       
@@ -720,7 +751,10 @@ async function showPlaceDetails(placeId) {
       // Format Google rating stars
       let ratingHtml = '';
       if (place.rating) {
-        ratingHtml = '<div class="star-rating mb-3 fs-5">';
+        ratingHtml = '<div class="ratings-container mb-4">';
+        
+        // Google Rating
+        ratingHtml += '<div class="star-rating mb-3 fs-5">';
         ratingHtml += '<div class="d-flex align-items-center mb-2">';
         ratingHtml += '<img src="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png" alt="Google" height="20" class="me-2">';
         ratingHtml += '<strong>Google Rating:</strong>';
@@ -744,8 +778,9 @@ async function showPlaceDetails(placeId) {
         ratingHtml += ` <span class="ms-2">${place.rating}</span>`;
         
         if (place.user_ratings_total) {
-          // Add badge indicating statistically significant ratings (at least 20 reviews)
-          const MIN_REVIEWS = 20;
+          // Add badge indicating statistically significant ratings
+          const MIN_REVIEWS = currentPlaceType === 'lodging' ? 8 : 
+                             (currentPlaceType === 'restaurant' ? 20 : 10);
           
           if (place.user_ratings_total > 500) {
             ratingHtml += ` <span class="badge bg-danger ms-2"><i class="fas fa-fire"></i> ${place.user_ratings_total} reviews</span>`;
@@ -758,7 +793,141 @@ async function showPlaceDetails(placeId) {
           }
         }
         
-        ratingHtml += '</div>';
+        ratingHtml += '</div>'; // End Google Rating
+        
+        // TripAdvisor Rating (if available)
+        if (tripadvisorData && tripadvisorData.rating) {
+          ratingHtml += '<div class="star-rating mb-3 fs-5">';
+          ratingHtml += '<div class="d-flex align-items-center mb-2">';
+          ratingHtml += '<img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="20" class="me-2">';
+          ratingHtml += '<strong>TripAdvisor Rating:</strong>';
+          ratingHtml += '</div>';
+          
+          // Full circles (bubbles in TripAdvisor)
+          for (let i = 0; i < Math.floor(tripadvisorData.rating); i++) {
+            ratingHtml += '<i class="fas fa-circle text-success"></i>';
+          }
+          
+          // Half circle if needed
+          if (tripadvisorData.rating % 1 >= 0.5) {
+            ratingHtml += '<i class="fas fa-adjust text-success"></i>';
+          }
+          
+          // Empty circles
+          for (let i = 0; i < (5 - Math.ceil(tripadvisorData.rating)); i++) {
+            ratingHtml += '<i class="far fa-circle text-success"></i>';
+          }
+          
+          ratingHtml += ` <span class="ms-2">${tripadvisorData.rating}</span>`;
+          
+          if (tripadvisorData.review_count) {
+            ratingHtml += ` <span class="text-muted">(${tripadvisorData.review_count} reviews)</span>`;
+          }
+          
+          // Add TripAdvisor ranking if available
+          if (tripadvisorData.rank_position && tripadvisorData.rank_total) {
+            ratingHtml += `
+              <div class="mt-1">
+                <span class="badge bg-success">
+                  #${tripadvisorData.rank_position} of ${tripadvisorData.rank_total} 
+                  ${currentPlaceType === 'restaurant' ? 'restaurants' : 
+                     currentPlaceType === 'lodging' ? 'hotels' : 'places'}
+                </span>
+              </div>
+            `;
+          }
+          
+          // If we have a TripAdvisor URL, add a link
+          if (tripadvisorData.url) {
+            ratingHtml += `
+              <div class="mt-2">
+                <a href="${tripadvisorData.url}" target="_blank" class="btn btn-sm btn-outline-success">
+                  <i class="fas fa-external-link-alt me-1"></i> View on TripAdvisor
+                </a>
+              </div>
+            `;
+          }
+          
+          ratingHtml += '</div>'; // End TripAdvisor Rating
+          
+          // Add detailed ratings breakdown if available
+          if (tripadvisorData.detailed_ratings) {
+            const details = tripadvisorData.detailed_ratings;
+            
+            ratingHtml += `
+              <div class="detailed-ratings mt-3">
+                <h6>Rating Breakdown (TripAdvisor)</h6>
+                <div class="rating-bars">
+            `;
+            
+            if (details.excellent) {
+              ratingHtml += `
+                <div class="rating-bar">
+                  <span class="rating-label">Excellent</span>
+                  <div class="progress">
+                    <div class="progress-bar bg-success" style="width: ${details.excellent}%"></div>
+                  </div>
+                  <span class="rating-count">${details.excellent}</span>
+                </div>
+              `;
+            }
+            
+            if (details.very_good) {
+              ratingHtml += `
+                <div class="rating-bar">
+                  <span class="rating-label">Very Good</span>
+                  <div class="progress">
+                    <div class="progress-bar bg-info" style="width: ${details.very_good}%"></div>
+                  </div>
+                  <span class="rating-count">${details.very_good}</span>
+                </div>
+              `;
+            }
+            
+            if (details.average) {
+              ratingHtml += `
+                <div class="rating-bar">
+                  <span class="rating-label">Average</span>
+                  <div class="progress">
+                    <div class="progress-bar bg-warning" style="width: ${details.average}%"></div>
+                  </div>
+                  <span class="rating-count">${details.average}</span>
+                </div>
+              `;
+            }
+            
+            if (details.poor) {
+              ratingHtml += `
+                <div class="rating-bar">
+                  <span class="rating-label">Poor</span>
+                  <div class="progress">
+                    <div class="progress-bar bg-danger" style="width: ${details.poor}%"></div>
+                  </div>
+                  <span class="rating-count">${details.poor}</span>
+                </div>
+              `;
+            }
+            
+            if (details.terrible) {
+              ratingHtml += `
+                <div class="rating-bar">
+                  <span class="rating-label">Terrible</span>
+                  <div class="progress">
+                    <div class="progress-bar bg-dark" style="width: ${details.terrible}%"></div>
+                  </div>
+                  <span class="rating-count">${details.terrible}</span>
+                </div>
+              `;
+            }
+            
+            ratingHtml += `
+                </div>
+              </div>
+            `;
+          }
+        }
+        
+        ratingHtml += '</div>'; // End ratings-container
       }
       
       // Format price level

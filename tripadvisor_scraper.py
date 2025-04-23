@@ -2,6 +2,7 @@ import re
 import trafilatura
 import json
 import argparse
+import sys
 from urllib.parse import quote
 
 def search_tripadvisor(place_name, location):

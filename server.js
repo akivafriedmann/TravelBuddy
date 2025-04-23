@@ -4,12 +4,18 @@ const fetch = require('node-fetch');
 const path = require('path');
 const { spawn } = require('child_process');
 
+// Import routes
+const tripadvisorRoutes = require('./server/routes/tripadvisor');
+
 const app = express();
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const WEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
 
 // Serve static front-end
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Mount the TripAdvisor routes
+app.use('/api/tripadvisor', tripadvisorRoutes);
 
 // 1) Geocode address → lat/lng
 app.get('/api/geocode', async (req, res) => {
