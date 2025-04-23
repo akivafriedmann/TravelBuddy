@@ -493,10 +493,12 @@ function createPlaceCard(place, index) {
   // Add numerical identifier for this place
   const placeNumber = index + 1;
   
-  // Format rating stars
+  // Format rating stars for Google
   let ratingHtml = '';
   if (place.rating) {
     ratingHtml = '<div class="mb-2 star-rating">';
+    ratingHtml += '<div class="d-flex align-items-center mb-1">';
+    ratingHtml += '<small class="text-muted me-1">Google:</small>';
     
     // Full stars
     for (let i = 0; i < Math.floor(place.rating); i++) {
@@ -537,7 +539,12 @@ function createPlaceCard(place, index) {
       }
     }
     
-    ratingHtml += '</div>';
+    ratingHtml += '</div>'; // End of Google rating div
+    
+    // Add placeholder for TripAdvisor rating that will be populated later
+    ratingHtml += `<div class="tripadvisor-rating-${place.place_id} small mb-1" style="min-height: 20px;"></div>`;
+    
+    ratingHtml += '</div>'; // End star-rating div
   }
   
   // Format price level
@@ -592,7 +599,71 @@ function createPlaceCard(place, index) {
     }
   });
   
+  // Fetch TripAdvisor data for this place
+  fetchTripAdvisorData(place);
+  
   return col;
+}
+
+// Helper function to fetch TripAdvisor data for a place and update its card
+async function fetchTripAdvisorData(place) {
+  try {
+    // Extract location from vicinity (e.g., "123 Main St, Amsterdam, Netherlands")
+    let location = '';
+    if (place.vicinity) {
+      const addressParts = place.vicinity.split(',');
+      if (addressParts.length >= 2) {
+        location = addressParts[addressParts.length - 1].trim();
+      } else {
+        location = addressParts[0].trim();
+      }
+    }
+    
+    if (place.name && location) {
+      const taResponse = await fetch(`/api/tripadvisor?place_name=${encodeURIComponent(place.name)}&location=${encodeURIComponent(location)}`);
+      const taData = await taResponse.json();
+      
+      if (taData.status === 'OK' && taData.result && taData.result.tripadvisor_data) {
+        const tripadvisorData = taData.result.tripadvisor_data;
+        
+        if (tripadvisorData.rating) {
+          // Find the placeholder element for this place and update it
+          const taRatingElement = document.querySelector(`.tripadvisor-rating-${place.place_id}`);
+          if (taRatingElement) {
+            let taHtml = '<div class="d-flex align-items-center">';
+            taHtml += '<small class="text-muted me-1">TripAdvisor:</small>';
+            
+            // TripAdvisor uses circles instead of stars
+            for (let i = 0; i < Math.floor(tripadvisorData.rating); i++) {
+              taHtml += '<i class="fas fa-circle text-success" style="font-size: 0.7rem;"></i>';
+            }
+            
+            // Half circle if needed
+            if (tripadvisorData.rating % 1 >= 0.5) {
+              taHtml += '<i class="fas fa-adjust text-success" style="font-size: 0.7rem;"></i>';
+            }
+            
+            // Empty circles
+            for (let i = 0; i < (5 - Math.ceil(tripadvisorData.rating)); i++) {
+              taHtml += '<i class="far fa-circle text-success" style="font-size: 0.7rem;"></i>';
+            }
+            
+            taHtml += ` <span class="ms-1">${tripadvisorData.rating}</span>`;
+            
+            // Show rank if available
+            if (tripadvisorData.rank_position && tripadvisorData.rank_total) {
+              taHtml += ` <small class="text-success ms-1">#${tripadvisorData.rank_position}/${tripadvisorData.rank_total}</small>`;
+            }
+            
+            taHtml += '</div>';
+            taRatingElement.innerHTML = taHtml;
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching TripAdvisor data for place card:', error);
+  }
 }
 
 // Add a marker to the map

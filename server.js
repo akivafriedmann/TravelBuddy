@@ -130,73 +130,7 @@ app.get('/api/photo', (req, res) => {
   }
 });
 
-// 5) TripAdvisor API (uses Python script for web scraping)
-app.get('/api/tripadvisor', (req, res) => {
-  try {
-    const { place_name, location } = req.query;
-    
-    if (!place_name || !location) {
-      return res.status(400).json({ 
-        status: 'ERROR', 
-        error: 'Missing required parameters: place_name and location'
-      });
-    }
-    
-    console.log(`Fetching TripAdvisor data for ${place_name} in ${location}`);
-    
-    // Spawn a Python process to run the scraper
-    const pythonProcess = spawn('python', [
-      'tripadvisor_scraper.py',
-      '--place', place_name,
-      '--location', location
-    ]);
-    
-    let dataString = '';
-    let errorString = '';
-    
-    // Collect data from stdout
-    pythonProcess.stdout.on('data', (data) => {
-      dataString += data.toString();
-    });
-    
-    // Collect any errors from stderr
-    pythonProcess.stderr.on('data', (data) => {
-      errorString += data.toString();
-    });
-    
-    // Send the response when the process exits
-    pythonProcess.on('close', (code) => {
-      if (code !== 0) {
-        console.error(`TripAdvisor scraper error (${code}): ${errorString}`);
-        return res.status(500).json({ 
-          status: 'ERROR', 
-          error: 'Failed to retrieve TripAdvisor data',
-          details: errorString
-        });
-      }
-      
-      try {
-        const result = JSON.parse(dataString);
-        res.json({
-          status: 'OK',
-          result
-        });
-      } catch (parseError) {
-        console.error('Error parsing TripAdvisor data:', parseError);
-        res.status(500).json({ 
-          status: 'ERROR', 
-          error: 'Failed to parse TripAdvisor data'
-        });
-      }
-    });
-  } catch (error) {
-    console.error('Error with TripAdvisor API:', error);
-    res.status(500).json({ 
-      status: 'ERROR', 
-      error: 'Failed to process TripAdvisor request'
-    });
-  }
-});
+// 5) TripAdvisor API (now handled by server/routes/tripadvisor.js)
 
 // 6) Weather Forecast API (OpenWeather)
 app.get('/api/weather', async (req, res) => {
