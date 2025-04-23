@@ -3,24 +3,50 @@ import trafilatura
 import json
 import argparse
 import sys
+import time
 from urllib.parse import quote
 
 def search_tripadvisor(place_name, location):
     """Search TripAdvisor for a specific place in a location"""
     try:
+        print(f"Searching TripAdvisor for: {place_name} in {location}", file=sys.stderr)
+        
         # Format the search query for TripAdvisor
         search_query = f"{place_name} {location}"
         encoded_query = quote(search_query)
         
         # The TripAdvisor search URL
         url = f"https://www.tripadvisor.com/Search?q={encoded_query}"
+        print(f"TripAdvisor search URL: {url}", file=sys.stderr)
         
-        # Fetch the HTML content
-        downloaded = trafilatura.fetch_url(url)
+        # Fetch the HTML content with retries
+        downloaded = None
+        retries = 3
+        for attempt in range(retries):
+            downloaded = trafilatura.fetch_url(url)
+            if downloaded:
+                break
+            print(f"Retry {attempt+1}/{retries} fetching TripAdvisor data", file=sys.stderr)
+            time.sleep(1)  # Short delay between retries
+        
         if not downloaded:
-            return None
+            print("Failed to download TripAdvisor search results", file=sys.stderr)
+            return {
+                "name": place_name,
+                "location": location,
+                "tripadvisor_data": {}
+            }
             
         content = trafilatura.extract(downloaded, include_links=True, include_formatting=True)
+        if not content:
+            print("Failed to extract content from TripAdvisor page", file=sys.stderr)
+            return {
+                "name": place_name,
+                "location": location,
+                "tripadvisor_data": {}
+            }
+        
+        print(f"TripAdvisor content length: {len(content)}", file=sys.stderr)
         
         # Look for patterns that indicate TripAdvisor ratings
         # This is a simplified approach - actual implementation may need adjustment
@@ -30,9 +56,19 @@ def search_tripadvisor(place_name, location):
         rating_match = re.search(rating_pattern, content)
         ranking_match = re.search(ranking_pattern, content)
         
-        # Find the most likely URL for the place
-        link_pattern = r'<a href="(/[^"]+)">[^<]*' + re.escape(place_name)
-        link_match = re.search(link_pattern, content, re.IGNORECASE)
+        # Find the most likely URL for the place - make the match more flexible
+        # Try different patterns to increase chances of finding a match
+        link_patterns = [
+            r'<a href="(/[^"]+)">[^<]*' + re.escape(place_name),  # Exact match
+            r'<a href="(/[^"]+)">[^<]*' + re.escape(place_name.split(' ')[0]),  # First word match
+            r'<a href="(/Restaurant_Review[^"]+)"'  # Any restaurant review link
+        ]
+        
+        link_match = None
+        for pattern in link_patterns:
+            link_match = re.search(pattern, content, re.IGNORECASE)
+            if link_match:
+                break
         
         # Prepare the result
         result = {
@@ -42,20 +78,31 @@ def search_tripadvisor(place_name, location):
         }
         
         if rating_match:
+            print(f"Found rating: {rating_match.group(1)}", file=sys.stderr)
             result["tripadvisor_data"]["rating"] = float(rating_match.group(1))
             result["tripadvisor_data"]["review_count"] = rating_match.group(2).replace(",", "")
         
         if ranking_match:
+            print(f"Found ranking: #{ranking_match.group(1)} of {ranking_match.group(2)}", file=sys.stderr)
             result["tripadvisor_data"]["rank_position"] = int(ranking_match.group(1))
             result["tripadvisor_data"]["rank_total"] = ranking_match.group(2).replace(",", "")
         
         if link_match:
+            print(f"Found TripAdvisor URL: {link_match.group(1)}", file=sys.stderr)
             result["tripadvisor_data"]["url"] = f"https://www.tripadvisor.com{link_match.group(1)}"
+        
+        # For testing - generate mock data if nothing was found (debug only)
+        if not result["tripadvisor_data"]:
+            print("No TripAdvisor data found for this place", file=sys.stderr)
             
         return result
     except Exception as e:
         print(f"Error searching TripAdvisor: {e}", file=sys.stderr)
-        return None
+        return {
+            "name": place_name,
+            "location": location,
+            "tripadvisor_data": {}
+        }
 
 def get_detailed_ratings(tripadvisor_url):
     """Get more detailed ratings from a specific TripAdvisor page"""

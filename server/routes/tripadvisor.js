@@ -21,9 +21,11 @@ router.get('/', async (req, res) => {
       });
     }
     
+    console.log(`TripAdvisor request for: "${place_name}" in "${location}"`);
+    
     // Call the Python script to scrape TripAdvisor data
     const pythonPath = path.join(process.cwd(), 'tripadvisor_scraper.py');
-    const command = `python ${pythonPath} --place "${place_name}" --location "${location}"`;
+    const command = `python3 ${pythonPath} --place "${place_name}" --location "${location}"`;
     
     exec(command, (error, stdout, stderr) => {
       if (error) {
@@ -41,15 +43,36 @@ router.get('/', async (req, res) => {
       
       try {
         // Parse the JSON output from the Python script
+        console.log(`TripAdvisor raw output: ${stdout}`);
         const data = JSON.parse(stdout);
         
-        // Return the TripAdvisor data
-        return res.json({
-          status: 'OK',
-          result: data
-        });
+        // Check if we have meaningful TripAdvisor data
+        if (data && data.tripadvisor_data && 
+            (data.tripadvisor_data.rating || 
+             data.tripadvisor_data.url || 
+             data.tripadvisor_data.rank_position)) {
+          console.log(`Found TripAdvisor data for "${place_name}":`, data.tripadvisor_data);
+          
+          // Return the TripAdvisor data
+          return res.json({
+            status: 'OK',
+            result: data
+          });
+        } else {
+          console.log(`No meaningful TripAdvisor data found for "${place_name}"`);
+          // We have data but no meaningful TripAdvisor info
+          return res.json({
+            status: 'OK',
+            result: {
+              name: place_name,
+              location: location,
+              tripadvisor_data: null
+            }
+          });
+        }
       } catch (parseError) {
         console.error(`Error parsing TripAdvisor data: ${parseError.message}`);
+        console.error(`Raw output was: ${stdout}`);
         return res.status(500).json({
           status: 'ERROR',
           message: 'Failed to parse TripAdvisor data',

@@ -542,7 +542,9 @@ function createPlaceCard(place, index) {
     ratingHtml += '</div>'; // End of Google rating div
     
     // Add placeholder for TripAdvisor rating that will be populated later
-    ratingHtml += `<div class="tripadvisor-rating-${place.place_id} small mb-1" style="min-height: 20px;"></div>`;
+    ratingHtml += `<div id="tripadvisor-${place.place_id}" class="tripadvisor-rating-${place.place_id} small mb-1" style="min-height: 20px; border-top: 1px dotted #eee; padding-top: 4px; margin-top: 4px;">
+      <small class="text-muted">Loading TripAdvisor data...</small>
+    </div>`;
     
     ratingHtml += '</div>'; // End star-rating div
   }
@@ -580,6 +582,9 @@ function createPlaceCard(place, index) {
       <div class="card-body">
         <h5 class="card-title">${placeNumber}. ${place.name}</h5>
         ${ratingHtml}
+        <div id="tripadvisor-${place.place_id}" class="tripadvisor-rating-${place.place_id} small mb-1" style="min-height: 20px; border-top: 1px dotted #eee; padding-top: 4px; margin-top: 4px;">
+          <small class="text-muted">Loading TripAdvisor data...</small>
+        </div>
         ${priceHtml}
         <p class="card-text">${place.vicinity || ''}</p>
         <button class="btn btn-primary btn-sm view-details" data-place-id="${place.place_id}">View Details</button>
@@ -619,17 +624,29 @@ async function fetchTripAdvisorData(place) {
       }
     }
     
+    // Find the placeholder element for this place
+    const taRatingElement = document.querySelector(`.tripadvisor-rating-${place.place_id}`);
+    if (!taRatingElement) {
+      console.error(`TripAdvisor rating element not found for ${place.place_id}`);
+      return;
+    }
+    
     if (place.name && location) {
-      const taResponse = await fetch(`/api/tripadvisor?place_name=${encodeURIComponent(place.name)}&location=${encodeURIComponent(location)}`);
-      const taData = await taResponse.json();
+      console.log(`Fetching TripAdvisor data for place card: ${place.name} in ${location}`);
       
-      if (taData.status === 'OK' && taData.result && taData.result.tripadvisor_data) {
-        const tripadvisorData = taData.result.tripadvisor_data;
+      try {
+        // Make the API call
+        const taResponse = await fetch(`/api/tripadvisor?place_name=${encodeURIComponent(place.name)}&location=${encodeURIComponent(location)}`);
+        const taData = await taResponse.json();
+        console.log("TripAdvisor data response:", taData);
         
-        if (tripadvisorData.rating) {
-          // Find the placeholder element for this place and update it
-          const taRatingElement = document.querySelector(`.tripadvisor-rating-${place.place_id}`);
-          if (taRatingElement) {
+        if (taData.status === 'OK' && taData.result && taData.result.tripadvisor_data) {
+          const tripadvisorData = taData.result.tripadvisor_data;
+          
+          // Check if we have meaningful TripAdvisor data (rating)
+          if (tripadvisorData && tripadvisorData.rating) {
+            console.log(`Got TripAdvisor rating for ${place.name}: ${tripadvisorData.rating}`);
+            
             let taHtml = '<div class="d-flex align-items-center">';
             taHtml += '<small class="text-muted me-1">TripAdvisor:</small>';
             
@@ -657,12 +674,33 @@ async function fetchTripAdvisorData(place) {
             
             taHtml += '</div>';
             taRatingElement.innerHTML = taHtml;
+            console.log("Updated TripAdvisor rating HTML");
+            return;
           }
         }
+        
+        // If we reach here, we either didn't get TripAdvisor data or the API call failed
+        taRatingElement.innerHTML = '<small class="text-muted">No TripAdvisor data available</small>';
+      } catch (fetchError) {
+        console.error('Error fetching TripAdvisor data:', fetchError);
+        taRatingElement.innerHTML = '<small class="text-muted">Could not load TripAdvisor data</small>';
       }
+    } else {
+      // Not enough information to fetch TripAdvisor data
+      taRatingElement.innerHTML = '<small class="text-muted">Insufficient location data for TripAdvisor</small>';
     }
   } catch (error) {
-    console.error('Error fetching TripAdvisor data for place card:', error);
+    console.error('Error in TripAdvisor data processing:', error);
+    // Find the element and update with error message
+    try {
+      const taRatingElement = document.querySelector(`.tripadvisor-rating-${place.place_id}`);
+      if (taRatingElement) {
+        taRatingElement.innerHTML = '<small class="text-muted">Error loading TripAdvisor data</small>';
+      }
+    } catch (e) {
+      // If we can't even update the error message, just log it
+      console.error('Cannot update TripAdvisor element with error:', e);
+    }
   }
 }
 
