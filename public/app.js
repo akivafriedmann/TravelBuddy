@@ -541,10 +541,7 @@ function createPlaceCard(place, index) {
     
     ratingHtml += '</div>'; // End of Google rating div
     
-    // Add placeholder for TripAdvisor rating that will be populated later
-    ratingHtml += `<div id="tripadvisor-${place.place_id}" class="tripadvisor-rating-${place.place_id} small mb-1" style="min-height: 20px; border-top: 1px dotted #eee; padding-top: 4px; margin-top: 4px;">
-      <small class="text-muted">Loading TripAdvisor data...</small>
-    </div>`;
+    // Note: TripAdvisor placeholder is added directly in the HTML template
     
     ratingHtml += '</div>'; // End star-rating div
   }
@@ -604,8 +601,10 @@ function createPlaceCard(place, index) {
     }
   });
   
-  // Fetch TripAdvisor data for this place
-  fetchTripAdvisorData(place);
+  // Fetch TripAdvisor data for this place after a slight delay to ensure DOM is updated
+  setTimeout(() => {
+    fetchTripAdvisorData(place);
+  }, 100);
   
   return col;
 }
@@ -624,12 +623,22 @@ async function fetchTripAdvisorData(place) {
       }
     }
     
-    // Find the placeholder element for this place
-    const taRatingElement = document.querySelector(`.tripadvisor-rating-${place.place_id}`);
+    // Find the placeholder element for this place by ID first, then by class if necessary
+    let taRatingElement = document.getElementById(`tripadvisor-${place.place_id}`);
+    
+    // If not found by ID, try finding by class
+    if (!taRatingElement) {
+      taRatingElement = document.querySelector(`.tripadvisor-rating-${place.place_id}`);
+    }
+    
+    // If still not found, log the error and exit
     if (!taRatingElement) {
       console.error(`TripAdvisor rating element not found for ${place.place_id}`);
       return;
     }
+    
+    // Log that we found the element 
+    console.log(`Found TripAdvisor element for ${place.name}:`, taRatingElement);
     
     if (place.name && location) {
       console.log(`Fetching TripAdvisor data for place card: ${place.name} in ${location}`);
