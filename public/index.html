@@ -106,6 +106,33 @@
     /* Star Rating Display */
     .star-rating {
       color: #ffc107;
+      font-size: 1.2rem;
+    }
+    
+    .star-rating .rating-text {
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .detail-item {
+      display: flex;
+      align-items: flex-start;
+    }
+    
+    .detail-item i {
+      font-size: 1.2rem;
+      margin-top: 3px;
+    }
+    
+    .detail-item > div {
+      flex: 1;
+      margin-left: 5px;
+    }
+    
+    .price-level {
+      font-size: 1.2rem;
+      letter-spacing: 2px;
+      font-weight: bold;
     }
     
     /* Mobile Responsiveness */
@@ -617,28 +644,78 @@
         hoursHtml += '</ul>';
       }
       
-      modalBody.innerHTML = `
-        <img src="${photoUrl}" class="img-fluid mb-3 rounded" alt="${place.name}" onerror="this.src='https://via.placeholder.com/800x400?text=No+Image'">
+      // Create a visual star rating display
+      const starRatingHtml = place.rating ? 
+        `<div class="star-rating mb-2">
+          ${Array(Math.floor(place.rating)).fill('<i class="fas fa-star"></i>').join('')}
+          ${place.rating % 1 >= 0.5 ? '<i class="fas fa-star-half-alt"></i>' : ''}
+          ${Array(5 - Math.ceil(place.rating)).fill('<i class="far fa-star"></i>').join('')}
+          <span class="ms-2 rating-text">${place.rating.toFixed(1)}</span>
+          <span class="text-muted ms-1 reviews-count">${place.user_ratings_total ? `(${place.user_ratings_total} reviews)` : ''}</span>
+        </div>` : 
+        '<p class="text-muted">No ratings available</p>';
         
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <p><i class="fas fa-map-marker-alt text-danger me-2"></i><strong>Address:</strong> ${place.formatted_address || 'Not available'}</p>
-            <p><i class="fas fa-phone text-success me-2"></i><strong>Phone:</strong> ${place.formatted_phone_number || 'Not available'}</p>
-            <p>
-              <i class="fas fa-tag text-info me-2"></i><strong>Price Level:</strong> 
-              ${getPriceLevel(place.price_level)}
-            </p>
+      // Format the price level more visually
+      const priceLevelHtml = place.price_level !== undefined ? 
+        `<div class="price-level">
+          <span class="${place.price_level >= 1 ? 'text-success' : 'text-muted'}">$</span>
+          <span class="${place.price_level >= 2 ? 'text-success' : 'text-muted'}">$</span>
+          <span class="${place.price_level >= 3 ? 'text-success' : 'text-muted'}">$</span>
+          <span class="${place.price_level >= 4 ? 'text-success' : 'text-muted'}">$</span>
+        </div>` : 
+        '<span class="text-muted">Price not available</span>';
+
+      modalBody.innerHTML = `
+        <div class="place-detail-img-container position-relative mb-4">
+          <img src="${photoUrl}" class="img-fluid rounded shadow-sm w-100" alt="${place.name}" 
+            onerror="this.src='https://via.placeholder.com/800x400?text=No+Image'" style="max-height: 300px; object-fit: cover;">
+          <div class="position-absolute bottom-0 end-0 p-2 bg-dark bg-opacity-75 rounded-start text-white">
+            ${priceLevelHtml}
           </div>
+        </div>
+        
+        <div class="mb-3">
+          ${starRatingHtml}
+        </div>
+        
+        <div class="row mb-4">
           <div class="col-md-6">
-            <p>
-              <i class="fas fa-star text-warning me-2"></i><strong>Rating:</strong> 
-              ${place.rating ? `${place.rating}/5` : 'Not rated'}
-              ${place.user_ratings_total ? `(${place.user_ratings_total} reviews)` : ''}
-            </p>
-            <p>
-              <i class="fas fa-globe text-primary me-2"></i><strong>Website:</strong> 
-              ${place.website ? `<a href="${place.website}" target="_blank">${place.website}</a>` : 'Not available'}
-            </p>
+            <div class="detail-item mb-3">
+              <i class="fas fa-map-marker-alt text-danger me-2"></i>
+              <div>
+                <strong>Address</strong>
+                <p class="mb-0">${place.formatted_address || 'Not available'}</p>
+              </div>
+            </div>
+            
+            <div class="detail-item mb-3">
+              <i class="fas fa-phone text-success me-2"></i>
+              <div>
+                <strong>Phone</strong>
+                <p class="mb-0">${place.formatted_phone_number || 'Not available'}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-6">
+            <div class="detail-item mb-3">
+              <i class="fas fa-globe text-primary me-2"></i>
+              <div>
+                <strong>Website</strong>
+                <p class="mb-0">${place.website ? 
+                  `<a href="${place.website}" target="_blank" class="text-truncate d-inline-block" style="max-width: 100%;">${place.website}</a>` : 
+                  'Not available'}
+                </p>
+              </div>
+            </div>
+            
+            <div class="detail-item">
+              <i class="fas fa-tag text-info me-2"></i>
+              <div>
+                <strong>Price Level</strong>
+                <p class="mb-0">${getPriceLevel(place.price_level)}</p>
+              </div>
+            </div>
           </div>
         </div>
         
