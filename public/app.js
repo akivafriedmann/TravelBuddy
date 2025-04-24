@@ -579,8 +579,14 @@ function createPlaceCard(place, index) {
       <div class="card-body">
         <h5 class="card-title">${placeNumber}. ${place.name}</h5>
         ${ratingHtml}
-        <div id="tripadvisor-${place.place_id}" class="tripadvisor-rating-${place.place_id} small mb-1" style="min-height: 20px; border-top: 1px dotted #eee; padding-top: 4px; margin-top: 4px;">
-          <small class="text-muted"><i class="fas fa-spinner fa-pulse fa-xs"></i> TripAdvisor: Loading...</small>
+        <!-- New TripAdvisor placeholder -->
+        <div id="tripadvisor-${place.place_id}"
+             class="tripadvisor-rating-${place.place_id} small mb-1 text-center"
+             style="min-height: 20px; border-top: 1px dotted #ddd; padding-top: 4px; margin-top: 4px;">
+          <small class="text-muted">
+            <i class="fas fa-spinner fa-pulse" aria-hidden="true"></i>
+            Fetching TripAdvisor…
+          </small>
         </div>
         ${priceHtml}
         <p class="card-text">${place.vicinity || ''}</p>
@@ -717,14 +723,14 @@ async function fetchTripAdvisorData(place) {
         
         // If we reach here, we either didn't get TripAdvisor data or the API call failed
         // Use a more subtle, professional display for no data
-        taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-info-circle fa-xs"></i> TripAdvisor: Not available</small>';
+        taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-info-circle fa-xs"></i> TripAdvisor data unavailable</small>';
       } catch (fetchError) {
         console.error('Error fetching TripAdvisor data:', fetchError);
-        taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> TripAdvisor: Connection error</small>';
+        taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> Unable to connect to TripAdvisor</small>';
       }
     } else {
       // Not enough information to fetch TripAdvisor data
-      taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-info-circle fa-xs"></i> TripAdvisor: Limited location info</small>';
+      taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-info-circle fa-xs"></i> Insufficient location details</small>';
     }
   } catch (error) {
     console.error('Error in TripAdvisor data processing:', error);
@@ -732,7 +738,7 @@ async function fetchTripAdvisorData(place) {
     try {
       const taRatingElement = document.querySelector(`.tripadvisor-rating-${place.place_id}`);
       if (taRatingElement) {
-        taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-exclamation-triangle fa-xs"></i> TripAdvisor: Error</small>';
+        taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-exclamation-triangle fa-xs"></i> TripAdvisor retrieval error</small>';
       }
     } catch (e) {
       // If we can't even update the error message, just log it
