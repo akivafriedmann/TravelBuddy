@@ -23,17 +23,23 @@ router.get('/', async (req, res) => {
     
     console.log(`TripAdvisor request for: "${place_name}" in "${location}"`);
     
-    // Call the Python script to scrape TripAdvisor data
-    const pythonPath = path.join(process.cwd(), 'tripadvisor_scraper.py');
+    // Call the improved Python script to scrape TripAdvisor data
+    const pythonPath = path.join(process.cwd(), 'improved_tripadvisor_scraper.py');
     const command = `python3 ${pythonPath} --place "${place_name}" --location "${location}"`;
     
     exec(command, (error, stdout, stderr) => {
+      // We'll continue gracefully even if there are errors with the scraper
       if (error) {
         console.error(`Error executing TripAdvisor scraper: ${error.message}`);
-        return res.status(500).json({
-          status: 'ERROR',
-          message: 'Failed to retrieve TripAdvisor data',
-          error: error.message
+        // Instead of returning a 500 error, we'll return a graceful "no data" response
+        return res.json({
+          status: 'OK',
+          result: {
+            name: place_name,
+            location: location,
+            tripadvisor_data: null,
+            source_error: error.message
+          }
         });
       }
       
@@ -66,17 +72,23 @@ router.get('/', async (req, res) => {
             result: {
               name: place_name,
               location: location,
-              tripadvisor_data: null
+              tripadvisor_data: null,
+              access_limited: true  // Flag indicating access is limited
             }
           });
         }
       } catch (parseError) {
         console.error(`Error parsing TripAdvisor data: ${parseError.message}`);
         console.error(`Raw output was: ${stdout}`);
-        return res.status(500).json({
-          status: 'ERROR',
-          message: 'Failed to parse TripAdvisor data',
-          error: parseError.message
+        // Instead of returning a 500 error, we'll return a graceful "no data" response
+        return res.json({
+          status: 'OK',
+          result: {
+            name: place_name,
+            location: location,
+            tripadvisor_data: null,
+            parse_error: parseError.message
+          }
         });
       }
     });

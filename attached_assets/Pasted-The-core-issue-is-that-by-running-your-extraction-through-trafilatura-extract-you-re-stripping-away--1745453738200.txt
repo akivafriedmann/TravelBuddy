@@ -1,0 +1,106 @@
+The core issue is that by running your extraction through trafilatura.extract you’re stripping away all the raw HTML (and with it the CSS classes and attributes you need to match), so your regex never sees the <span class="ui_bubble_rating ..."> markers on the TripAdvisor page. On top of that, TripAdvisor’s markup has shifted from textual “of 5 bubbles” dumps to purely visual “bubble” spans (e.g. class="ui_bubble_rating bubble_45" for a 4.5 ★).
+
+Here’s how I’d refactor your scraper:
+
+Fetch the raw HTML with a real browser‐style User-Agent, not via trafilatura.fetch_url/extract.
+
+Parse it with BeautifulSoup (or lxml) so you can reliably select elements by class or attribute.
+
+Match the new bubble‐class scheme to compute the rating.
+
+python
+Copy
+Edit
+import requests
+from bs4 import BeautifulSoup
+import re
+import json
+import time
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/100.0.4896.127 Safari/537.36"
+}
+
+def fetch_html(url):
+    for attempt in range(3):
+        r = requests.get(url, headers=HEADERS, timeout=5)
+        if r.status_code == 200 and "captcha" not in r.text.lower():
+            return r.text
+        time.sleep(1)
+    raise RuntimeError(f"Failed to fetch {url} [{r.status_code}]")
+
+def search_tripadvisor(place_name, location):
+    # Build the search URL
+    query = f"{place_name} {location}"
+    url = f"https://www.tripadvisor.com/Search?q={requests.utils.quote(query)}"
+    html = fetch_html(url)
+    soup = BeautifulSoup(html, "html.parser")
+
+    # Grab the first result’s link
+    result = soup.select_one('a.result-title') or soup.select_one('a[href^="/Restaurant_Review"]')
+    if not result or not result.get("href"):
+        return {"name": place_name, "location": location, "tripadvisor_data": {}}
+
+    detail_url = "https://www.tripadvisor.com" + result["href"]
+
+    # Now fetch the detail page
+    detail_html = fetch_html(detail_url)
+    detail_soup = BeautifulSoup(detail_html, "html.parser")
+
+    data = {"url": detail_url}
+
+    # ★ Rating is encoded in a span like <span class="ui_bubble_rating bubble_45"></span>
+    rating_span = detail_soup.find("span", class_=re.compile(r"ui_bubble_rating bubble_\d+"))
+    if rating_span:
+        cls = [c for c in rating_span["class"] if c.startswith("bubble_")][0]
+        score = int(cls.split("_")[1]) / 10.0
+        data["rating"] = score
+
+    # Review count in a span like <span class="reviewCount">@ 123 reviews</span>
+    count_span = detail_soup.find("span", class_="reviewCount")
+    if count_span:
+        m = re.search(r"(\d[\d,]*)", count_span.get_text())
+        if m:
+            data["review_count"] = int(m.group(1).replace(",", ""))
+
+    # Ranking appears in text e.g. “#5 of 200 restaurants in Amsterdam”
+    rank_el = detail_soup.find(text=re.compile(r"#\d+ of [\d,]+ restaurants"))
+    if rank_el:
+        m = re.search(r"#(\d+) of ([\d,]+)", rank_el)
+        data["rank_position"] = int(m.group(1))
+        data["rank_total"] = int(m.group(2).replace(",", ""))
+
+    return {"name": place_name, "location": location, "tripadvisor_data": data}
+Why this works better
+
+Raw HTML: using requests.get(...).text preserves all the tags.
+
+Real-browser UA: avoids simple bot blocking.
+
+BeautifulSoup selectors: much more resilient than blind regex over extracted text.
+
+Bubble-class parsing: directly reads the numeric part of bubble_XX and divides by 10.
+
+Give that a try in your proxy module—if you still get empty tripadvisor_data, paste me the first few hundred lines of the detail_html you’re fetching for one of your test restaurants and we can confirm whether it’s a block page or a site-structure shift.
+
+
+
+
+
+
+
+
+
+
+
+
+Search
+
+Deep research
+
+Create image
+
+
+

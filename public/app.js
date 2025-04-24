@@ -722,8 +722,17 @@ async function fetchTripAdvisorData(place) {
         }
         
         // If we reach here, we either didn't get TripAdvisor data or the API call failed
-        // Use a more subtle, professional display for no data
-        taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-info-circle fa-xs"></i> TripAdvisor data unavailable</small>';
+        // Check if there's a specific reason for the limitation
+        if (taData.result && taData.result.access_limited) {
+          taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-info-circle fa-xs"></i> TripAdvisor access limited</small>';
+        } else if (taData.result && taData.result.source_error) {
+          taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> TripAdvisor connection issue</small>';
+        } else if (taData.result && taData.result.parse_error) {
+          taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> TripAdvisor data format issue</small>';
+        } else {
+          // Generic message for other cases
+          taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-info-circle fa-xs"></i> TripAdvisor data unavailable</small>';
+        }
       } catch (fetchError) {
         console.error('Error fetching TripAdvisor data:', fetchError);
         taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> Unable to connect to TripAdvisor</small>';
