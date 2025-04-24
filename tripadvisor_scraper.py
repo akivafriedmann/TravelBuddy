@@ -11,35 +11,50 @@ def search_tripadvisor(place_name, location):
     try:
         print(f"Searching TripAdvisor for: {place_name} in {location}", file=sys.stderr)
         
-        # Format the search query for TripAdvisor
-        search_query = f"{place_name} {location}"
-        encoded_query = quote(search_query)
-        
-        # The TripAdvisor search URL
-        url = f"https://www.tripadvisor.com/Search?q={encoded_query}"
-        print(f"TripAdvisor search URL: {url}", file=sys.stderr)
-        
-        # Fetch the HTML content with retries
-        downloaded = None
-        retries = 3
-        for attempt in range(retries):
-            downloaded = trafilatura.fetch_url(url)
-            if downloaded:
-                break
-            print(f"Retry {attempt+1}/{retries} fetching TripAdvisor data", file=sys.stderr)
-            time.sleep(1)  # Short delay between retries
-        
-        if not downloaded:
-            print("Failed to download TripAdvisor search results", file=sys.stderr)
-            return {
-                "name": place_name,
-                "location": location,
-                "tripadvisor_data": {}
-            }
+        # Extract city name for more focused search
+        city = ""
+        # Try to extract city from the location (usually the last part)
+        location_parts = [p.strip() for p in location.split(',')]
+        if len(location_parts) > 1:
+            # If we have multiple parts (like "123 Main St, New York, NY")
+            # Try the second-to-last part first, which is often the city
+            city = location_parts[-2] if len(location_parts) > 2 else location_parts[-1]
+        else:
+            city = location
             
-        content = trafilatura.extract(downloaded, include_links=True, include_formatting=True)
+        # Try several search variations to increase chances of finding a match
+        search_variations = [
+            (f"{place_name} {city}", "place name + city"),
+            (f"{place_name}", "place name only"),
+            (place_name.split(' ')[0] + " " + city if ' ' in place_name else place_name, "first word + city")
+        ]
+        
+        # Try each search variation
+        content = None
+        for search_query, search_type in search_variations:
+            print(f"Trying TripAdvisor search variation: {search_type} - '{search_query}'", file=sys.stderr)
+            encoded_query = quote(search_query)
+            url = f"https://www.tripadvisor.com/Search?q={encoded_query}"
+            
+            # Fetch the HTML content with retries
+            downloaded = None
+            retries = 3
+            for attempt in range(retries):
+                downloaded = trafilatura.fetch_url(url)
+                if downloaded:
+                    break
+                print(f"Retry {attempt+1}/{retries} fetching TripAdvisor data", file=sys.stderr)
+                time.sleep(1)  # Short delay between retries
+            
+            if downloaded:
+                content = trafilatura.extract(downloaded, include_links=True, include_formatting=True)
+                if content and len(content) > 1000:  # Only consider valid content responses
+                    print(f"Found valid content with search variation: {search_type}", file=sys.stderr)
+                    break
+        
+        # If we didn't find any content with any variation, return empty result
         if not content:
-            print("Failed to extract content from TripAdvisor page", file=sys.stderr)
+            print("Failed to find valid content from any TripAdvisor search variation", file=sys.stderr)
             return {
                 "name": place_name,
                 "location": location,
@@ -49,7 +64,6 @@ def search_tripadvisor(place_name, location):
         print(f"TripAdvisor content length: {len(content)}", file=sys.stderr)
         
         # Look for patterns that indicate TripAdvisor ratings
-        # This is a simplified approach - actual implementation may need adjustment
         rating_pattern = r"(\d+\.?\d*) of 5 bubbles, (\d+[\,\d]*) reviews"
         ranking_pattern = r"#(\d+) of (\d+[\,\d]*) (?:restaurants|hotels|attractions) in"
         
@@ -57,7 +71,6 @@ def search_tripadvisor(place_name, location):
         ranking_match = re.search(ranking_pattern, content)
         
         # Find the most likely URL for the place - make the match more flexible
-        # Try different patterns to increase chances of finding a match
         link_patterns = [
             r'<a href="(/[^"]+)">[^<]*' + re.escape(place_name),  # Exact match
             r'<a href="(/[^"]+)">[^<]*' + re.escape(place_name.split(' ')[0]),  # First word match

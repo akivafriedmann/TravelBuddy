@@ -612,15 +612,11 @@ function createPlaceCard(place, index) {
 // Helper function to fetch TripAdvisor data for a place and update its card
 async function fetchTripAdvisorData(place) {
   try {
-    // Extract location from vicinity (e.g., "123 Main St, Amsterdam, Netherlands")
+    // Use the full address for better TripAdvisor matching
     let location = '';
     if (place.vicinity) {
-      const addressParts = place.vicinity.split(',');
-      if (addressParts.length >= 2) {
-        location = addressParts[addressParts.length - 1].trim();
-      } else {
-        location = addressParts[0].trim();
-      }
+      // Use the full vicinity as the location for better matching
+      location = place.vicinity.trim();
     }
     
     // Find the placeholder element for this place by ID first, then by class if necessary
@@ -786,14 +782,11 @@ async function showPlaceDetails(placeId) {
       try {
         const place = data.result;
         const placeName = place.name;
-        // Use city/region from the address as the location
+        // Use the full address for better TripAdvisor matching
         let location = '';
         if (place.formatted_address) {
-          // Extract city/region from address (e.g., "123 Main St, Amsterdam, Netherlands")
-          const addressParts = place.formatted_address.split(',');
-          if (addressParts.length >= 2) {
-            location = addressParts[addressParts.length - 2].trim();
-          }
+          // Use the full address for better matching
+          location = place.formatted_address.trim();
         }
         
         if (placeName && location) {
