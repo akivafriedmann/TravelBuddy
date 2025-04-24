@@ -609,15 +609,44 @@ function createPlaceCard(place, index) {
   return col;
 }
 
+// Simple string similarity function (without requiring external library)
+function calculateStringSimilarity(str1, str2) {
+  str1 = str1.toLowerCase();
+  str2 = str2.toLowerCase();
+  
+  // Quick check
+  if (str1 === str2) return 1.0;
+  
+  // Check if one string contains the other
+  if (str1.includes(str2) || str2.includes(str1)) {
+    const longerLength = Math.max(str1.length, str2.length);
+    const shorterLength = Math.min(str1.length, str2.length);
+    return shorterLength / longerLength * 0.8; // 80% similarity if one contains the other
+  }
+  
+  // Split into words and check for common words
+  const words1 = str1.split(/\s+/);
+  const words2 = str2.split(/\s+/);
+  
+  let matches = 0;
+  for (const word1 of words1) {
+    if (word1.length <= 2) continue; // Skip short words
+    for (const word2 of words2) {
+      if (word2.length <= 2) continue;
+      if (word1 === word2 || word1.includes(word2) || word2.includes(word1)) {
+        matches++;
+        break;
+      }
+    }
+  }
+  
+  return matches / Math.max(words1.length, words2.length);
+}
+
 // Helper function to fetch TripAdvisor data for a place and update its card
 async function fetchTripAdvisorData(place) {
   try {
-    // Use the full address for better TripAdvisor matching
-    let location = '';
-    if (place.vicinity) {
-      // Use the full vicinity as the location for better matching
-      location = place.vicinity.trim();
-    }
+    const { place_id, name, vicinity } = place;
     
     // Find the placeholder element for this place by ID first, then by class if necessary
     let taRatingElement = document.getElementById(`tripadvisor-${place.place_id}`);
@@ -633,15 +662,17 @@ async function fetchTripAdvisorData(place) {
       return;
     }
     
-    // Log that we found the element 
     console.log(`Found TripAdvisor element for ${place.name}:`, taRatingElement);
     
-    if (place.name && location) {
-      console.log(`Fetching TripAdvisor data for place card: ${place.name} in ${location}`);
+    // Try different search approaches
+    let candidates = [];
+    
+    if (name && vicinity) {
+      console.log(`Fetching TripAdvisor data for place card: ${name} in ${vicinity}`);
       
       try {
-        // Make the API call
-        const taResponse = await fetch(`/api/tripadvisor?place_name=${encodeURIComponent(place.name)}&location=${encodeURIComponent(location)}`);
+        // Make the API call with full address
+        const taResponse = await fetch(`/api/tripadvisor?place_name=${encodeURIComponent(name)}&location=${encodeURIComponent(vicinity)}`);
         const taData = await taResponse.json();
         console.log("TripAdvisor data response:", taData);
         
@@ -650,7 +681,7 @@ async function fetchTripAdvisorData(place) {
           
           // Check if we have meaningful TripAdvisor data (rating)
           if (tripadvisorData && tripadvisorData.rating) {
-            console.log(`Got TripAdvisor rating for ${place.name}: ${tripadvisorData.rating}`);
+            console.log(`Got TripAdvisor rating for ${name}: ${tripadvisorData.rating}`);
             
             let taHtml = '<div class="d-flex align-items-center">';
             taHtml += '<small class="text-muted me-1">TripAdvisor:</small>';

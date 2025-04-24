@@ -1,0 +1,61 @@
+// You’ll need this for string similarity:
+import stringSimilarity from 'string-similarity';
+
+async function fetchTripAdvisorData(place) {
+  const { place_id, name, vicinity, geometry } = place;
+  let candidates = [];
+
+  // 1) Try a radius search by lat/lng
+  if (geometry && geometry.location) {
+    const { lat, lng } = geometry.location;
+    try {
+      const resp = await fetch(
+        `/api/tripadvisor/searchByLocation?lat=${lat}&lng=${lng}&radius=250`
+      );
+      const json = await resp.json();
+      candidates = json.candidates || [];
+    } catch (err) {
+      console.warn('TA location search failed for', name, err);
+    }
+  }
+
+  // 2) Fallback to name+vicinity if nothing nearby
+  if (candidates.length === 0) {
+    try {
+      const resp = await fetch(
+        `/api/tripadvisor?place_name=${encodeURIComponent(name)}&location=${encodeURIComponent(vicinity)}`
+      );
+      const json = await resp.json();
+      candidates = json.candidates || [];
+    } catch (err) {
+      console.warn('TA name search failed for', name, err);
+    }
+  }
+
+  // 3) If still no candidates, show “no data”
+  if (candidates.length === 0) {
+    updateTripAdvisorPlaceholder(place_id, `<small class="text-muted">No TripAdvisor data</small>`);
+    return;
+  }
+
+  // 4) Pick the best match by comparing strings
+  const best = candidates.reduce((bestSoFar, cand) => {
+    const score = stringSimilarity.compareTwoStrings(cand.name || '', name);
+    return score > bestSoFar.score ? { data: cand, score } : bestSoFar;
+  }, { data: candidates[0], score: 0 }).data;
+
+  // 5) Render it
+  const taHtml = `
+    <small class="text-warning">★ ${best.rating || '–'}</small>
+    <small>(${best.review_count || 0} reviews)</small>
+    <br/>
+    <small class="text-muted">#${best.ranking || '–'} in ${best.category || vicinity}</small>
+  `;
+  updateTripAdvisorPlaceholder(place_id, taHtml);
+}
+
+// Utility to update the DOM
+function updateTripAdvisorPlaceholder(placeId, html) {
+  const el = document.getElementById(`tripadvisor-${placeId}`);
+  if (el) el.innerHTML = html;
+}
