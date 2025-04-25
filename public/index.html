@@ -110,7 +110,9 @@
   </div>
   
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8&libraries=places&callback=initMap" defer></script>
+  <!-- Load app.js first so initMap is defined before the Maps API loads -->
   <script src="app.js"></script>
+  <!-- Use a server-side script to inject the API key from environment variables -->
+  <script src="/api/maps-loader"></script>
 </body>
 </html>

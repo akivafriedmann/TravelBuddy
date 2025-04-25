@@ -235,7 +235,27 @@ app.get('/api/photo', (req, res) => {
 
 // 5) TripAdvisor API (now handled by server/routes/tripadvisor.js)
 
-// 6) Weather Forecast API (OpenWeather)
+// 6) Google Maps API key loader (for frontend)
+app.get('/api/maps-loader', (req, res) => {
+  // Use the API key from environment variables
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
+  
+  // Return a script that loads the Google Maps API with the server's API key
+  res.set('Content-Type', 'application/javascript');
+  res.send(`
+    // Load the Google Maps API with the key from the server
+    (function() {
+      const script = document.createElement('script');
+      script.src = "https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap";
+      script.defer = true;
+      script.async = true;
+      document.head.appendChild(script);
+      console.log("Google Maps API loading with server-provided key");
+    })();
+  `);
+});
+
+// 7) Weather Forecast API (OpenWeather)
 app.get('/api/weather', async (req, res) => {
   try {
     const { lat, lng } = req.query;
