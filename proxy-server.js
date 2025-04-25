@@ -226,6 +226,35 @@ app.get('/api/photo', (req, res) => {
   }
 });
 
+// API endpoint to load Google Maps API with key
+app.get('/api/maps-loader', (req, res) => {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  
+  if (!apiKey) {
+    console.error('GOOGLE_MAPS_API_KEY environment variable is not set');
+    return res.status(500).json({
+      status: 'ERROR',
+      message: 'Google Maps API key not found. Please set GOOGLE_MAPS_API_KEY environment variable.'
+    });
+  }
+  
+  console.log('Google Maps API loader called with key:', apiKey.substring(0, 5) + '...');
+  
+  // Return a script that loads the Google Maps API with the server's API key
+  res.set('Content-Type', 'application/javascript');
+  res.send(`
+    // Load the Google Maps API with the key from the server
+    (function() {
+      const script = document.createElement('script');
+      script.src = "https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap";
+      script.defer = true;
+      script.async = true;
+      document.head.appendChild(script);
+      console.log("Google Maps API loading with server-provided key");
+    })();
+  `);
+});
+
 // Main travel planner web app
 app.get('/', (req, res) => {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
