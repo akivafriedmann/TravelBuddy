@@ -200,7 +200,8 @@ function initMap() {
 // Use my location
 function useMyLocation() {
   if (!navigator.geolocation) {
-    alert('Geolocation is not supported by your browser. Please enter a location manually.');
+    console.error("Geolocation is not supported by this browser");
+    useDefaultLocation("Geolocation is not supported by your browser");
     return;
   }
   
@@ -213,61 +214,102 @@ function useMyLocation() {
   locationButton.disabled = true;
   locationButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
   
-  navigator.geolocation.getCurrentPosition(
-    position => {
-      // Success - we have the location
-      currentLocation = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude
-      };
-      
-      // Update map center
-      map.setCenter(currentLocation);
-      
-      // Load nearby places
-      loadNearbyPlaces(currentLocation);
-      
-      // Restore button
-      locationButton.innerHTML = originalText;
-      locationButton.disabled = false;
-      
-      // Try to get address for location
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({
-        location: currentLocation
-      }, (results, status) => {
-        if (status === google.maps.GeocoderStatus.OK && results[0]) {
-          // Update input field with readable address
-          document.getElementById('location-input').value = results[0].formatted_address;
+  try {
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        // Success - we have the location
+        currentLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        
+        console.log("Successfully obtained user location:", currentLocation);
+        
+        // Update map center
+        map.setCenter(currentLocation);
+        
+        // Load nearby places
+        loadNearbyPlaces(currentLocation);
+        
+        // Restore button
+        locationButton.innerHTML = originalText;
+        locationButton.disabled = false;
+        
+        // Try to get address for location
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({
+          location: currentLocation
+        }, (results, status) => {
+          if (status === google.maps.GeocoderStatus.OK && results[0]) {
+            // Update input field with readable address
+            document.getElementById('location-input').value = results[0].formatted_address;
+          }
+        });
+      },
+      error => {
+        console.error("Geolocation error:", error);
+        let errorMessage = "Unknown error getting your location";
+        
+        // Determine specific error message
+        if (error.code) {
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = "Location permission denied";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Location information is unavailable";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "Location request timed out";
+              break;
+          }
         }
-      });
-    },
-    error => {
-      hideLoading();
-      locationButton.innerHTML = originalText;
-      locationButton.disabled = false;
-      
-      // Handle specific error codes
-      switch(error.code) {
-        case error.PERMISSION_DENIED:
-          alert('Location permission denied. Please allow access to your location or enter a location manually.');
-          break;
-        case error.POSITION_UNAVAILABLE:
-          alert('Location information is unavailable. Please try again later or enter a location manually.');
-          break;
-        case error.TIMEOUT:
-          alert('Location request timed out. Please try again later or enter a location manually.');
-          break;
-        default:
-          alert('An unknown error occurred while getting location. Please enter a location manually.');
+        
+        // Use default location with appropriate error message
+        useDefaultLocation(errorMessage);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
       }
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    }
-  );
+    );
+  } catch (e) {
+    console.error("Exception when accessing geolocation:", e);
+    useDefaultLocation("Error accessing location services");
+  }
+  
+  // Helper function to use a default location when geolocation fails
+  function useDefaultLocation(reason) {
+    hideLoading();
+    locationButton.innerHTML = originalText;
+    locationButton.disabled = false;
+    
+    // Use New York City as default location
+    const defaultLocation = { lat: 40.7128, lng: -74.0060 };
+    
+    // Update map and load places with default location
+    currentLocation = defaultLocation;
+    map.setCenter(defaultLocation);
+    loadNearbyPlaces(defaultLocation);
+    
+    // Set a default location name in the search input
+    document.getElementById('location-input').value = "New York City";
+    
+    // Show a notification to the user
+    const notification = document.createElement('div');
+    notification.className = 'alert alert-warning alert-dismissible fade show';
+    notification.setAttribute('role', 'alert');
+    notification.innerHTML = `
+      <i class="fas fa-exclamation-triangle"></i> 
+      ${reason}. Using New York City as default location.
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    // Add notification to the top of the page
+    const container = document.querySelector('.container');
+    container.insertBefore(notification, container.firstChild);
+  }
 }
 
 // Search for a location

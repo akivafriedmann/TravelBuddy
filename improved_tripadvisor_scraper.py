@@ -36,13 +36,16 @@ def search_tripadvisor(place_name, location):
         # Extract city name for more focused search
         city = location.split(',')[-1].strip() if ',' in location else location
         
-        # Build the search URL
-        query = f"{place_name} {city}"
-        url = f"https://www.tripadvisor.com/Search?q={requests.utils.quote_plus(query)}"
+        # Try different search approaches
+        from urllib.parse import quote_plus
+        
+        # First try direct restaurant search
+        url = f"https://www.tripadvisor.com/Restaurants-g60763-{quote_plus(city)}.html"
+        print(f"Trying direct restaurant list URL: {url}", file=sys.stderr)
         
         html = fetch_html(url)
         if not html:
-            print(f"Could not fetch search results for {query}", file=sys.stderr)
+            print(f"Could not fetch search results for {city}", file=sys.stderr)
             return {"name": place_name, "location": location, "tripadvisor_data": {}}
         
         soup = BeautifulSoup(html, "html.parser")
@@ -63,16 +66,36 @@ def search_tripadvisor(place_name, location):
                 restaurant_link = result["href"]
                 print(f"Found result via Restaurant_Review: {restaurant_link}", file=sys.stderr)
         
+        # Try looking for specific selectors from the current TripAdvisor UI
+        if not restaurant_link:
+            links = soup.select("div.result-title a")
+            if links and links[0].get("href"):
+                restaurant_link = links[0]["href"]
+                print(f"Found result via div.result-title: {restaurant_link}", file=sys.stderr)
+                
+        # Look for any cards with links
+        if not restaurant_link:
+            links = soup.select(".location-meta-block a, .ui_card a, .search-result a")
+            for link in links:
+                if link.get("href") and ("Review" in link["href"] or "Attraction" in link["href"] or "Hotel" in link["href"]):
+                    restaurant_link = link["href"]
+                    print(f"Found result via generalized link search: {restaurant_link}", file=sys.stderr)
+                    break
+        
         # Try to find any review link as fallback
         if not restaurant_link:
             # Look for any review link that might match our place
-            review_links = soup.select('a[href*="Review"][href*="' + place_name.split()[0].lower() + '"]')
-            if review_links:
-                restaurant_link = review_links[0]["href"]
-                print(f"Found result via generic review link: {restaurant_link}", file=sys.stderr)
+            try:
+                first_word = place_name.split()[0].lower()
+                review_links = soup.select(f'a[href*="Review"][href*="{first_word}"]')
+                if review_links:
+                    restaurant_link = review_links[0]["href"]
+                    print(f"Found result via generic review link: {restaurant_link}", file=sys.stderr)
+            except Exception as e:
+                print(f"Error in finding generic review link: {e}", file=sys.stderr)
         
         if not restaurant_link:
-            print(f"No search results found for {query}", file=sys.stderr)
+            print(f"No search results found for {place_name} in {city}", file=sys.stderr)
             return {"name": place_name, "location": location, "tripadvisor_data": {}}
         
         # Add domain if needed

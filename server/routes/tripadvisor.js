@@ -23,8 +23,8 @@ router.get('/', async (req, res) => {
     
     console.log(`TripAdvisor request for: "${place_name}" in "${location}"`);
     
-    // Call the improved Python script to scrape TripAdvisor data
-    const pythonPath = path.join(process.cwd(), 'improved_tripadvisor_scraper.py');
+    // Call the service-based Python script to scrape TripAdvisor data
+    const pythonPath = path.join(process.cwd(), 'tripadvisor_service_scraper.py');
     const command = `python3 ${pythonPath} --place "${place_name}" --location "${location}"`;
     
     exec(command, (error, stdout, stderr) => {
