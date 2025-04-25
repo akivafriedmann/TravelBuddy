@@ -1,10 +1,17 @@
 const express = require('express');
 const https = require('https');
 const http = require('http');
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Middleware
 app.use(express.json());
+
+// Serve static files from the public directory
+const publicPath = path.join(__dirname, 'public');
+app.use(express.static(publicPath));
+console.log('Serving static files from:', publicPath);
 
 // Helper function to make HTTP requests
 function makeRequest(url) {
@@ -387,9 +394,14 @@ app.get('/api/details', async (req, res) => {
   }
 });
 
-// Main travel planner web app
+// Main travel planner web app - serve the static index.html
 app.get('/', (req, res) => {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
+  res.sendFile(path.join(publicPath, 'index.html'));
+});
+
+/* Commented out the old inline HTML version
+app.get('/inline-html', (req, res) => {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
   
   const html = `
 <!DOCTYPE html>
@@ -805,6 +817,7 @@ app.get('/', (req, res) => {
   
   res.send(html);
 });
+*/
 
 // Start the server
 app.listen(PORT, '0.0.0.0', () => {
