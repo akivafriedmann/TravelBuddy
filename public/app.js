@@ -181,19 +181,81 @@ function initMap() {
         // Update map center
         map.setCenter(currentLocation);
         
+        // Log success
+        console.log("Successfully obtained user location on initial load:", currentLocation);
+        
         // Load nearby places
         loadNearbyPlaces(currentLocation);
+        
+        // Try to get address for location
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({
+          location: currentLocation
+        }, (results, status) => {
+          if (status === google.maps.GeocoderStatus.OK && results[0]) {
+            // Update input field with readable address
+            document.getElementById('location-input').value = results[0].formatted_address;
+          }
+        });
       },
       error => {
-        console.log('Geolocation error or permission denied:', error);
-        // Use default location
-        loadNearbyPlaces(currentLocation);
+        console.log('Geolocation error or permission denied on initial load:', error);
+        
+        // Show a notification asking user to enter location manually
+        const notification = document.createElement('div');
+        notification.className = 'alert alert-info alert-dismissible fade show';
+        notification.setAttribute('role', 'alert');
+        notification.innerHTML = `
+          <i class="fas fa-info-circle"></i> 
+          Please enter a location to search for places.
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        try {
+          // Add notification to the page
+          const container = document.querySelector('.container');
+          if (container) {
+            container.insertBefore(notification, container.firstChild);
+          }
+          
+          // Focus on input to encourage manual entry
+          document.getElementById('location-input').focus();
+        } catch (e) {
+          console.error("Error showing notification:", e);
+        }
+      },
+      {
+        timeout: 8000, // 8 second timeout
+        maximumAge: 0,
+        enableHighAccuracy: true
       }
     );
   } else {
     // Browser doesn't support geolocation
-    console.log('Geolocation not supported');
-    loadNearbyPlaces(currentLocation);
+    console.log('Geolocation not supported by this browser');
+    
+    // Show a notification asking user to enter location manually
+    const notification = document.createElement('div');
+    notification.className = 'alert alert-info alert-dismissible fade show';
+    notification.setAttribute('role', 'alert');
+    notification.innerHTML = `
+      <i class="fas fa-info-circle"></i> 
+      Your browser doesn't support location services. Please enter a location to search.
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    try {
+      // Add notification to the page
+      const container = document.querySelector('.container');
+      if (container) {
+        container.insertBefore(notification, container.firstChild);
+      }
+      
+      // Focus on input to encourage manual entry
+      document.getElementById('location-input').focus();
+    } catch (e) {
+      console.error("Error showing notification:", e);
+    }
   }
 }
 
@@ -281,34 +343,38 @@ function useMyLocation() {
   
   // Helper function to use a default location when geolocation fails
   function useDefaultLocation(reason) {
+    console.log("Using default location because: ", reason);
     hideLoading();
     locationButton.innerHTML = originalText;
     locationButton.disabled = false;
     
-    // Use New York City as default location
-    const defaultLocation = { lat: 40.7128, lng: -74.0060 };
-    
-    // Update map and load places with default location
-    currentLocation = defaultLocation;
-    map.setCenter(defaultLocation);
-    loadNearbyPlaces(defaultLocation);
-    
-    // Set a default location name in the search input
-    document.getElementById('location-input').value = "New York City";
-    
-    // Show a notification to the user
+    // *** Allow the user to manually enter a location instead of forcing New York
+    // Display a notification that geolocation failed
     const notification = document.createElement('div');
     notification.className = 'alert alert-warning alert-dismissible fade show';
     notification.setAttribute('role', 'alert');
     notification.innerHTML = `
       <i class="fas fa-exclamation-triangle"></i> 
-      ${reason}. Using New York City as default location.
+      ${reason}. Please enter your location manually.
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
     
-    // Add notification to the top of the page
-    const container = document.querySelector('.container');
-    container.insertBefore(notification, container.firstChild);
+    try {
+      // Add notification to the top of the page
+      const container = document.querySelector('.container');
+      if (container) {
+        container.insertBefore(notification, container.firstChild);
+      } else {
+        console.error("Container element not found for notification");
+        // Try an alternative approach
+        document.body.insertBefore(notification, document.body.firstChild);
+      }
+      
+      // Focus on the location input to encourage manual entry
+      document.getElementById('location-input').focus();
+    } catch (e) {
+      console.error("Error showing notification:", e);
+    }
   }
 }
 

@@ -24,8 +24,10 @@ router.get('/', async (req, res) => {
     console.log(`TripAdvisor request for: "${place_name}" in "${location}"`);
     
     // Call the service-based Python script to scrape TripAdvisor data
-    const pythonPath = path.join(process.cwd(), 'tripadvisor_service_scraper.py');
+    // Use absolute path from the workspace root
+    const pythonPath = '/home/runner/workspace/tripadvisor_service_scraper.py';
     const command = `python3 ${pythonPath} --place "${place_name}" --location "${location}"`;
+    console.log(`Executing Python script: ${pythonPath}`);
     
     exec(command, (error, stdout, stderr) => {
       // We'll continue gracefully even if there are errors with the scraper

@@ -4,8 +4,9 @@ const fetch = require('node-fetch');
 const path = require('path');
 const { spawn } = require('child_process');
 
-// Import routes
-const tripadvisorRoutes = require('./server/routes/tripadvisor');
+// We'll set up TripAdvisor routes directly instead of importing
+// to avoid path resolution issues with the Python script
+// const tripadvisorRoutes = require('./server/routes/tripadvisor');
 
 const app = express();
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
@@ -14,8 +15,102 @@ const WEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
 // Serve static front-end
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Mount the TripAdvisor routes
-app.use('/api/tripadvisor', tripadvisorRoutes);
+// Direct implementation of TripAdvisor route with correct path for this server
+const { exec } = require('child_process');
+
+app.get('/api/tripadvisor', async (req, res) => {
+  try {
+    const { place_name, location } = req.query;
+    
+    if (!place_name || !location) {
+      return res.status(400).json({
+        status: 'ERROR',
+        message: 'Both place name and location must be provided'
+      });
+    }
+    
+    console.log(`TripAdvisor request for: "${place_name}" in "${location}"`);
+    
+    // Use the absolute path to the Python script
+    // The ProxyServer runs from a different directory than the Server
+    const pythonPath = '/home/runner/workspace/tripadvisor_service_scraper.py';
+    const command = `python3 ${pythonPath} --place "${place_name}" --location "${location}"`;
+    console.log(`Executing Python script: ${pythonPath}`);
+    
+    exec(command, (error, stdout, stderr) => {
+      // We'll continue gracefully even if there are errors with the scraper
+      if (error) {
+        console.error(`Error executing TripAdvisor scraper: ${error.message}`);
+        // Instead of returning a 500 error, we'll return a graceful "no data" response
+        return res.json({
+          status: 'OK',
+          result: {
+            name: place_name,
+            location: location,
+            tripadvisor_data: null,
+            source_error: error.message
+          }
+        });
+      }
+      
+      if (stderr) {
+        console.error(`TripAdvisor scraper warning: ${stderr}`);
+      }
+      
+      try {
+        // Parse the JSON output from the Python script
+        console.log(`TripAdvisor raw output: ${stdout}`);
+        const data = JSON.parse(stdout);
+        
+        // Check if we have meaningful TripAdvisor data
+        if (data && data.tripadvisor_data && 
+            (data.tripadvisor_data.rating || 
+             data.tripadvisor_data.url || 
+             data.tripadvisor_data.rank_position)) {
+          console.log(`Found TripAdvisor data for "${place_name}":`, data.tripadvisor_data);
+          
+          // Return the TripAdvisor data
+          return res.json({
+            status: 'OK',
+            result: data
+          });
+        } else {
+          console.log(`No meaningful TripAdvisor data found for "${place_name}"`);
+          // We have data but no meaningful TripAdvisor info
+          return res.json({
+            status: 'OK',
+            result: {
+              name: place_name,
+              location: location,
+              tripadvisor_data: null,
+              access_limited: true  // Flag indicating access is limited
+            }
+          });
+        }
+      } catch (parseError) {
+        console.error(`Error parsing TripAdvisor data: ${parseError.message}`);
+        console.error(`Raw output was: ${stdout}`);
+        // Instead of returning a 500 error, we'll return a graceful "no data" response
+        return res.json({
+          status: 'OK',
+          result: {
+            name: place_name,
+            location: location,
+            tripadvisor_data: null,
+            parse_error: parseError.message
+          }
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error in TripAdvisor route:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
 
 // 1) Geocode address → lat/lng
 app.get('/api/geocode', async (req, res) => {

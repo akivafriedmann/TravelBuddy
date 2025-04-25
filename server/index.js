@@ -5,6 +5,7 @@ const fs = require('fs');
 const placesRoutes = require('./routes/places');
 const geocodingRoutes = require('./routes/geocoding');
 const itineraryRoutes = require('./routes/itineraries');
+const tripadvisorRoutes = require('./routes/tripadvisor');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -768,6 +769,138 @@ app.use('/itineraries', itineraryRoutes);
 app.use('/api/places', placesRoutes);
 app.use('/api/geocoding', geocodingRoutes);
 app.use('/api/itineraries', itineraryRoutes);
+app.use('/api/tripadvisor', tripadvisorRoutes);
+
+// Direct API endpoint for photo proxy
+app.get('/api/photo', async (req, res) => {
+  try {
+    const { photoreference, maxwidth = 400, maxheight } = req.query;
+    
+    if (!photoreference) {
+      return res.status(400).json({ error: 'Photo reference is required' });
+    }
+    
+    // Build URL for the Google Places Photo API
+    const url = new URL('https://maps.googleapis.com/maps/api/place/photo');
+    const params = {
+      photoreference,
+      key: process.env.GOOGLE_MAPS_API_KEY,
+      maxwidth
+    };
+    
+    // Add maxheight if provided
+    if (maxheight) {
+      params.maxheight = maxheight;
+    }
+    
+    // Set URL parameters
+    url.search = new URLSearchParams(params).toString();
+    
+    // Fetch the image from Google
+    const response = await fetch(url.toString(), { 
+      redirect: 'follow'
+    });
+    
+    // If Google redirects, forward that redirect
+    const finalUrl = response.url;
+    
+    // If we get redirected, just redirect the client
+    if (response.redirected) {
+      res.redirect(finalUrl);
+      return;
+    }
+    
+    // Otherwise forward the response
+    const imageBuffer = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type');
+    
+    res.setHeader('Content-Type', contentType || 'image/jpeg');
+    res.send(Buffer.from(imageBuffer));
+  } catch (error) {
+    console.error('Error fetching photo:', error);
+    res.status(500).json({ error: 'Failed to fetch photo' });
+  }
+});
+
+// Direct API endpoint for nearby places to fix route mismatch
+app.get('/api/nearby', async (req, res) => {
+  try {
+    const { lat, lng, type = 'restaurant', radius = 1500, keyword } = req.query;
+    
+    if (!lat || !lng) {
+      return res.status(400).json({ status: 'ERROR', error: 'Missing required location parameters' });
+    }
+    
+    // Build URL with optional parameters
+    const url = new URL('https://maps.googleapis.com/maps/api/place/nearbysearch/json');
+    const params = {
+      location: `${lat},${lng}`,
+      radius,
+      type,
+      key: process.env.GOOGLE_MAPS_API_KEY
+    };
+    
+    // Add keyword if provided
+    if (keyword) {
+      params.keyword = keyword;
+    }
+    
+    // Set URL parameters
+    url.search = new URLSearchParams(params).toString();
+    
+    // Make request to Google Places API
+    const response = await fetch(url.toString());
+    const data = await response.json();
+    
+    // Return the results with the original status
+    res.json({
+      status: data.status,
+      results: data.results || []
+    });
+  } catch (error) {
+    console.error('Error fetching nearby places:', error);
+    res.status(500).json({ 
+      status: 'ERROR', 
+      error: 'Failed to fetch nearby places',
+      message: error.message
+    });
+  }
+});
+
+// Direct API endpoint for place details
+app.get('/api/details', async (req, res) => {
+  try {
+    const { place_id, fields } = req.query;
+    
+    if (!place_id) {
+      return res.status(400).json({ error: 'Place ID is required' });
+    }
+    
+    // Build URL for the Google Places Details API
+    const url = new URL('https://maps.googleapis.com/maps/api/place/details/json');
+    const params = {
+      place_id,
+      key: process.env.GOOGLE_MAPS_API_KEY,
+    };
+    
+    // Add fields if provided
+    if (fields) {
+      params.fields = fields;
+    }
+    
+    // Set URL parameters
+    url.search = new URLSearchParams(params).toString();
+    
+    // Make request to Google Places API
+    const response = await fetch(url.toString());
+    const data = await response.json();
+    
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching place details:', error);
+    res.status(500).json({ error: 'Failed to fetch place details' });
+  }
+});
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
