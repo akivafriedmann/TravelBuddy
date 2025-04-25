@@ -649,9 +649,22 @@ function createPlaceCard(place, index) {
     
     ratingHtml += '</div>'; // End of Google rating div
     
-    // Note: TripAdvisor placeholder is added directly in the HTML template
+    // TripAdvisor placeholder with loading indicator
+    ratingHtml += `
+      <div class="d-flex align-items-center mt-2" id="tripadvisor-${place.place_id}">
+        <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" 
+             alt="TripAdvisor" height="15" class="me-2">
+        <div class="spinner-border spinner-border-sm text-success" role="status">
+          <span class="visually-hidden">Loading TripAdvisor data...</span>
+        </div>
+        <small class="text-muted ms-2">Loading...</small>
+      </div>
+    `;
     
     ratingHtml += '</div>'; // End star-rating div
+    
+    // Trigger TripAdvisor data fetch
+    fetchTripAdvisorData(place);
   }
   
   // Format price level
