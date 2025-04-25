@@ -82,12 +82,43 @@ def search_for_place(place_name, location):
         # Strategy 4: More specific with "hotel" keyword if likely a hotel
         f"{place_name} hotel {location}",
         # Strategy 5: More specific with "attraction" keyword if likely an attraction
-        f"{place_name} attraction {location}"
+        f"{place_name} attraction {location}",
+        # Strategy 6: Try direct TripAdvisor URLs for famous attractions (if name is short and well-known)
+        f"direct:{place_name}"
     ]
     
     all_link_candidates = []
     
+    # For very famous landmarks, try direct URLs first
+    if len(place_name.split()) <= 3 and "direct:" in search_strategies[-1]:
+        # Convert name to TripAdvisor slug format (e.g., "Eiffel Tower" -> "Eiffel-Tower")
+        slug = place_name.replace(" ", "-")
+        # Common TripAdvisor URL patterns for attractions
+        direct_urls = [
+            f"https://www.tripadvisor.com/Attraction_Review-g-d-Reviews-{slug}",
+            f"https://www.tripadvisor.com/Attraction_Review-g-d-{slug}"
+        ]
+        
+        for url in direct_urls:
+            try:
+                print(f"Trying direct URL: {url}", file=sys.stderr)
+                html = fetch_via_service(url)
+                if html and len(html) > 5000:  # Only consider substantial responses
+                    soup = BeautifulSoup(html, "html.parser")
+                    page_title = soup.title.get_text() if soup.title else ""
+                    
+                    # Check if page seems like a valid attraction page
+                    if any(term in page_title.lower() for term in ["tripadvisor", "review", "attraction"]):
+                        print(f"Found direct page: {page_title}", file=sys.stderr)
+                        return url
+            except Exception as e:
+                print(f"Error with direct URL {url}: {e}", file=sys.stderr)
+    
+    # Try search strategies
     for query in search_strategies:
+        if query.startswith("direct:"):  # Skip direct approach we already tried
+            continue
+            
         print(f"Trying search query: {query}", file=sys.stderr)
         search_url = f"https://www.tripadvisor.com/Search?q={quote_plus(query)}"
         
@@ -101,50 +132,40 @@ def search_for_place(place_name, location):
         # Multiple strategies to find a relevant link within this search
         link_candidates = []
         
-        # Strategy 1: Look for result title links
-        title_links = soup.select('a.result-title')
-        if title_links:
-            for link in title_links:
-                if link.get('href'):
-                    # Check if link text contains place name for better relevance
-                    link_text = link.get_text().lower()
+        # Look for links with different approaches
+        # Check all patterns that could indicate a result link
+        selectors = [
+            'a.result-title',
+            'a[href*="_Review"]',
+            'a[href*="Attraction_Review"]',
+            'a[href*="Restaurant_Review"]',
+            'a[href*="Hotel_Review"]',
+            '.result_wrap a',
+            '.search-results a',
+            'a.property_title',
+            '[data-test-target="search-result"] a'
+        ]
+        
+        for selector in selectors:
+            links = soup.select(selector)
+            for link in links:
+                try:
+                    # Skip if no href
+                    if not link.has_attr('href'):
+                        continue
+                        
+                    url = link['href']
+                    
+                    # Skip if we already have this URL
+                    if any(c['url'] == url for c in link_candidates):
+                        continue
+                        
+                    # Get link text and normalize
+                    link_text = link.get_text().strip().lower()
                     place_name_lower = place_name.lower()
                     
                     # Calculate relevance score
-                    score = 5  # Base score for title matches
-                    if place_name_lower in link_text:
-                        score += 3  # Bonus for name match
-                    
-                    # Extract type from URL to improve scoring
-                    url = link['href']
-                    if 'Restaurant_Review' in url:
-                        link_type = 'restaurant'
-                    elif 'Hotel_Review' in url:
-                        link_type = 'hotel'
-                    elif 'Attraction_Review' in url:
-                        link_type = 'attraction'
-                    else:
-                        link_type = 'unknown'
-                    
-                    link_candidates.append({
-                        'url': url,
-                        'score': score,
-                        'source': 'result-title',
-                        'text': link_text,
-                        'type': link_type
-                    })
-        
-        # Strategy 2: Look for ALL Review links (restaurants, hotels, attractions)
-        review_links = soup.select('a[href*="_Review"]')
-        if review_links:
-            for link in review_links:
-                if link.get('href') and not any(c['url'] == link['href'] for c in link_candidates):
-                    url = link['href']
-                    link_text = link.get_text().lower()
-                    place_name_lower = place_name.lower()
-                    
-                    # Calculate score based on type and text match
-                    score = 3  # Base score
+                    score = 2  # Base score
                     
                     # Determine type for better relevance
                     if 'Restaurant_Review' in url:
@@ -159,17 +180,35 @@ def search_for_place(place_name, location):
                     else:
                         link_type = 'unknown'
                     
-                    # Score bonus for name match
+                    # Boost score based on matches
                     if place_name_lower in link_text:
-                        score += 2
+                        score += 3  # Big bonus for direct name match
                     
+                    # Check for partial name matches (for multi-word names)
+                    words = place_name_lower.split()
+                    matching_words = sum(1 for word in words if word in link_text and len(word) > 3)
+                    score += matching_words
+                    
+                    # Boost more for exact selector matches
+                    if selector == 'a.result-title':
+                        score += 2
+                    elif '.search-results' in selector:
+                        score += 1
+                    
+                    # Add location match bonus
+                    if location.lower() in link_text:
+                        score += 1
+                    
+                    # Add to candidates
                     link_candidates.append({
                         'url': url,
                         'score': score,
-                        'source': f'{link_type}-review',
+                        'source': selector,
                         'text': link_text,
                         'type': link_type
                     })
+                except Exception as e:
+                    print(f"Error processing link: {e}", file=sys.stderr)
         
         # Add these candidates to our overall list
         all_link_candidates.extend(link_candidates)
@@ -208,16 +247,61 @@ def extract_tripadvisor_data(detail_url):
     data = {"url": detail_url}
     
     try:
-        # Extract rating: Look for bubble ratings (e.g., "bubble_45" = 4.5 stars)
+        # Extract TripAdvisor rating - multiple approaches for different page layouts
+        
+        # Approach 1: Look for bubble ratings (e.g., "bubble_45" = 4.5 stars)
+        rating_found = False
         rating_elem = soup.find("span", class_=re.compile(r"ui_bubble_rating bubble_\d+"))
-        if rating_elem and hasattr(rating_elem, 'get'):  # Make sure it's a Tag-like object
-            class_list = rating_elem.get("class", []) or []  # Handle None return
-            bubble_classes = [c for c in class_list if c and c.startswith("bubble_")]
-            if bubble_classes:
-                cls = bubble_classes[0]
-                score = int(cls.split("_")[1]) / 10.0
-                data["rating"] = score
-                print(f"Found rating: {score}", file=sys.stderr)
+        
+        if rating_elem:
+            try:
+                # Get the class attribute as a string or list and process it
+                class_attr = rating_elem.get("class")
+                if class_attr:
+                    # Convert to list if it's a string
+                    class_list = class_attr if isinstance(class_attr, list) else [class_attr]
+                    # Find the bubble class
+                    bubble_classes = [c for c in class_list if c and isinstance(c, str) and c.startswith("bubble_")]
+                    if bubble_classes:
+                        cls = bubble_classes[0]
+                        try:
+                            score = int(cls.split("_")[1]) / 10.0
+                            data["rating"] = score
+                            rating_found = True
+                            print(f"Found bubble rating: {score}", file=sys.stderr)
+                        except (IndexError, ValueError) as e:
+                            print(f"Error parsing bubble rating: {e}", file=sys.stderr)
+            except Exception as e:
+                print(f"Error processing rating element: {e}", file=sys.stderr)
+        
+        # Approach 2: Look for numeric rating displayed in text
+        if not rating_found:
+            # Try different selectors that might contain the rating
+            rating_selectors = [
+                ".ratingValue span", 
+                ".reviewCount strong",
+                ".ratingBox .ratingNumber",
+                ".rating_wrap .rating",
+                "[data-test-target='restaurant-detail-info'] .ratingValue",
+                ".rating_and_popularity .rating"
+            ]
+            
+            for selector in rating_selectors:
+                rating_text_elem = soup.select_one(selector)
+                if rating_text_elem:
+                    try:
+                        rating_text = rating_text_elem.get_text().strip()
+                        # Extract numeric value with regex
+                        rating_match = re.search(r"([0-9]+(\.[0-9]+)?)", rating_text)
+                        if rating_match:
+                            score = float(rating_match.group(1))
+                            if 0 <= score <= 5:  # Validate score is in expected range
+                                data["rating"] = score
+                                rating_found = True
+                                print(f"Found text rating: {score}", file=sys.stderr)
+                                break
+                    except Exception as e:
+                        print(f"Error extracting rating from text: {e}", file=sys.stderr)
         
         # Extract review count
         review_count_elem = soup.find("span", class_="reviewCount")

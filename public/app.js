@@ -779,103 +779,178 @@ async function fetchTripAdvisorData(place) {
   try {
     const { place_id, name, vicinity } = place;
     
-    // Find the placeholder element for this place by ID first, then by class if necessary
+    // Find the placeholder element for this place by ID
     let taRatingElement = document.getElementById(`tripadvisor-${place.place_id}`);
     
-    // If not found by ID, try finding by class
-    if (!taRatingElement) {
-      taRatingElement = document.querySelector(`.tripadvisor-rating-${place.place_id}`);
-    }
-    
-    // If still not found, log the error and exit
+    // If not found by ID, log the error and exit
     if (!taRatingElement) {
       console.error(`TripAdvisor rating element not found for ${place.place_id}`);
       return;
     }
     
-    console.log(`Found TripAdvisor element for ${place.name}:`, taRatingElement);
+    console.log(`Fetching TripAdvisor data for ${name} in ${vicinity}`);
     
-    // Try different search approaches
-    let candidates = [];
+    // Show loading state
+    taRatingElement.innerHTML = `
+      <div class="d-flex align-items-center justify-content-center">
+        <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" 
+             alt="TripAdvisor" height="15" class="me-2">
+        <div class="spinner-border spinner-border-sm text-success" role="status">
+          <span class="visually-hidden">Loading TripAdvisor data...</span>
+        </div>
+        <small class="text-muted ms-2">Loading...</small>
+      </div>
+    `;
     
     if (name && vicinity) {
-      console.log(`Fetching TripAdvisor data for place card: ${name} in ${vicinity}`);
-      
       try {
-        // Make the API call with full address
+        // Make the API call with full address (both name and vicinity/location)
         const taResponse = await fetch(`/api/tripadvisor?place_name=${encodeURIComponent(name)}&location=${encodeURIComponent(vicinity)}`);
         const taData = await taResponse.json();
-        console.log("TripAdvisor data response:", taData);
+        console.log("TripAdvisor data response for", name, ":", taData);
         
         if (taData.status === 'OK' && taData.result && taData.result.tripadvisor_data) {
           const tripadvisorData = taData.result.tripadvisor_data;
           
           // Check if we have meaningful TripAdvisor data (rating)
-          if (tripadvisorData && tripadvisorData.rating) {
-            console.log(`Got TripAdvisor rating for ${name}: ${tripadvisorData.rating}`);
+          if (tripadvisorData && (tripadvisorData.rating || tripadvisorData.url)) {
+            console.log(`Got TripAdvisor data for ${name}:`, tripadvisorData);
             
-            let taHtml = '<div class="d-flex align-items-center">';
-            taHtml += '<small class="text-muted me-1">TripAdvisor:</small>';
+            // Start building the HTML for the TripAdvisor section
+            let taHtml = '<div class="d-flex align-items-center justify-content-center">';
+            taHtml += '<img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="me-2">';
             
-            // TripAdvisor uses circles instead of stars
-            for (let i = 0; i < Math.floor(tripadvisorData.rating); i++) {
-              taHtml += '<i class="fas fa-circle text-success" style="font-size: 0.7rem;"></i>';
+            // If we have a rating, display it
+            if (tripadvisorData.rating) {
+              taHtml += '<div class="d-flex align-items-center">';
+              
+              // TripAdvisor uses circles instead of stars
+              for (let i = 0; i < Math.floor(tripadvisorData.rating); i++) {
+                taHtml += '<i class="fas fa-circle text-success" style="font-size: 0.7rem;"></i>';
+              }
+              
+              // Half circle if needed
+              if (tripadvisorData.rating % 1 >= 0.5) {
+                taHtml += '<i class="fas fa-adjust text-success" style="font-size: 0.7rem;"></i>';
+              }
+              
+              // Empty circles
+              for (let i = 0; i < (5 - Math.ceil(tripadvisorData.rating)); i++) {
+                taHtml += '<i class="far fa-circle text-success" style="font-size: 0.7rem;"></i>';
+              }
+              
+              taHtml += ` <span class="ms-1">${tripadvisorData.rating}</span>`;
+              
+              if (tripadvisorData.review_count) {
+                taHtml += ` <span class="text-muted ms-1">(${tripadvisorData.review_count})</span>`;
+              }
+              
+              taHtml += '</div>';
+            } else {
+              // If no rating but we have a URL, show a message
+              taHtml += '<span class="text-muted">Listed on TripAdvisor</span>';
             }
-            
-            // Half circle if needed
-            if (tripadvisorData.rating % 1 >= 0.5) {
-              taHtml += '<i class="fas fa-adjust text-success" style="font-size: 0.7rem;"></i>';
-            }
-            
-            // Empty circles
-            for (let i = 0; i < (5 - Math.ceil(tripadvisorData.rating)); i++) {
-              taHtml += '<i class="far fa-circle text-success" style="font-size: 0.7rem;"></i>';
-            }
-            
-            taHtml += ` <span class="ms-1">${tripadvisorData.rating}</span>`;
             
             // Show rank if available
             if (tripadvisorData.rank_position && tripadvisorData.rank_total) {
-              taHtml += ` <small class="text-success ms-1">#${tripadvisorData.rank_position}/${tripadvisorData.rank_total}</small>`;
+              taHtml += `<div class="ms-2 badge bg-success">#${tripadvisorData.rank_position}/${tripadvisorData.rank_total}</div>`;
             }
             
             taHtml += '</div>';
+            
+            // If we have a TripAdvisor URL, add a link
+            if (tripadvisorData.url) {
+              taHtml += `
+                <div class="mt-1 text-center">
+                  <a href="${tripadvisorData.url}" target="_blank" class="btn btn-sm btn-outline-success">
+                    <i class="fas fa-external-link-alt fa-xs me-1"></i> View on TripAdvisor
+                  </a>
+                </div>
+              `;
+            }
+            
             taRatingElement.innerHTML = taHtml;
-            console.log("Updated TripAdvisor rating HTML");
+            console.log("Updated TripAdvisor HTML for", name);
             return;
+          } else {
+            console.log("TripAdvisor data didn't have rating or URL for", name);
           }
         }
         
-        // If we reach here, we either didn't get TripAdvisor data or the API call failed
-        // Check if there's a specific reason for the limitation
-        if (taData.result && taData.result.access_limited) {
-          taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-info-circle fa-xs"></i> TripAdvisor access limited</small>';
-        } else if (taData.result && taData.result.source_error) {
-          taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> TripAdvisor connection issue</small>';
-        } else if (taData.result && taData.result.parse_error) {
-          taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> TripAdvisor data format issue</small>';
+        // Handle specific result flags from the API
+        if (taData.result) {
+          if (taData.result.access_limited) {
+            taRatingElement.innerHTML = `
+              <div class="text-center">
+                <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
+                <small class="d-block text-muted"><i class="fas fa-info-circle fa-xs"></i> TripAdvisor data unavailable</small>
+              </div>
+            `;
+          } else if (taData.result.source_error) {
+            taRatingElement.innerHTML = `
+              <div class="text-center">
+                <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
+                <small class="d-block text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> Connection issue</small>
+              </div>
+            `;
+          } else if (taData.result.parse_error) {
+            taRatingElement.innerHTML = `
+              <div class="text-center">
+                <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
+                <small class="d-block text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> Format issue</small>
+              </div>
+            `;
+          } else {
+            // Generic not found message
+            taRatingElement.innerHTML = `
+              <div class="text-center">
+                <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
+                <small class="d-block text-muted"><i class="fas fa-info-circle fa-xs"></i> Not found</small>
+              </div>
+            `;
+          }
         } else {
-          // Generic message for other cases
-          taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-info-circle fa-xs"></i> TripAdvisor data unavailable</small>';
+          // API error
+          taRatingElement.innerHTML = `
+            <div class="text-center">
+              <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
+              <small class="d-block text-muted"><i class="fas fa-exclamation-triangle fa-xs"></i> API error</small>
+            </div>
+          `;
         }
       } catch (fetchError) {
         console.error('Error fetching TripAdvisor data:', fetchError);
-        taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> Unable to connect to TripAdvisor</small>';
+        taRatingElement.innerHTML = `
+          <div class="text-center">
+            <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
+            <small class="d-block text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> Connection failed</small>
+          </div>
+        `;
       }
     } else {
       // Not enough information to fetch TripAdvisor data
-      taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-info-circle fa-xs"></i> Insufficient location details</small>';
+      taRatingElement.innerHTML = `
+        <div class="text-center">
+          <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
+          <small class="d-block text-muted"><i class="fas fa-info-circle fa-xs"></i> Insufficient details</small>
+        </div>
+      `;
     }
   } catch (error) {
     console.error('Error in TripAdvisor data processing:', error);
-    // Find the element and update with error message
+    // Try to find and update the element with an error message
     try {
-      const taRatingElement = document.querySelector(`.tripadvisor-rating-${place.place_id}`);
+      const taRatingElement = document.getElementById(`tripadvisor-${place.place_id}`);
       if (taRatingElement) {
-        taRatingElement.innerHTML = '<small class="text-muted"><i class="fas fa-exclamation-triangle fa-xs"></i> TripAdvisor retrieval error</small>';
+        taRatingElement.innerHTML = `
+          <div class="text-center">
+            <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
+            <small class="d-block text-muted"><i class="fas fa-exclamation-triangle fa-xs"></i> Error</small>
+          </div>
+        `;
       }
     } catch (e) {
-      // If we can't even update the error message, just log it
+      // Cannot update the error message, just log it
       console.error('Cannot update TripAdvisor element with error:', e);
     }
   }
