@@ -255,6 +255,138 @@ app.get('/api/maps-loader', (req, res) => {
   `);
 });
 
+// Nearby places search endpoint
+app.get('/api/nearby', async (req, res) => {
+  try {
+    const { lat, lng, type = 'restaurant', radius = 1500, keyword } = req.query;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    
+    if (!lat || !lng) {
+      return res.status(400).json({ status: 'ERROR', error: 'Missing required location parameters' });
+    }
+    
+    if (!apiKey) {
+      return res.status(500).json({ status: 'ERROR', error: 'Google Maps API key is not configured' });
+    }
+    
+    // Build URL with parameters
+    let url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&key=${apiKey}`;
+    
+    // Add keyword if provided
+    if (keyword) {
+      url += `&keyword=${encodeURIComponent(keyword)}`;
+    }
+    
+    console.log(`Fetching nearby places: ${url.replace(apiKey, 'API_KEY')}`);
+    
+    const data = await makeRequest(url);
+    
+    // Process the response to include direct photo URLs
+    if (data.results) {
+      data.results.forEach(place => {
+        if (place.photos && place.photos.length > 0) {
+          place.photos = place.photos.map(photo => {
+            return {
+              ...photo,
+              url: `/api/photo?reference=${photo.photo_reference}&maxwidth=400&maxheight=200`
+            };
+          });
+        }
+      });
+    }
+    
+    console.log(`Found ${data.results ? data.results.length : 0} nearby places`);
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching nearby places:', error);
+    res.status(500).json({ status: 'ERROR', error: 'Failed to fetch nearby places' });
+  }
+});
+
+// Places search endpoint for the embedded Google Maps demo
+app.get('/api/places/search', async (req, res) => {
+  try {
+    const { lat, lng, radius = 1500, type = 'tourist_attraction' } = req.query;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    
+    if (!lat || !lng) {
+      return res.status(400).json({ error: 'Latitude and longitude are required' });
+    }
+    
+    if (!apiKey) {
+      return res.status(500).json({ status: 'ERROR', error: 'Google Maps API key is not configured' });
+    }
+    
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&key=${apiKey}`;
+    
+    console.log(`Fetching places/search with: ${url.replace(apiKey, 'API_KEY')}`);
+    
+    const data = await makeRequest(url);
+    
+    // Process the response to include direct photo URLs
+    if (data.results) {
+      data.results.forEach(place => {
+        if (place.photos && place.photos.length > 0) {
+          place.photos = place.photos.map(photo => {
+            return {
+              ...photo,
+              url: `/api/photo?reference=${photo.photo_reference}&maxwidth=400&maxheight=200`
+            };
+          });
+        }
+      });
+    }
+    
+    console.log(`Places/search response: status=${data.status}, results=${data.results ? data.results.length : 0}`);
+    res.json(data);
+  } catch (error) {
+    console.error('Error searching places:', error);
+    res.status(500).json({ error: 'Failed to search places' });
+  }
+});
+
+// Place details endpoint
+app.get('/api/details', async (req, res) => {
+  try {
+    const { place_id } = req.query;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    
+    if (!place_id) {
+      return res.status(400).json({ status: 'ERROR', error: 'Place ID is required' });
+    }
+    
+    if (!apiKey) {
+      return res.status(500).json({ status: 'ERROR', error: 'Google Maps API key is not configured' });
+    }
+    
+    // Optional fields parameter with default comprehensive field list
+    const fields = req.query.fields || 
+      'name,rating,user_ratings_total,formatted_phone_number,formatted_address,opening_hours,website,price_level,reviews,photos,types,geometry';
+    
+    // Build URL
+    const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=${fields}&key=${apiKey}`;
+    
+    console.log(`Fetching place details for ID ${place_id}`);
+    
+    const data = await makeRequest(url);
+    
+    // Process photos to include direct URLs
+    if (data.result && data.result.photos) {
+      data.result.photos = data.result.photos.map(photo => {
+        return {
+          ...photo,
+          url: `/api/photo?reference=${photo.photo_reference}&maxwidth=800&maxheight=500`
+        };
+      });
+    }
+    
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching place details:', error);
+    res.status(500).json({ status: 'ERROR', error: 'Failed to fetch place details' });
+  }
+});
+
 // Main travel planner web app
 app.get('/', (req, res) => {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
