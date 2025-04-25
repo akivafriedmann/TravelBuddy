@@ -13,7 +13,15 @@ const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 const WEATHER_API_KEY = process.env.OPENWEATHER_API_KEY;
 
 // Serve static front-end
-app.use(express.static(path.join(__dirname, 'public')));
+const publicPath = path.join(__dirname, 'public');
+console.log(`Serving static files from: ${publicPath}`);
+app.use(express.static(publicPath));
+
+// Log all requests
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
 
 // Direct implementation of TripAdvisor route with correct path for this server
 const { exec } = require('child_process');
