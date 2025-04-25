@@ -700,14 +700,18 @@ function createPlaceCard(place, index) {
       <div class="card-body">
         <h5 class="card-title">${placeNumber}. ${place.name}</h5>
         ${ratingHtml}
-        <!-- New TripAdvisor placeholder -->
+        <!-- TripAdvisor Rating Section -->
         <div id="tripadvisor-${place.place_id}"
-             class="tripadvisor-rating-${place.place_id} small mb-1 text-center"
-             style="min-height: 20px; border-top: 1px dotted #ddd; padding-top: 4px; margin-top: 4px;">
-          <small class="text-muted">
-            <i class="fas fa-spinner fa-pulse" aria-hidden="true"></i>
-            Fetching TripAdvisor…
-          </small>
+             class="tripadvisor-rating-container small mb-1 py-2"
+             style="min-height: 30px; border-top: 1px dotted #ddd; padding-top: 8px; margin-top: 6px;">
+          <div class="d-flex align-items-center justify-content-center">
+            <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" 
+                 alt="TripAdvisor" height="15" class="me-2">
+            <div class="spinner-border spinner-border-sm text-success" role="status">
+              <span class="visually-hidden">Loading TripAdvisor data...</span>
+            </div>
+            <small class="text-muted ms-2">Loading...</small>
+          </div>
         </div>
         ${priceHtml}
         <p class="card-text">${place.vicinity || ''}</p>

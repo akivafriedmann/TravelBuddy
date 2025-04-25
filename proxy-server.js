@@ -122,7 +122,7 @@ app.get('/api/tripadvisor', (req, res) => {
     const pythonPath = './tripadvisor_service_scraper.py';
     const command = `python3 ${pythonPath} --place "${place_name}" --location "${location}"`;
     
-    console.log(`Executing: ${command}`);
+    console.log(`Executing Python script: ${pythonPath}`);
     
     exec(command, (error, stdout, stderr) => {
       // Handle possible errors with the Python script

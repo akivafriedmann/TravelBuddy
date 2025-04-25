@@ -5,7 +5,7 @@ import sys
 import argparse
 import os
 import re
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from urllib.parse import quote_plus
 
 # Check if we have a ScrapingBee API key in the environment
@@ -71,73 +71,120 @@ def search_for_place(place_name, location):
     """
     Try multiple approaches to find a specific place on TripAdvisor
     """
-    # First try direct search
-    query = f"{place_name} {location}"
-    search_url = f"https://www.tripadvisor.com/Search?q={quote_plus(query)}"
+    # Try different search strategies
+    search_strategies = [
+        # Strategy 1: Direct search with name and location
+        f"{place_name} {location}",
+        # Strategy 2: Just the place name (for very known places like Eiffel Tower)
+        f"{place_name}",
+        # Strategy 3: More specific with "restaurant" keyword if likely a restaurant
+        f"{place_name} restaurant {location}",
+        # Strategy 4: More specific with "hotel" keyword if likely a hotel
+        f"{place_name} hotel {location}",
+        # Strategy 5: More specific with "attraction" keyword if likely an attraction
+        f"{place_name} attraction {location}"
+    ]
     
-    html = fetch_via_service(search_url)
-    if not html:
-        print(f"Failed to fetch search results for {query}", file=sys.stderr)
-        return None
+    all_link_candidates = []
     
-    soup = BeautifulSoup(html, "html.parser")
-    
-    # Multiple strategies to find a relevant link
-    link_candidates = []
-    
-    # Strategy 1: Look for result title links
-    title_links = soup.select('a.result-title')
-    if title_links:
-        for link in title_links:
-            if link.get('href'):
-                link_candidates.append({
-                    'url': link['href'],
-                    'score': 5,  # High score for title matches
-                    'source': 'result-title'
-                })
-    
-    # Strategy 2: Look for Restaurant Review links
-    restaurant_links = soup.select('a[href*="Restaurant_Review"]')
-    if restaurant_links:
-        for link in restaurant_links:
-            if link.get('href'):
-                link_candidates.append({
-                    'url': link['href'],
-                    'score': 4,
-                    'source': 'restaurant-review'
-                })
-    
-    # Strategy 3: Look for Hotel Review links (for hotels)
-    hotel_links = soup.select('a[href*="Hotel_Review"]')
-    if hotel_links:
-        for link in hotel_links:
-            if link.get('href'):
-                link_candidates.append({
-                    'url': link['href'],
-                    'score': 4,
-                    'source': 'hotel-review'
-                })
-    
-    # Strategy 4: Look for links containing the place name
-    if not link_candidates:
-        place_keywords = place_name.lower().split()
-        for keyword in place_keywords:
-            if len(keyword) > 3:  # Only use meaningful keywords
-                links = soup.select(f'a[href*="{keyword}"]')
-                for link in links:
-                    if link.get('href') and ('Review' in link['href'] or 'Show' in link['href']):
-                        link_candidates.append({
-                            'url': link['href'],
-                            'score': 3,
-                            'source': f'keyword-{keyword}'
-                        })
+    for query in search_strategies:
+        print(f"Trying search query: {query}", file=sys.stderr)
+        search_url = f"https://www.tripadvisor.com/Search?q={quote_plus(query)}"
+        
+        html = fetch_via_service(search_url)
+        if not html:
+            print(f"Failed to fetch search results for {query}", file=sys.stderr)
+            continue
+        
+        soup = BeautifulSoup(html, "html.parser")
+        
+        # Multiple strategies to find a relevant link within this search
+        link_candidates = []
+        
+        # Strategy 1: Look for result title links
+        title_links = soup.select('a.result-title')
+        if title_links:
+            for link in title_links:
+                if link.get('href'):
+                    # Check if link text contains place name for better relevance
+                    link_text = link.get_text().lower()
+                    place_name_lower = place_name.lower()
+                    
+                    # Calculate relevance score
+                    score = 5  # Base score for title matches
+                    if place_name_lower in link_text:
+                        score += 3  # Bonus for name match
+                    
+                    # Extract type from URL to improve scoring
+                    url = link['href']
+                    if 'Restaurant_Review' in url:
+                        link_type = 'restaurant'
+                    elif 'Hotel_Review' in url:
+                        link_type = 'hotel'
+                    elif 'Attraction_Review' in url:
+                        link_type = 'attraction'
+                    else:
+                        link_type = 'unknown'
+                    
+                    link_candidates.append({
+                        'url': url,
+                        'score': score,
+                        'source': 'result-title',
+                        'text': link_text,
+                        'type': link_type
+                    })
+        
+        # Strategy 2: Look for ALL Review links (restaurants, hotels, attractions)
+        review_links = soup.select('a[href*="_Review"]')
+        if review_links:
+            for link in review_links:
+                if link.get('href') and not any(c['url'] == link['href'] for c in link_candidates):
+                    url = link['href']
+                    link_text = link.get_text().lower()
+                    place_name_lower = place_name.lower()
+                    
+                    # Calculate score based on type and text match
+                    score = 3  # Base score
+                    
+                    # Determine type for better relevance
+                    if 'Restaurant_Review' in url:
+                        link_type = 'restaurant'
+                        score += 1
+                    elif 'Hotel_Review' in url:
+                        link_type = 'hotel'
+                        score += 1
+                    elif 'Attraction_Review' in url:
+                        link_type = 'attraction'
+                        score += 1
+                    else:
+                        link_type = 'unknown'
+                    
+                    # Score bonus for name match
+                    if place_name_lower in link_text:
+                        score += 2
+                    
+                    link_candidates.append({
+                        'url': url,
+                        'score': score,
+                        'source': f'{link_type}-review',
+                        'text': link_text,
+                        'type': link_type
+                    })
+        
+        # Add these candidates to our overall list
+        all_link_candidates.extend(link_candidates)
+        
+        # If we found good candidates (score > 6), no need to try more strategies
+        if any(c['score'] > 6 for c in link_candidates):
+            print(f"Found high-quality candidates. Stopping search.", file=sys.stderr)
+            break
     
     # If we have candidates, use the highest-scoring one
-    if link_candidates:
+    if all_link_candidates:
         # Sort by score in descending order
-        sorted_candidates = sorted(link_candidates, key=lambda x: x['score'], reverse=True)
+        sorted_candidates = sorted(all_link_candidates, key=lambda x: x['score'], reverse=True)
         best_candidate = sorted_candidates[0]
-        print(f"Selected candidate: {best_candidate}", file=sys.stderr)
+        print(f"Selected best candidate: {best_candidate}", file=sys.stderr)
         
         link_url = best_candidate['url']
         if not link_url.startswith('http'):
@@ -163,9 +210,9 @@ def extract_tripadvisor_data(detail_url):
     try:
         # Extract rating: Look for bubble ratings (e.g., "bubble_45" = 4.5 stars)
         rating_elem = soup.find("span", class_=re.compile(r"ui_bubble_rating bubble_\d+"))
-        if rating_elem:
-            class_list = rating_elem.get("class", [])
-            bubble_classes = [c for c in class_list if c.startswith("bubble_")]
+        if rating_elem and hasattr(rating_elem, 'get'):  # Make sure it's a Tag-like object
+            class_list = rating_elem.get("class", []) or []  # Handle None return
+            bubble_classes = [c for c in class_list if c and c.startswith("bubble_")]
             if bubble_classes:
                 cls = bubble_classes[0]
                 score = int(cls.split("_")[1]) / 10.0
