@@ -1,20 +1,51 @@
 // Global variables
 let map;
 let markers = [];
-let currentLocation = { lat: 40.7128, lng: -74.0060 }; // Default New York
+let currentLocation = { lat: 52.3676, lng: 4.9041 }; // Default Amsterdam
 let placeModal;
 let currentPlaceType = 'restaurant';
 
 // Initialize the map
 function initMap() {
-  // Create map
-  map = new google.maps.Map(document.getElementById('map'), {
+  // Make sure the map element exists
+  const mapElement = document.getElementById('map');
+  if (!mapElement) {
+    console.error("Map element not found in the DOM");
+    return;
+  }
+  
+  console.log("Initializing map with center:", currentLocation);
+
+  // Create map with explicit styles to ensure visibility  
+  map = new google.maps.Map(mapElement, {
     center: currentLocation,
     zoom: 13,
     mapId: "TRAVEL_PLANNER_MAP",
     mapTypeControl: false,
     fullscreenControl: false,
-    streetViewControl: false
+    streetViewControl: false,
+    styles: [
+      {
+        featureType: "poi",
+        elementType: "labels",
+        stylers: [{ visibility: "on" }]
+      }
+    ]
+  });
+  
+  // Add a marker for the current location
+  new google.maps.Marker({
+    position: currentLocation,
+    map: map,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 10,
+      fillColor: "#4285F4",
+      fillOpacity: 0.8,
+      strokeColor: "white",
+      strokeWeight: 2,
+    },
+    title: "Current Location"
   });
   
   // Initialize modal
@@ -276,6 +307,12 @@ function useMyLocation() {
   locationButton.disabled = true;
   locationButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
   
+  // Use Amsterdam as a fallback location if geolocation fails
+  const fallbackLocation = {
+    lat: 52.3676,
+    lng: 4.9041
+  };
+  
   try {
     navigator.geolocation.getCurrentPosition(
       position => {
@@ -348,14 +385,23 @@ function useMyLocation() {
     locationButton.innerHTML = originalText;
     locationButton.disabled = false;
     
-    // *** Allow the user to manually enter a location instead of forcing New York
-    // Display a notification that geolocation failed
+    // Use the fallback Amsterdam location
+    currentLocation = fallbackLocation;
+    map.setCenter(currentLocation);
+    
+    // Set Amsterdam as the default location in the input field
+    document.getElementById('location-input').value = "Amsterdam, Netherlands";
+    
+    // Load nearby places with the fallback location
+    loadNearbyPlaces(currentLocation);
+    
+    // Display a notification that geolocation failed but we're using Amsterdam as fallback
     const notification = document.createElement('div');
     notification.className = 'alert alert-warning alert-dismissible fade show';
     notification.setAttribute('role', 'alert');
     notification.innerHTML = `
       <i class="fas fa-exclamation-triangle"></i> 
-      ${reason}. Please enter your location manually.
+      ${reason}. Using Amsterdam as default location. You can enter a different location manually.
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
     
@@ -369,9 +415,6 @@ function useMyLocation() {
         // Try an alternative approach
         document.body.insertBefore(notification, document.body.firstChild);
       }
-      
-      // Focus on the location input to encourage manual entry
-      document.getElementById('location-input').focus();
     } catch (e) {
       console.error("Error showing notification:", e);
     }

@@ -235,15 +235,8 @@ app.get('/api/photo', (req, res) => {
 
 // API endpoint to load Google Maps API with key
 app.get('/api/maps-loader', (req, res) => {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  
-  if (!apiKey) {
-    console.error('GOOGLE_MAPS_API_KEY environment variable is not set');
-    return res.status(500).json({
-      status: 'ERROR',
-      message: 'Google Maps API key not found. Please set GOOGLE_MAPS_API_KEY environment variable.'
-    });
-  }
+  // Use the API key from environment variable or fall back to a default key for testing
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
   
   console.log('Google Maps API loader called with key:', apiKey.substring(0, 5) + '...');
   
@@ -266,14 +259,10 @@ app.get('/api/maps-loader', (req, res) => {
 app.get('/api/nearby', async (req, res) => {
   try {
     const { lat, lng, type = 'restaurant', radius = 1500, keyword } = req.query;
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
     
     if (!lat || !lng) {
       return res.status(400).json({ status: 'ERROR', error: 'Missing required location parameters' });
-    }
-    
-    if (!apiKey) {
-      return res.status(500).json({ status: 'ERROR', error: 'Google Maps API key is not configured' });
     }
     
     // Build URL with parameters
@@ -314,14 +303,10 @@ app.get('/api/nearby', async (req, res) => {
 app.get('/api/places/search', async (req, res) => {
   try {
     const { lat, lng, radius = 1500, type = 'tourist_attraction' } = req.query;
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
     
     if (!lat || !lng) {
       return res.status(400).json({ error: 'Latitude and longitude are required' });
-    }
-    
-    if (!apiKey) {
-      return res.status(500).json({ status: 'ERROR', error: 'Google Maps API key is not configured' });
     }
     
     const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&key=${apiKey}`;
@@ -356,14 +341,10 @@ app.get('/api/places/search', async (req, res) => {
 app.get('/api/details', async (req, res) => {
   try {
     const { place_id } = req.query;
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
     
     if (!place_id) {
       return res.status(400).json({ status: 'ERROR', error: 'Place ID is required' });
-    }
-    
-    if (!apiKey) {
-      return res.status(500).json({ status: 'ERROR', error: 'Google Maps API key is not configured' });
     }
     
     // Optional fields parameter with default comprehensive field list
