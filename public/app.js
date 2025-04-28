@@ -4,6 +4,10 @@ let markers = [];
 let currentLocation = { lat: 52.3676, lng: 4.9041 }; // Default Amsterdam
 let placeModal;
 let currentPlaceType = 'restaurant';
+let hoverMarker = null;
+let hoverInfoWindow = null;
+let hoverTimeout = null;
+let lastHoverLocation = null;
 
 // Initialize the map
 function initMap() {
@@ -32,6 +36,25 @@ function initMap() {
       }
     ]
   });
+  
+  // Add mousemove event to trigger hover search for nearby places
+  google.maps.event.addListener(map, 'mousemove', debounce(function(event) {
+    // Only search when the user is hovering (not actively dragging the map)
+    if (!map.getDraggable || map.getDraggable()) {
+      const hoverLocation = {
+        lat: event.latLng.lat(),
+        lng: event.latLng.lng()
+      };
+      
+      // Store the hover point for visual reference
+      updateHoverMarker(hoverLocation);
+      
+      // Only search in certain zoom levels to avoid too many requests
+      if (map.getZoom() >= 15) {
+        searchNearbyOnHover(hoverLocation);
+      }
+    }
+  }, 300));
   
   // Add a marker for the current location
   new google.maps.Marker({
@@ -1760,6 +1783,119 @@ function formatPlaceType(type) {
   return type.split('_')
     .map(word => word.charAt(0).toUpperCase() + word.substring(1))
     .join(' ');
+}
+
+// Debounce function to limit how often a function is called
+function debounce(func, delay) {
+  let timeout;
+  return function() {
+    const context = this;
+    const args = arguments;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), delay);
+  };
+}
+
+// Update the hover marker on the map
+function updateHoverMarker(location) {
+  // Only update if the location has changed significantly
+  if (lastHoverLocation && 
+      Math.abs(location.lat - lastHoverLocation.lat) < 0.0001 && 
+      Math.abs(location.lng - lastHoverLocation.lng) < 0.0001) {
+    return;
+  }
+  
+  lastHoverLocation = location;
+  
+  // Remove existing hover marker if it exists
+  if (hoverMarker) {
+    hoverMarker.setMap(null);
+  }
+  
+  // Create a new marker at the hover location
+  hoverMarker = new google.maps.Marker({
+    position: location,
+    map: map,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 7,
+      fillColor: "#FF6B6B",
+      fillOpacity: 0.6,
+      strokeColor: "white",
+      strokeWeight: 1,
+    },
+    zIndex: 1,
+    title: "Hover Location"
+  });
+}
+
+// Search for nearby places when hovering over an area
+function searchNearbyOnHover(location) {
+  // Cancel any existing hover search timeout
+  if (hoverTimeout) {
+    clearTimeout(hoverTimeout);
+  }
+  
+  // Set a timeout to avoid too many API calls
+  hoverTimeout = setTimeout(() => {
+    // Close any existing hover info window
+    if (hoverInfoWindow) {
+      hoverInfoWindow.close();
+    }
+    
+    // Create a new info window if needed
+    if (!hoverInfoWindow) {
+      hoverInfoWindow = new google.maps.InfoWindow();
+    }
+    
+    // Show loading indicator in the info window
+    hoverInfoWindow.setContent('<div class="p-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Finding nearby places...</div>');
+    hoverInfoWindow.setPosition(location);
+    hoverInfoWindow.open(map);
+    
+    // Search for nearby places using Places API
+    const placesService = new google.maps.places.PlacesService(map);
+    placesService.nearbySearch({
+      location: location,
+      radius: 100, // Small radius for hover search
+      type: currentPlaceType
+    }, (results, status) => {
+      if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+        // Sort by rating (highest first)
+        results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        
+        // Take only the top 5 places
+        const topPlaces = results.slice(0, 5);
+        
+        // Create the content for the info window
+        let content = '<div class="p-2" style="max-width: 250px;">';
+        content += `<h6 class="mb-2">Nearby ${formatPlaceType(currentPlaceType)}s</h6>`;
+        content += '<ul class="list-group list-group-flush small ps-0">';
+        
+        topPlaces.forEach(place => {
+          const rating = place.rating ? 
+            `<span class="text-warning">${'★'.repeat(Math.round(place.rating))}</span>` : 
+            '<span class="text-muted">No rating</span>';
+            
+          content += `
+            <li class="list-unstyled mb-1">
+              <strong>${place.name}</strong><br>
+              ${rating} ${place.user_ratings_total ? `(${place.user_ratings_total})` : ''}
+            </li>
+          `;
+        });
+        
+        content += '</ul>';
+        content += '</div>';
+        
+        // Update the info window
+        hoverInfoWindow.setContent(content);
+      } else {
+        // No places found or error
+        hoverInfoWindow.setContent(`<div class="p-2">No ${formatPlaceType(currentPlaceType)}s found in this area</div>`);
+      }
+    });
+  }, 500); // Wait 500ms before searching
 }
 
 // Show loading indicator
