@@ -12,7 +12,6 @@ let clickedLocation = null; // Stores the location when user clicks on the map
 let clickedLocationMarker = null; // Marker to show where user clicked
 let searchRadius = 1500; // Default search radius in meters
 let isApiErrorShown = false; // Flag to track if API error is already displayed
-let isRijksmuseumSet = false; // Flag to track if Rijksmuseum is already centered
 
 // Initialize the map
 function initMap() {
@@ -23,11 +22,10 @@ function initMap() {
     return;
   }
 
-  // Set Rijksmuseum as the center point
-  if (!isRijksmuseumSet) {
-    currentLocation = { lat: 52.3600, lng: 4.8852 }; // Rijksmuseum coordinates
-    isRijksmuseumSet = true;
-    console.log("Setting Rijksmuseum as center");
+  // Set Amsterdam as default location if not already set
+  if (!currentLocation) {
+    currentLocation = { lat: 52.3676, lng: 4.9041 }; // Amsterdam coordinates
+    console.log("Setting Amsterdam as center");
   }
   
   console.log("Initializing map with center:", currentLocation);
@@ -340,8 +338,8 @@ function initMap() {
   
   // Automatically search for nearby places once the map is ready
   google.maps.event.addListenerOnce(map, 'idle', function() {
-    console.log("Map is ready, searching for Rijksmuseum nearby places");
-    loadNearbyPlaces(currentLocation, "Rijksmuseum");
+    console.log("Map is ready, searching for nearby restaurants and attractions");
+    loadNearbyPlaces(currentLocation);
   });
   
   // When slider changes are complete, trigger a new search if we have a location
