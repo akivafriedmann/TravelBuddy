@@ -586,6 +586,20 @@ function useMyLocation() {
 async function searchLocation() {
   showLoading();
   
+  // Get the keyword input to check if we're searching for a specific place
+  const keywordInput = document.getElementById('keyword-input').value.trim();
+  
+  // If we have a keyword, first try to search for a specific place
+  if (keywordInput) {
+    console.log("Searching for specific place:", keywordInput);
+    const searchResult = await searchForSpecificPlace(keywordInput);
+    if (searchResult) {
+      hideLoading();
+      return; // Successfully found and displayed a specific place
+    }
+    // If no specific place found, continue with normal location search
+  }
+  
   // If we have a clicked location, use that instead of geocoding
   if (clickedLocation) {
     console.log("Using clicked location for search:", clickedLocation);
@@ -601,7 +615,7 @@ async function searchLocation() {
     map.setZoom(15); // Zoom in to show nearby places
     
     // Load nearby places based on clicked location and the current search radius
-    loadNearbyPlaces(currentLocation, '', searchRadius);
+    loadNearbyPlaces(currentLocation, keywordInput, searchRadius);
     
     // Keep the clickedLocation marker visible so user knows where they clicked
     // but clear the reference so another click will work
@@ -1988,6 +2002,248 @@ function formatPlaceType(type) {
   return type.split('_')
     .map(word => word.charAt(0).toUpperCase() + word.substring(1))
     .join(' ');
+}
+
+// Function to search for a specific place by name
+async function searchForSpecificPlace(placeName) {
+  console.log("Searching for specific place:", placeName);
+  
+  try {
+    // Create a places service instance
+    const placesService = new google.maps.places.PlacesService(map);
+    
+    // Get the location input to use as a bias for the search
+    const locationInput = document.getElementById('location-input').value.trim();
+    let locationBias = null;
+    
+    // If there's a location input, try to geocode it for search bias
+    if (locationInput) {
+      const geocoder = new google.maps.Geocoder();
+      const geocodePromise = new Promise((resolve) => {
+        geocoder.geocode({ address: locationInput }, (results, status) => {
+          if (status === google.maps.GeocoderStatus.OK && results[0]) {
+            resolve(results[0].geometry.location);
+          } else {
+            resolve(null);
+          }
+        });
+      });
+      
+      // Wait for geocoding result
+      const location = await geocodePromise;
+      if (location) {
+        locationBias = {
+          center: location,
+          radius: searchRadius
+        };
+      }
+    }
+    
+    // Create search request
+    const searchRequest = {
+      query: placeName,
+      fields: ['name', 'geometry', 'place_id', 'formatted_address', 'photos', 'rating', 'types']
+    };
+    
+    // Add location bias if available
+    if (locationBias) {
+      searchRequest.locationBias = locationBias;
+    }
+    
+    // Perform place search
+    const searchPromise = new Promise((resolve) => {
+      placesService.findPlaceFromQuery(searchRequest, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+          resolve(results[0]);
+        } else {
+          // Try text search if findPlaceFromQuery fails
+          const textSearchRequest = {
+            query: placeName,
+            type: currentPlaceType !== 'attraction' ? currentPlaceType : undefined
+          };
+          if (locationBias) {
+            textSearchRequest.location = locationBias.center;
+            textSearchRequest.radius = locationBias.radius;
+          }
+          
+          placesService.textSearch(textSearchRequest, (textResults, textStatus) => {
+            if (textStatus === google.maps.places.PlacesServiceStatus.OK && textResults && textResults.length > 0) {
+              resolve(textResults[0]);
+            } else {
+              resolve(null);
+            }
+          });
+        }
+      });
+    });
+    
+    // Wait for search result
+    const place = await searchPromise;
+    if (place) {
+      // Found a place, center the map on it
+      map.setCenter(place.geometry.location);
+      map.setZoom(17); // Closer zoom for specific place
+      
+      // Clear existing markers
+      clearMarkers();
+      
+      // Add marker for this specific place
+      const marker = new google.maps.Marker({
+        position: place.geometry.location,
+        map: map,
+        animation: google.maps.Animation.DROP,
+        title: place.name
+      });
+      
+      // Keep track of marker
+      markers.push(marker);
+      
+      // Get detailed information about this place
+      const detailsPromise = new Promise((resolve) => {
+        placesService.getDetails({
+          placeId: place.place_id,
+          fields: [
+            'name', 'place_id', 'rating', 'user_ratings_total',
+            'formatted_address', 'photos', 'price_level', 'types',
+            'vicinity', 'geometry', 'opening_hours', 'website',
+            'formatted_phone_number', 'reviews'
+          ]
+        }, (placeDetails, detailsStatus) => {
+          if (detailsStatus === google.maps.places.PlacesServiceStatus.OK && placeDetails) {
+            resolve(placeDetails);
+          } else {
+            resolve(place); // Fall back to original place object
+          }
+        });
+      });
+      
+      // Wait for details
+      const placeDetails = await detailsPromise;
+      
+      // Show place in the places container
+      const container = document.getElementById('places-container');
+      container.innerHTML = '';
+      
+      // Create a full-width card for this specific place
+      const col = document.createElement('div');
+      col.className = 'col-12 mb-4';
+      
+      // Create a special highlighted card for the specific place
+      const card = document.createElement('div');
+      card.className = 'card h-100 shadow-sm border-primary specific-place-card';
+      
+      // Format photos
+      let photoHtml = '';
+      if (placeDetails.photos && placeDetails.photos.length > 0) {
+        photoHtml = `
+          <div class="position-relative">
+            <img src="${placeDetails.photos[0].getUrl({ maxWidth: 800, maxHeight: 400 })}" 
+                 class="card-img-top" alt="${placeDetails.name}" style="height: 200px; object-fit: cover;">
+            <div class="position-absolute bottom-0 end-0 p-2">
+              <button class="btn btn-sm btn-light" onclick="showPlaceDetails('${placeDetails.place_id}')">
+                <i class="fas fa-images"></i> More Photos
+              </button>
+            </div>
+          </div>
+        `;
+      } else {
+        photoHtml = `
+          <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+            <i class="fas fa-image text-muted fa-3x"></i>
+          </div>
+        `;
+      }
+      
+      // Format rating stars for Google
+      let ratingHtml = '';
+      if (placeDetails.rating) {
+        ratingHtml = '<div class="mb-2 star-rating">';
+        ratingHtml += '<div class="d-flex align-items-center mb-1">';
+        ratingHtml += '<small class="text-muted me-1">Google:</small>';
+        
+        // Full stars
+        for (let i = 0; i < Math.floor(placeDetails.rating); i++) {
+          ratingHtml += '<i class="fas fa-star"></i>';
+        }
+        
+        // Half star if needed
+        if (placeDetails.rating % 1 >= 0.5) {
+          ratingHtml += '<i class="fas fa-star-half-alt"></i>';
+        }
+        
+        // Empty stars
+        for (let i = 0; i < (5 - Math.ceil(placeDetails.rating)); i++) {
+          ratingHtml += '<i class="far fa-star"></i>';
+        }
+        
+        ratingHtml += ` <span class="ms-1">${placeDetails.rating}</span>`;
+        
+        // Add review count with visual indicator
+        if (placeDetails.user_ratings_total) {
+          if (placeDetails.user_ratings_total > 500) {
+            ratingHtml += ` <span class="badge bg-danger ms-2"><i class="fas fa-fire"></i> ${placeDetails.user_ratings_total} reviews</span>`;
+          } else if (placeDetails.user_ratings_total > 200) {
+            ratingHtml += ` <span class="badge bg-success ms-2">${placeDetails.user_ratings_total} reviews</span>`;
+          } else if (placeDetails.user_ratings_total >= 20) {
+            ratingHtml += ` <span class="badge bg-primary ms-2">${placeDetails.user_ratings_total} reviews</span>`;
+          } else {
+            ratingHtml += ` <span class="text-muted">(${placeDetails.user_ratings_total} reviews)</span>`;
+          }
+        }
+        
+        ratingHtml += '</div>'; // End of Google rating div
+        
+        // TripAdvisor placeholder
+        ratingHtml += `
+          <div class="d-flex align-items-center mt-2" id="tripadvisor-${placeDetails.place_id}">
+            <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" 
+                 alt="TripAdvisor" height="15" class="me-2">
+            <div class="spinner-border spinner-border-sm text-success" role="status">
+              <span class="visually-hidden">Loading TripAdvisor data...</span>
+            </div>
+            <small class="text-muted ms-2">Loading...</small>
+          </div>
+        `;
+        
+        ratingHtml += '</div>'; // End star-rating div
+      }
+      
+      // Create the card body
+      card.innerHTML = `
+        ${photoHtml}
+        <div class="card-body">
+          <h5 class="card-title">${placeDetails.name}</h5>
+          <p class="card-text text-muted mb-2">${placeDetails.formatted_address || placeDetails.vicinity || ''}</p>
+          ${ratingHtml}
+          <div class="mt-3 d-flex justify-content-between">
+            <button class="btn btn-primary btn-sm" onclick="showPlaceDetails('${placeDetails.place_id}')">
+              <i class="fas fa-info-circle"></i> View Details
+            </button>
+            <a href="https://www.google.com/maps/place/?q=place_id:${placeDetails.place_id}" 
+               target="_blank" class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-directions"></i> Directions
+            </a>
+          </div>
+        </div>
+      `;
+      
+      // Append card to column and column to container
+      col.appendChild(card);
+      container.appendChild(col);
+      
+      // Fetch TripAdvisor data for this place
+      fetchTripAdvisorData(placeDetails);
+      
+      // Indicate that we successfully found and displayed a specific place
+      return true;
+    }
+    
+    // No places found
+    return false;
+  } catch (error) {
+    console.error("Error searching for specific place:", error);
+    return false;
+  }
 }
 
 // Debounce function to limit how often a function is called
