@@ -833,7 +833,7 @@ function renderPlaces(places) {
                           (currentPlaceType === 'restaurant' ? MIN_REVIEWS.restaurant : MIN_REVIEWS.default);
   
   // Minimum rating to show (only for restaurants)
-  const MIN_RATING = 4.1;
+  const MIN_RATING = 4.3; // Increased from 4.1 to ensure better quality restaurants
   
   // Define unwanted business types
   const unwantedTypes = [
@@ -841,7 +841,15 @@ function renderPlaces(places) {
     "convenience_store", 
     "car_repair", 
     "car_wash",
-    "car_dealer"
+    "car_dealer",
+    "ice_cream_parlor",
+    "bakery",
+    "cafe",
+    "grocery_or_supermarket",
+    "food",
+    "store",
+    "market",
+    "liquor_store"
   ];
   
   // Make a copy of the places to filter
@@ -855,14 +863,23 @@ function renderPlaces(places) {
     filteredPlaces = filteredPlaces.filter(place => {
       // Check if this is a gas station or similar
       if (place.types) {
+        // Remove places with unwanted types
         for (const type of unwantedTypes) {
           if (place.types.includes(type)) {
             return false;
           }
         }
+        
+        // Make sure it is actually a restaurant 
+        const restaurantTypes = ["restaurant", "meal_takeaway", "meal_delivery", "bar", "night_club", "dining"];
+        const isRestaurantType = place.types.some(type => restaurantTypes.includes(type));
+        
+        if (!isRestaurantType) {
+          return false;
+        }
       }
       
-      // Filter by minimum rating only if we have enough places
+      // Filter by minimum rating - only keep higher-rated places
       if (place.rating && place.rating < MIN_RATING) {
         return false;
       }
