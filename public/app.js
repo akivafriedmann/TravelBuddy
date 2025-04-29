@@ -56,6 +56,10 @@ function initMap() {
     }
   });
   
+  // Track last hover position to reduce unnecessary searches
+  let lastHoverPosition = null;
+  const MIN_HOVER_DISTANCE = 50; // Minimum distance in pixels to trigger a new hover search
+  
   google.maps.event.addListener(map, 'mousemove', debounce(function(event) {
     // Only search when the user is hovering (not actively dragging or clicking)
     if (!isMouseDown && (!map.getDraggable || map.getDraggable())) {
@@ -64,15 +68,37 @@ function initMap() {
         lng: event.latLng.lng()
       };
       
-      // Store the hover point for visual reference
-      updateHoverMarker(hoverLocation);
+      // Check if we should trigger a new search based on distance from last hover
+      let shouldSearch = true;
       
-      // Only search in certain zoom levels to avoid too many requests
-      if (map.getZoom() >= 15) {
-        searchNearbyOnHover(hoverLocation);
+      // Simple distance check using lat/lng coordinates
+      if (lastHoverPosition) {
+        // Calculate distance in meters between two lat/lng points
+        const earthRadius = 6371000; // meters
+        const dLat = (hoverLocation.lat - lastHoverPosition.lat()) * Math.PI / 180;
+        const dLng = (hoverLocation.lng - lastHoverPosition.lng()) * Math.PI / 180;
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(lastHoverPosition.lat() * Math.PI / 180) * Math.cos(hoverLocation.lat * Math.PI / 180) *
+          Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = earthRadius * c; // distance in meters
+        
+        // Only search if we've moved at least 25 meters
+        shouldSearch = distance > 25;
+      }
+        
+        // Store the hover point for visual reference
+        updateHoverMarker(hoverLocation);
+        
+        // Only search in certain zoom levels and if we've moved enough
+        if (map.getZoom() >= 15 && shouldSearch) {
+          lastHoverPosition = event.latLng;
+          searchNearbyOnHover(hoverLocation);
+        }
       }
     }
-  }, 300));
+  }, 400)); // Increased debounce time
   
   // Add a marker for the current location
   new google.maps.Marker({
@@ -1894,13 +1920,22 @@ function searchNearbyOnHover(location) {
     // Create a new info window if needed
     if (!hoverInfoWindow) {
       hoverInfoWindow = new google.maps.InfoWindow({
-        disableAutoPan: true // Prevent the map from auto-panning when opening the hover info window
+        disableAutoPan: true, // Prevent the map from auto-panning when opening the hover info window
+        maxWidth: 320, // Make the window larger 
+        content: '<div class="p-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Finding nearby places...</div>'
       });
       
       // Add a click listener to the map to close the hover info window
       google.maps.event.addListener(map, 'click', function() {
         if (hoverInfoWindow) {
           hoverInfoWindow.close();
+        }
+      });
+      
+      // Add a close listener
+      google.maps.event.addListener(hoverInfoWindow, 'closeclick', function() {
+        if (hoverTimeout) {
+          clearTimeout(hoverTimeout);
         }
       });
     } else {
@@ -1917,8 +1952,9 @@ function searchNearbyOnHover(location) {
     const placesService = new google.maps.places.PlacesService(map);
     placesService.nearbySearch({
       location: location,
-      radius: 100, // Small radius for hover search
-      type: currentPlaceType
+      radius: 200, // Increased radius for better search results
+      type: currentPlaceType,
+      rankBy: google.maps.places.RankBy.PROMINENCE // Prioritize more prominent places
     }, (results, status) => {
       if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
         // Sort by rating (highest first)
@@ -1927,25 +1963,40 @@ function searchNearbyOnHover(location) {
         // Take only the top 5 places
         const topPlaces = results.slice(0, 5);
         
-        // Create the content for the info window
-        let content = '<div class="p-2" style="max-width: 250px;">';
+        // Create the content for the info window with clickable places
+        let content = '<div class="p-2" style="max-width: 300px;">';
         content += `<h6 class="mb-2">Nearby ${formatPlaceType(currentPlaceType)}s</h6>`;
-        content += '<ul class="list-group list-group-flush small ps-0">';
+        content += '<ul class="list-group list-group-flush ps-0">';
         
         topPlaces.forEach(place => {
           const rating = place.rating ? 
             `<span class="text-warning">${'★'.repeat(Math.round(place.rating))}</span>` : 
             '<span class="text-muted">No rating</span>';
-            
+          
+          // Create a place icon if available
+          let placeIcon = '';
+          if (place.photos && place.photos.length > 0) {
+            const photoUrl = `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=100`;
+            placeIcon = `<img src="${photoUrl}" class="float-start me-2 rounded" style="width: 40px; height: 40px; object-fit: cover;" alt="${place.name}">`;
+          }
+          
+          // Make each list item a clickable button
           content += `
-            <li class="list-unstyled mb-1">
-              <strong>${place.name}</strong><br>
-              ${rating} ${place.user_ratings_total ? `(${place.user_ratings_total})` : ''}
+            <li class="list-group-item p-2 mb-1 border-0" style="cursor: pointer" 
+                onclick="showPlaceDetails('${place.place_id}'); if(hoverInfoWindow) hoverInfoWindow.close();">
+              <div class="d-flex align-items-center">
+                ${placeIcon}
+                <div>
+                  <strong>${place.name}</strong><br>
+                  ${rating} ${place.user_ratings_total ? `<small>(${place.user_ratings_total})</small>` : ''}
+                </div>
+              </div>
             </li>
           `;
         });
         
         content += '</ul>';
+        content += '<div class="text-center"><small class="text-muted">Click on a place to view details</small></div>';
         content += '</div>';
         
         // Update the info window
