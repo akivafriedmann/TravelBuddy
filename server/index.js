@@ -764,6 +764,7 @@ app.use((req, res, next) => {
 app.use('/places', placesRoutes);
 app.use('/geocoding', geocodingRoutes);
 app.use('/itineraries', itineraryRoutes);
+app.use('/tripadvisor', tripadvisorRoutes);
 
 // Keep prefixed routes for backward compatibility
 app.use('/api/places', placesRoutes);

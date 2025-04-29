@@ -878,8 +878,8 @@ async function fetchTripAdvisorData(place) {
         if (taData.status === 'OK' && taData.result && taData.result.tripadvisor_data) {
           const tripadvisorData = taData.result.tripadvisor_data;
           
-          // Check if we have meaningful TripAdvisor data (rating)
-          if (tripadvisorData && (tripadvisorData.rating || tripadvisorData.url)) {
+          // Check if we have meaningful TripAdvisor data (rating or any other useful info)
+          if (tripadvisorData && (tripadvisorData.rating || tripadvisorData.url || tripadvisorData.ranking)) {
             console.log(`Got TripAdvisor data for ${name}:`, tripadvisorData);
             
             // Start building the HTML for the TripAdvisor section
@@ -907,7 +907,10 @@ async function fetchTripAdvisorData(place) {
               
               taHtml += ` <span class="ms-1">${tripadvisorData.rating}</span>`;
               
-              if (tripadvisorData.review_count) {
+              // Show review count if available (might be num_reviews in official API)
+              if (tripadvisorData.num_reviews) {
+                taHtml += ` <span class="text-muted ms-1">(${tripadvisorData.num_reviews})</span>`;
+              } else if (tripadvisorData.review_count) {
                 taHtml += ` <span class="text-muted ms-1">(${tripadvisorData.review_count})</span>`;
               }
               
@@ -917,22 +920,40 @@ async function fetchTripAdvisorData(place) {
               taHtml += '<span class="text-muted">Listed on TripAdvisor</span>';
             }
             
-            // Show rank if available
-            if (tripadvisorData.rank_position && tripadvisorData.rank_total) {
+            // Show ranking information if available (from official API)
+            if (tripadvisorData.ranking) {
+              // Extract ranking position from text like "#10 of 500 hotels in Amsterdam"
+              const rankMatch = tripadvisorData.ranking.match(/#(\d+)/);
+              if (rankMatch) {
+                taHtml += `<div class="ms-2 badge bg-success">${rankMatch[0]}</div>`;
+              } else {
+                taHtml += `<div class="ms-2 badge bg-success">Ranked</div>`;
+              }
+            } 
+            // Legacy ranking format support
+            else if (tripadvisorData.rank_position && tripadvisorData.rank_total) {
               taHtml += `<div class="ms-2 badge bg-success">#${tripadvisorData.rank_position}/${tripadvisorData.rank_total}</div>`;
             }
             
             taHtml += '</div>';
             
-            // If we have a TripAdvisor URL, add a link
-            if (tripadvisorData.url) {
+            // If we have a TripAdvisor URL, add a link button
+            const taUrl = tripadvisorData.url || 
+                         (tripadvisorData.location_id ? `https://www.tripadvisor.com/AttractionProductReview-g-d${tripadvisorData.location_id}` : null);
+            
+            if (taUrl) {
               taHtml += `
                 <div class="mt-1 text-center">
-                  <a href="${tripadvisorData.url}" target="_blank" class="btn btn-sm btn-outline-success">
+                  <a href="${taUrl}" target="_blank" class="btn btn-sm btn-outline-success">
                     <i class="fas fa-external-link-alt fa-xs me-1"></i> View on TripAdvisor
                   </a>
                 </div>
               `;
+            }
+            
+            // Show category if available (from official API)
+            if (tripadvisorData.category) {
+              taHtml += `<div class="mt-1 text-center"><small class="text-muted">${tripadvisorData.category}</small></div>`;
             }
             
             taRatingElement.innerHTML = taHtml;
@@ -949,29 +970,29 @@ async function fetchTripAdvisorData(place) {
             taRatingElement.innerHTML = `
               <div class="text-center">
                 <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
-                <small class="d-block text-muted"><i class="fas fa-info-circle fa-xs"></i> TripAdvisor data unavailable</small>
+                <small class="d-block text-muted"><i class="fas fa-info-circle fa-xs"></i> Data unavailable</small>
               </div>
             `;
-          } else if (taData.result.source_error) {
+          } else if (taData.result.error || taData.result.source_error) {
             taRatingElement.innerHTML = `
               <div class="text-center">
                 <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
                 <small class="d-block text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> Connection issue</small>
               </div>
             `;
-          } else if (taData.result.parse_error) {
+          } else if (taData.result.message === 'No matching places found') {
             taRatingElement.innerHTML = `
               <div class="text-center">
                 <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
-                <small class="d-block text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> Format issue</small>
+                <small class="d-block text-muted"><i class="fas fa-question-circle fa-xs"></i> Not found</small>
               </div>
             `;
           } else {
-            // Generic not found message
+            // Generic message for other cases
             taRatingElement.innerHTML = `
               <div class="text-center">
                 <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
-                <small class="d-block text-muted"><i class="fas fa-info-circle fa-xs"></i> Not found</small>
+                <small class="d-block text-muted"><i class="fas fa-info-circle fa-xs"></i> No data available</small>
               </div>
             `;
           }

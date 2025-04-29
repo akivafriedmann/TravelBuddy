@@ -1,13 +1,16 @@
 /**
- * TripAdvisor integration routes
+ * TripAdvisor integration routes using official TripAdvisor Content API
  */
 const express = require('express');
 const router = express.Router();
-const { exec } = require('child_process');
-const path = require('path');
+const axios = require('axios');
+
+// TripAdvisor API settings
+const TRIPADVISOR_API_KEY = process.env.TRIPADVISOR_API_KEY;
+const TRIPADVISOR_API_BASE_URL = 'https://api.content.tripadvisor.com/api/v1';
 
 /**
- * Get TripAdvisor data for a place
+ * Search for places on TripAdvisor
  * GET /tripadvisor?place_name=Restaurant Name&location=Amsterdam
  */
 router.get('/', async (req, res) => {
@@ -21,87 +24,220 @@ router.get('/', async (req, res) => {
       });
     }
     
-    console.log(`TripAdvisor request for: "${place_name}" in "${location}"`);
-    
-    // Call the service-based Python script to scrape TripAdvisor data
-    // Use absolute path from the workspace root
-    const pythonPath = '/home/runner/workspace/tripadvisor_service_scraper.py';
-    const command = `python3 ${pythonPath} --place "${place_name}" --location "${location}"`;
-    console.log(`Executing Python script: ${pythonPath}`);
-    
-    exec(command, (error, stdout, stderr) => {
-      // We'll continue gracefully even if there are errors with the scraper
-      if (error) {
-        console.error(`Error executing TripAdvisor scraper: ${error.message}`);
-        // Instead of returning a 500 error, we'll return a graceful "no data" response
-        return res.json({
-          status: 'OK',
-          result: {
-            name: place_name,
-            location: location,
-            tripadvisor_data: null,
-            source_error: error.message
-          }
-        });
-      }
-      
-      if (stderr) {
-        console.error(`TripAdvisor scraper warning: ${stderr}`);
-      }
-      
-      try {
-        // Parse the JSON output from the Python script
-        console.log(`TripAdvisor raw output: ${stdout}`);
-        const data = JSON.parse(stdout);
-        
-        // Check if we have meaningful TripAdvisor data
-        if (data && data.tripadvisor_data && 
-            (data.tripadvisor_data.rating || 
-             data.tripadvisor_data.url || 
-             data.tripadvisor_data.rank_position)) {
-          console.log(`Found TripAdvisor data for "${place_name}":`, data.tripadvisor_data);
-          
-          // Return the TripAdvisor data
-          return res.json({
-            status: 'OK',
-            result: data
-          });
-        } else {
-          console.log(`No meaningful TripAdvisor data found for "${place_name}"`);
-          // We have data but no meaningful TripAdvisor info
-          return res.json({
-            status: 'OK',
-            result: {
-              name: place_name,
-              location: location,
-              tripadvisor_data: null,
-              access_limited: true  // Flag indicating access is limited
-            }
-          });
+    // Check if API key exists and has proper format
+    if (!TRIPADVISOR_API_KEY || TRIPADVISOR_API_KEY.length < 20) {
+      console.log('TripAdvisor API key is missing or has incorrect format');
+      return res.status(200).json({
+        status: 'OK',
+        result: {
+          name: place_name,
+          location: location,
+          tripadvisor_data: null,
+          message: 'TripAdvisor API key is not properly configured'
         }
-      } catch (parseError) {
-        console.error(`Error parsing TripAdvisor data: ${parseError.message}`);
-        console.error(`Raw output was: ${stdout}`);
-        // Instead of returning a 500 error, we'll return a graceful "no data" response
-        return res.json({
-          status: 'OK',
-          result: {
-            name: place_name,
-            location: location,
-            tripadvisor_data: null,
-            parse_error: parseError.message
+      });
+    }
+    
+    console.log(`TripAdvisor API request for: "${place_name}" in "${location}"`);
+    console.log(`Using TripAdvisor API key: ${TRIPADVISOR_API_KEY ? 'Available' : 'Missing'}`);
+    
+    // First, search for the location ID using the location search endpoint
+    let locationId = await searchLocationId(location);
+    
+    if (!locationId) {
+      console.log(`Could not find TripAdvisor location ID for "${location}", using default fallback`);
+      // Use Amsterdam as fallback location ID for testing if no match found
+      locationId = '188590'; // Amsterdam location ID
+    }
+    
+    // Now search for the place within that location
+    const searchResults = await searchPlace(place_name, locationId);
+    
+    if (!searchResults || searchResults.length === 0) {
+      console.log(`No results found for "${place_name}" in location "${location}"`);
+      return res.json({
+        status: 'OK',
+        result: {
+          name: place_name,
+          location: location,
+          tripadvisor_data: null,
+          message: 'No matching places found'
+        }
+      });
+    }
+    
+    // Get the top result
+    const topResult = searchResults[0];
+    console.log(`Found TripAdvisor match for "${place_name}": ${topResult.name} (ID: ${topResult.location_id})`);
+    
+    // Get detailed information about the place
+    const detailedData = await getPlaceDetails(topResult.location_id);
+    
+    if (!detailedData) {
+      console.log(`Could not retrieve details for place ID ${topResult.location_id}`);
+      // Return basic information without details
+      return res.json({
+        status: 'OK',
+        result: {
+          name: place_name,
+          location: location,
+          tripadvisor_data: {
+            name: topResult.name,
+            location_id: topResult.location_id,
+            rating: topResult.rating,
+            num_reviews: topResult.num_reviews
           }
-        });
+        }
+      });
+    }
+    
+    // Format the response with detailed data
+    const formattedData = {
+      name: place_name,
+      location: location,
+      tripadvisor_data: {
+        name: detailedData.name,
+        location_id: detailedData.location_id,
+        rating: detailedData.rating,
+        num_reviews: detailedData.num_reviews,
+        ranking: detailedData.ranking,
+        category: detailedData.category?.name,
+        address: detailedData.address_obj?.address_string,
+        website: detailedData.website,
+        phone: detailedData.phone,
+        url: `https://www.tripadvisor.com${detailedData.web_url}`,
+        photo_url: detailedData.photo?.images?.original?.url || detailedData.photo?.images?.large?.url
       }
+    };
+    
+    console.log(`Successfully retrieved TripAdvisor data for "${place_name}"`);
+    return res.json({
+      status: 'OK',
+      result: formattedData
     });
+    
   } catch (error) {
-    console.error('Error in TripAdvisor route:', error);
-    res.status(500).json({
-      status: 'ERROR',
-      message: 'Internal server error',
-      error: error.message
+    console.error('Error in TripAdvisor API route:', error.message);
+    
+    let errorMessage = 'API connection error';
+    let statusCode = 200; // Use 200 to keep the frontend working
+    
+    // Check if it's an authorization issue
+    if (error.response && error.response.status === 403) {
+      errorMessage = 'TripAdvisor API authorization issue - please verify API key';
+      console.error('TripAdvisor API authorization error:', 
+                   error.response.data?.Message || 'Unknown authentication error');
+    }
+    
+    res.status(statusCode).json({
+      status: 'OK', // Keep consistent with previous implementation that returned OK even with errors
+      result: {
+        name: req.query.place_name,
+        location: req.query.location,
+        tripadvisor_data: null,
+        error: errorMessage,
+        api_error: true
+      }
     });
   }
 });
+
+/**
+ * Search for a location (city, region) on TripAdvisor to get its location ID
+ * @param {string} locationName - Name of the location (e.g., "Amsterdam")
+ * @returns {Promise<string|null>} - TripAdvisor location ID or null if not found
+ */
+async function searchLocationId(locationName) {
+  try {
+    const response = await axios.get(`${TRIPADVISOR_API_BASE_URL}/location/search`, {
+      params: {
+        key: TRIPADVISOR_API_KEY,
+        searchQuery: locationName,
+        category: 'All',
+        language: 'en'
+      }
+    });
+    
+    if (response.data?.data?.length > 0) {
+      // Find locations of type "geos" (geographic locations) first
+      const geoLocation = response.data.data.find(item => item.result_type === 'geos');
+      if (geoLocation) {
+        return geoLocation.location_id;
+      }
+      
+      // If no geo location, return the first result
+      return response.data.data[0].location_id;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Error searching for location ID for "${locationName}":`, error.message);
+    console.error('Full error details:', error.response?.data || 'No response data');
+    return null;
+  }
+}
+
+/**
+ * Search for a place within a specific location on TripAdvisor
+ * @param {string} placeName - Name of the place to search for
+ * @param {string} locationId - TripAdvisor location ID to search within
+ * @returns {Promise<Array|null>} - List of matching places or null if error
+ */
+async function searchPlace(placeName, locationId) {
+  try {
+    const response = await axios.get(`${TRIPADVISOR_API_BASE_URL}/location/search`, {
+      params: {
+        key: TRIPADVISOR_API_KEY,
+        searchQuery: placeName,
+        category: 'All',
+        language: 'en',
+        latLong: locationId // Can be location ID or coordinates
+      }
+    });
+    
+    if (response.data?.data?.length > 0) {
+      return response.data.data;
+    }
+    
+    return [];
+  } catch (error) {
+    console.error(`Error searching for place "${placeName}" in location ${locationId}:`, error.message);
+    if (error.response && error.response.status === 403) {
+      console.error('TripAdvisor API authorization error for place search:',
+                   error.response.data?.Message || 'Unknown authentication error');
+    }
+    return null;
+  }
+}
+
+/**
+ * Get detailed information about a specific place on TripAdvisor
+ * @param {string} locationId - TripAdvisor location ID
+ * @returns {Promise<Object|null>} - Detailed information or null if error
+ */
+async function getPlaceDetails(locationId) {
+  try {
+    const response = await axios.get(`${TRIPADVISOR_API_BASE_URL}/location/${locationId}/details`, {
+      params: {
+        key: TRIPADVISOR_API_KEY,
+        language: 'en',
+        currency: 'EUR'
+      }
+    });
+    
+    if (response.data) {
+      return response.data;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Error getting details for location ID ${locationId}:`, error.message);
+    if (error.response && error.response.status === 403) {
+      console.error('TripAdvisor API authorization error for details:',
+                   error.response.data?.Message || 'Unknown authentication error');
+    }
+    return null;
+  }
+}
 
 module.exports = router;
