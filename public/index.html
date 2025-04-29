@@ -29,6 +29,30 @@
       </div>
     </div>
     
+    <!-- Search Radius Control -->
+    <div class="row mb-4">
+      <div class="col-md-6 offset-md-3">
+        <div class="search-radius-control">
+          <label for="radius-slider" class="form-label d-flex justify-content-between">
+            <span>Search Radius: <span id="radius-value">1.5</span> km</span>
+            <span class="text-muted small">
+              <i class="fas fa-info-circle"></i> 
+              Adjust to search in a larger or smaller area
+            </span>
+          </label>
+          <input type="range" class="form-range" id="radius-slider" min="500" max="5000" step="100" value="1500">
+          <div class="d-flex justify-content-between small text-muted">
+            <span>500m</span>
+            <span>1km</span>
+            <span>2km</span>
+            <span>3km</span>
+            <span>4km</span>
+            <span>5km</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <div id="map-container">
       <div id="map"></div>
     </div>

@@ -361,6 +361,41 @@ body {
   margin-right: 5px;
 }
 
+/* Search Radius Control Styles */
+.search-radius-control {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  border-left: 3px solid #0d6efd;
+}
+
+/* Customize the slider track */
+.form-range::-webkit-slider-runnable-track {
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+}
+
+.form-range::-moz-range-track {
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+}
+
+/* Customize the slider thumb */
+.form-range::-webkit-slider-thumb {
+  background-color: #0d6efd;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.form-range::-moz-range-thumb {
+  background-color: #0d6efd;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 /* Nearby recommendations styles */
 .nearby-recommendations {
   background-color: #f8f9fa;

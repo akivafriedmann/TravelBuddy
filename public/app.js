@@ -10,6 +10,7 @@ let hoverTimeout = null;
 let lastHoverLocation = null;
 let clickedLocation = null; // Stores the location when user clicks on the map
 let clickedLocationMarker = null; // Marker to show where user clicked
+let searchRadius = 1500; // Default search radius in meters
 
 // Initialize the map
 function initMap() {
@@ -311,6 +312,36 @@ function initMap() {
   // Set up use my location button
   document.getElementById('use-location-button').addEventListener('click', useMyLocation);
   
+  // Set up radius slider
+  const radiusSlider = document.getElementById('radius-slider');
+  const radiusValueElement = document.getElementById('radius-value');
+  
+  // Initialize the radius value display
+  radiusValueElement.textContent = (radiusSlider.value / 1000).toFixed(1);
+  
+  // Update search radius when the slider changes
+  radiusSlider.addEventListener('input', function() {
+    // Update the displayed value
+    const radiusInKm = (this.value / 1000).toFixed(1);
+    radiusValueElement.textContent = radiusInKm;
+    
+    // Update the global search radius variable
+    searchRadius = parseInt(this.value);
+  });
+  
+  // When slider changes are complete, trigger a new search if we have a location
+  radiusSlider.addEventListener('change', function() {
+    // Only search if we have a location
+    if (currentLocation) {
+      // Get the keyword from the active category button
+      const activeCategory = document.querySelector('.category-btn.active');
+      const keyword = activeCategory ? activeCategory.dataset.keyword || '' : '';
+      
+      // Load nearby places with the new radius
+      loadNearbyPlaces(currentLocation, keyword, searchRadius);
+    }
+  });
+  
   // Set up category buttons
   const categoryButtons = document.querySelectorAll('.category-btn');
   categoryButtons.forEach(button => {
@@ -569,9 +600,8 @@ async function searchLocation() {
     map.setCenter(currentLocation);
     map.setZoom(15); // Zoom in to show nearby places
     
-    // Load nearby places based on clicked location
-    // Use a smaller radius (750m) since we likely clicked a specific spot
-    loadNearbyPlaces(currentLocation, '', 750);
+    // Load nearby places based on clicked location and the current search radius
+    loadNearbyPlaces(currentLocation, '', searchRadius);
     
     // Keep the clickedLocation marker visible so user knows where they clicked
     // but clear the reference so another click will work
