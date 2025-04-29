@@ -187,23 +187,47 @@ app.get('/api/tripadvisor', async (req, res) => {
 app.get('/api/photo', (req, res) => {
   try {
     const { reference, maxwidth = 400, maxheight = 300 } = req.query;
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
     
     if (!reference) {
       return res.status(400).json({ error: 'Photo reference is required' });
     }
     
+    if (!apiKey) {
+      return res.status(403).json({ 
+        status: 'ERROR', 
+        error: 'Google Maps API key is not configured' 
+      });
+    }
+    
+    // Log the API request
+    console.log(`Fetching photo with reference: ${reference}`);
+    
     // Create URL to the actual Google Places Photo API
     const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?photoreference=${reference}&maxwidth=${maxwidth}&maxheight=${maxheight}&key=${apiKey}`;
     
     // Stream the photo directly without using axios
-    https.get(photoUrl, (photoRes) => {
+    const photoReq = https.get(photoUrl, (photoRes) => {
+      // Check if we got the image or an error from Google
+      if (photoRes.statusCode === 403 || photoRes.statusCode === 400) {
+        console.error(`Photo API request denied: status=${photoRes.statusCode}`);
+        return res.status(403).json({ 
+          status: 'ERROR', 
+          error: `API request was denied with status: ${photoRes.statusCode}. This is likely due to API key domain restrictions.` 
+        });
+      }
+      
+      // If we got a successful response, stream it
       res.setHeader('Content-Type', photoRes.headers['content-type']);
       photoRes.pipe(res);
-    }).on('error', (error) => {
+    });
+    
+    photoReq.on('error', (error) => {
       console.error('Error fetching photo:', error);
       res.status(500).json({ error: 'Failed to fetch photo' });
     });
+    
+    photoReq.end();
   } catch (error) {
     console.error('Error in photo proxy:', error);
     res.status(500).json({ error: 'Failed to process photo request' });
