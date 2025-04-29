@@ -858,9 +858,16 @@ function renderPlaces(places) {
   // Log the number of places before filtering
   console.log(`Before client filtering: ${filteredPlaces.length} places`);
   
-  // Only apply these filters for restaurant type to ensure we get results
-  // DEBUG: Temporarily disable filtering completely to see if we get results
+  // Completely bypass filtering and force places to render
   console.log("SKIPPING FILTERING TO DEBUG - We should see places now");
+  
+  // Force rendering all places received from API
+  const unfilteredPlaces = [...places]; 
+  
+  console.log(`Forcing display of all ${unfilteredPlaces.length} unfiltered places`);
+  
+  // Override the filteredPlaces variable to ensure we show something
+  filteredPlaces = unfilteredPlaces;
   
   console.log(`After client filtering: ${filteredPlaces.length} places`);
   
