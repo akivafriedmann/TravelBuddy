@@ -125,35 +125,29 @@ app.get('/api/tripadvisor', async (req, res) => {
     console.log(`TripAdvisor API request for: "${place_name}" in "${location}"`);
     
     // Forward the request to the official TripAdvisor API on our server
-    const serverUrl = process.env.SERVER_URL || 'http://localhost:8000';
+    const serverUrl = 'http://localhost:8000';
     const tripadvisorApiUrl = `${serverUrl}/tripadvisor?place_name=${encodeURIComponent(place_name)}&location=${encodeURIComponent(location)}`;
     
-    // Make the API call
-    const http = serverUrl.startsWith('https') ? https : http;
+    console.log(`Forwarding request to server TripAdvisor API: ${tripadvisorApiUrl}`);
     
-    // Create a promise to handle the HTTP request
-    const responseData = await new Promise((resolve, reject) => {
-      http.get(tripadvisorApiUrl, (apiRes) => {
-        if (apiRes.statusCode < 200 || apiRes.statusCode >= 300) {
-          return reject(new Error(`Status Code: ${apiRes.statusCode}`));
-        }
-        
-        const chunks = [];
-        apiRes.on('data', (chunk) => chunks.push(chunk));
-        apiRes.on('end', () => {
-          try {
-            const data = JSON.parse(Buffer.concat(chunks).toString());
-            resolve(data);
-          } catch (e) {
-            reject(e);
-          }
-        });
-      }).on('error', reject);
-    });
-    
-    // Return the API response
-    console.log(`TripAdvisor API response received with status: ${responseData.status}`);
-    return res.json(responseData);
+    // Make the API call to our server which handles the TripAdvisor API
+    try {
+      const response = await fetch(tripadvisorApiUrl);
+      const data = await response.json();
+      
+      console.log(`TripAdvisor API response received with status: ${data.status}`);
+      
+      if (data.result && data.result.tripadvisor_data) {
+        console.log('Successfully received TripAdvisor data from server');
+      } else {
+        console.log('No TripAdvisor data in response:', data.result?.message || 'Unknown reason');
+      }
+      
+      return res.json(data);
+    } catch (fetchError) {
+      console.error('Error fetching from TripAdvisor server API:', fetchError);
+      throw new Error(`Server API fetch error: ${fetchError.message}`);
+    }
     
   } catch (error) {
     console.error('Error in TripAdvisor route:', error);

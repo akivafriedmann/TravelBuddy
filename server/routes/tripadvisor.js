@@ -27,6 +27,7 @@ router.get('/', async (req, res) => {
     // Check if API key exists and has proper format
     if (!TRIPADVISOR_API_KEY || TRIPADVISOR_API_KEY.length < 20) {
       console.log('TripAdvisor API key is missing or has incorrect format');
+      console.log(`Current API key value length: ${TRIPADVISOR_API_KEY ? TRIPADVISOR_API_KEY.length : 0}`);
       return res.status(200).json({
         status: 'OK',
         result: {
@@ -39,7 +40,8 @@ router.get('/', async (req, res) => {
     }
     
     console.log(`TripAdvisor API request for: "${place_name}" in "${location}"`);
-    console.log(`Using TripAdvisor API key: ${TRIPADVISOR_API_KEY ? 'Available' : 'Missing'}`);
+    console.log(`Using TripAdvisor API key: ${TRIPADVISOR_API_KEY.substring(0, 5)}...${TRIPADVISOR_API_KEY.substring(TRIPADVISOR_API_KEY.length - 5)}`);
+    console.log(`API key length: ${TRIPADVISOR_API_KEY.length}`);
     
     // First, search for the location ID using the location search endpoint
     let locationId = await searchLocationId(location);
