@@ -514,10 +514,21 @@ app.get('/api/nearby', async (req, res) => {
       // Filter out hotels from restaurant or bar searches
       if (type === "restaurant" || type === "bar") {
         const originalCount = data.results.length;
-        data.results = data.results.filter(place => {
-          // Filter out places that have "lodging" in their types
-          return !place.types || !place.types.includes("lodging");
+        
+        // Debug: print types of all places before filtering
+        data.results.forEach((place, index) => {
+          console.log(`Place ${index}: ${place.name}, types: ${JSON.stringify(place.types || [])}`);
         });
+        
+        data.results = data.results.filter(place => {
+          // Keep places that are restaurants or bars and don't include lodging
+          return place.types && 
+                 (place.types.includes("restaurant") || 
+                  place.types.includes("bar") || 
+                  place.types.includes("cafe")) && 
+                 !place.types.includes("lodging");
+        });
+        
         console.log(`Filtered out hotels from ${type} search: ${originalCount} -> ${data.results.length} places`);
       }
 
