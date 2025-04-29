@@ -477,9 +477,11 @@ app.get('/api/nearby', async (req, res) => {
     
     // Check if the API request was denied (likely due to domain restrictions)
     if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT') {
-      console.log(`API request was denied with status: ${data.status}. Using mock data instead.`);
-      const mockData = getMockDataForType(type, lat, lng);
-      return res.json(mockData);
+      console.log(`API request was denied with status: ${data.status}`);
+      return res.status(403).json({ 
+        status: 'ERROR', 
+        error: `API request was denied: ${data.status}. This is likely due to API key domain restrictions. Please make sure the API key is configured for this domain.`
+      });
     }
     
     // Process the response to include direct photo URLs
@@ -500,10 +502,10 @@ app.get('/api/nearby', async (req, res) => {
     res.json(data);
   } catch (error) {
     console.error('Error fetching nearby places:', error);
-    
-    // Return mock data on error to provide a better user experience
-    const mockData = getMockDataForType(type, lat, lng);
-    res.json(mockData);
+    res.status(500).json({ 
+      status: 'ERROR', 
+      error: 'Failed to fetch nearby places. Please check your API key configuration.' 
+    });
   }
 });
 
@@ -542,6 +544,16 @@ app.get('/api/places/search', async (req, res) => {
     }
     
     console.log(`Places/search response: status=${data.status}, results=${data.results ? data.results.length : 0}`);
+    
+    // Check if the API request was denied
+    if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT') {
+      console.log(`API request was denied with status: ${data.status}`);
+      return res.status(403).json({ 
+        status: 'ERROR', 
+        error: `API request was denied: ${data.status}. This is likely due to API key domain restrictions. Please make sure the API key is configured for this domain.`
+      });
+    }
+    
     res.json(data);
   } catch (error) {
     console.error('Error searching places:', error);
@@ -573,6 +585,15 @@ app.get('/api/details', async (req, res) => {
     console.log(`Fetching place details for ID ${place_id}`);
     
     const data = await makeRequest(url);
+    
+    // Check if the API request was denied
+    if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT') {
+      console.log(`API request was denied with status: ${data.status}`);
+      return res.status(403).json({ 
+        status: 'ERROR', 
+        error: `API request was denied: ${data.status}. This is likely due to API key domain restrictions. Please make sure the API key is configured for this domain.`
+      });
+    }
     
     // Process photos to include direct URLs
     if (data.result && data.result.photos) {
