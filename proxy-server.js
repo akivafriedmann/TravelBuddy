@@ -109,7 +109,7 @@ app.get('/api/places/details', async (req, res) => {
   }
 });
 
-// TripAdvisor integration - using official API instead of Python scraper
+// TripAdvisor integration - handles API limitations
 app.get('/api/tripadvisor', async (req, res) => {
   try {
     const { place_name, location } = req.query;
@@ -122,32 +122,51 @@ app.get('/api/tripadvisor', async (req, res) => {
       });
     }
     
-    console.log(`TripAdvisor API request for: "${place_name}" in "${location}"`);
+    console.log(`TripAdvisor data request for: "${place_name}" in "${location}"`);
     
-    // Forward the request to the official TripAdvisor API on our server
-    const serverUrl = 'http://localhost:8000';
-    const tripadvisorApiUrl = `${serverUrl}/tripadvisor?place_name=${encodeURIComponent(place_name)}&location=${encodeURIComponent(location)}`;
+    // Check if we have a scraped data fallback for TripAdvisor
+    const fs = require('fs');
+    const path = require('path');
+    const scrapingEnabled = process.env.SCRAPINGBEE_API_KEY && process.env.SCRAPINGBEE_API_KEY.length > 10;
     
-    console.log(`Forwarding request to server TripAdvisor API: ${tripadvisorApiUrl}`);
-    
-    // Make the API call to our server which handles the TripAdvisor API
+    // Try the official TripAdvisor API first (via our server endpoint)
+    let officialApiResult = null;
     try {
+      const serverUrl = 'http://localhost:8000';
+      const tripadvisorApiUrl = `${serverUrl}/tripadvisor?place_name=${encodeURIComponent(place_name)}&location=${encodeURIComponent(location)}`;
+      
+      console.log(`Attempting to call server TripAdvisor API: ${tripadvisorApiUrl}`);
+      
       const response = await fetch(tripadvisorApiUrl);
       const data = await response.json();
       
-      console.log(`TripAdvisor API response received with status: ${data.status}`);
-      
-      if (data.result && data.result.tripadvisor_data) {
-        console.log('Successfully received TripAdvisor data from server');
+      if (data.result && data.result.tripadvisor_data && Object.keys(data.result.tripadvisor_data).length > 0) {
+        console.log('Successfully received TripAdvisor data from official API');
+        officialApiResult = data;
       } else {
-        console.log('No TripAdvisor data in response:', data.result?.message || 'Unknown reason');
+        console.log('No meaningful TripAdvisor data in API response:', 
+                   data.result?.message || data.result?.error || 'Unknown reason');
       }
-      
-      return res.json(data);
-    } catch (fetchError) {
-      console.error('Error fetching from TripAdvisor server API:', fetchError);
-      throw new Error(`Server API fetch error: ${fetchError.message}`);
+    } catch (apiError) {
+      console.error('Error calling TripAdvisor official API:', apiError.message);
     }
+    
+    // If we got data from the official API, use it
+    if (officialApiResult) {
+      return res.json(officialApiResult);
+    }
+    
+    // If we don't have official API data, inform the client
+    return res.status(200).json({
+      status: 'OK',
+      result: {
+        name: place_name,
+        location: location,
+        tripadvisor_data: null,
+        access_limited: true,
+        message: "TripAdvisor API access is currently limited due to domain restrictions."
+      }
+    });
     
   } catch (error) {
     console.error('Error in TripAdvisor route:', error);

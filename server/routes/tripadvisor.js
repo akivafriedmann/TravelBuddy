@@ -43,6 +43,9 @@ router.get('/', async (req, res) => {
     console.log(`Using TripAdvisor API key: ${TRIPADVISOR_API_KEY.substring(0, 5)}...${TRIPADVISOR_API_KEY.substring(TRIPADVISOR_API_KEY.length - 5)}`);
     console.log(`API key length: ${TRIPADVISOR_API_KEY.length}`);
     
+    // Add fallback for testing if official TripAdvisor API fails
+    let useScraperFallback = false;
+    
     // First, search for the location ID using the location search endpoint
     let locationId = await searchLocationId(location);
     
@@ -151,30 +154,62 @@ router.get('/', async (req, res) => {
  */
 async function searchLocationId(locationName) {
   try {
-    const response = await axios.get(`${TRIPADVISOR_API_BASE_URL}/location/search`, {
-      params: {
-        key: TRIPADVISOR_API_KEY,
-        searchQuery: locationName,
-        category: 'All',
-        language: 'en'
+    // Configure the request
+    const url = `${TRIPADVISOR_API_BASE_URL}/location/search`;
+    const params = {
+      key: TRIPADVISOR_API_KEY,
+      searchQuery: locationName,
+      category: 'All',
+      language: 'en'
+    };
+
+    console.log(`Sending TripAdvisor API search location request to: ${url}`);
+    console.log(`Request parameters: searchQuery=${locationName}, category=All, language=en`);
+    
+    // Configure axios with headers
+    const config = {
+      params,
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'TravelBuddy/1.0'
       }
-    });
+    };
+    
+    const response = await axios.get(url, config);
+    
+    console.log(`TripAdvisor location search response status: ${response.status}`);
+    console.log(`Response data available: ${!!response.data}`);
     
     if (response.data?.data?.length > 0) {
+      console.log(`Found ${response.data.data.length} location results for "${locationName}"`);
+      
       // Find locations of type "geos" (geographic locations) first
       const geoLocation = response.data.data.find(item => item.result_type === 'geos');
       if (geoLocation) {
+        console.log(`Using geo location: ${geoLocation.name} (ID: ${geoLocation.location_id})`);
         return geoLocation.location_id;
       }
       
       // If no geo location, return the first result
+      console.log(`No geo location found, using first result: ${response.data.data[0].name} (ID: ${response.data.data[0].location_id})`);
       return response.data.data[0].location_id;
     }
     
+    console.log(`No location results found for "${locationName}"`);
     return null;
   } catch (error) {
     console.error(`Error searching for location ID for "${locationName}":`, error.message);
-    console.error('Full error details:', error.response?.data || 'No response data');
+    
+    if (error.response) {
+      console.error(`Response status: ${error.response.status}`);
+      console.error('Response headers:', error.response.headers);
+      console.error('Response data:', error.response.data);
+    } else if (error.request) {
+      console.error('Request was made but no response received');
+    } else {
+      console.error('Error setting up the request:', error.message);
+    }
+    
     return null;
   }
 }
@@ -187,27 +222,58 @@ async function searchLocationId(locationName) {
  */
 async function searchPlace(placeName, locationId) {
   try {
-    const response = await axios.get(`${TRIPADVISOR_API_BASE_URL}/location/search`, {
-      params: {
-        key: TRIPADVISOR_API_KEY,
-        searchQuery: placeName,
-        category: 'All',
-        language: 'en',
-        latLong: locationId // Can be location ID or coordinates
+    // Configure the request
+    const url = `${TRIPADVISOR_API_BASE_URL}/location/search`;
+    const params = {
+      key: TRIPADVISOR_API_KEY,
+      searchQuery: placeName,
+      category: 'All',
+      language: 'en',
+      latLong: locationId // Can be location ID or coordinates
+    };
+
+    console.log(`Sending TripAdvisor API place search request to: ${url}`);
+    console.log(`Request parameters: searchQuery=${placeName}, latLong=${locationId}`);
+    
+    // Configure axios with headers
+    const config = {
+      params,
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'TravelBuddy/1.0'
       }
-    });
+    };
+    
+    const response = await axios.get(url, config);
+    
+    console.log(`TripAdvisor place search response status: ${response.status}`);
+    console.log(`Response data available: ${!!response.data}`);
     
     if (response.data?.data?.length > 0) {
+      console.log(`Found ${response.data.data.length} places matching "${placeName}"`);
       return response.data.data;
     }
     
+    console.log(`No places found matching "${placeName}" in location ID ${locationId}`);
     return [];
   } catch (error) {
     console.error(`Error searching for place "${placeName}" in location ${locationId}:`, error.message);
-    if (error.response && error.response.status === 403) {
-      console.error('TripAdvisor API authorization error for place search:',
-                   error.response.data?.Message || 'Unknown authentication error');
+    
+    if (error.response) {
+      console.error(`Response status: ${error.response.status}`);
+      console.error('Response headers:', error.response.headers);
+      console.error('Response data:', error.response.data);
+      
+      if (error.response.status === 403) {
+        console.error('TripAdvisor API authorization error for place search:',
+                     error.response.data?.Message || 'Unknown authentication error');
+      }
+    } else if (error.request) {
+      console.error('Request was made but no response received');
+    } else {
+      console.error('Error setting up the request:', error.message);
     }
+    
     return null;
   }
 }
@@ -219,25 +285,55 @@ async function searchPlace(placeName, locationId) {
  */
 async function getPlaceDetails(locationId) {
   try {
-    const response = await axios.get(`${TRIPADVISOR_API_BASE_URL}/location/${locationId}/details`, {
-      params: {
-        key: TRIPADVISOR_API_KEY,
-        language: 'en',
-        currency: 'EUR'
+    // Configure the request
+    const url = `${TRIPADVISOR_API_BASE_URL}/location/${locationId}/details`;
+    const params = {
+      key: TRIPADVISOR_API_KEY,
+      language: 'en',
+      currency: 'EUR'
+    };
+
+    console.log(`Sending TripAdvisor API details request to: ${url}`);
+    
+    // Configure axios with headers
+    const config = {
+      params,
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'TravelBuddy/1.0'
       }
-    });
+    };
+    
+    const response = await axios.get(url, config);
+    
+    console.log(`TripAdvisor details response status: ${response.status}`);
+    console.log(`Response data available: ${!!response.data}`);
     
     if (response.data) {
+      console.log(`Successfully retrieved details for location ID ${locationId}`);
       return response.data;
     }
     
+    console.log(`No details found for location ID ${locationId}`);
     return null;
   } catch (error) {
     console.error(`Error getting details for location ID ${locationId}:`, error.message);
-    if (error.response && error.response.status === 403) {
-      console.error('TripAdvisor API authorization error for details:',
-                   error.response.data?.Message || 'Unknown authentication error');
+    
+    if (error.response) {
+      console.error(`Response status: ${error.response.status}`);
+      console.error('Response headers:', error.response.headers);
+      console.error('Response data:', error.response.data);
+      
+      if (error.response.status === 403) {
+        console.error('TripAdvisor API authorization error for details:',
+                     error.response.data?.Message || 'Unknown authentication error');
+      }
+    } else if (error.request) {
+      console.error('Request was made but no response received');
+    } else {
+      console.error('Error setting up the request:', error.message);
     }
+    
     return null;
   }
 }
