@@ -485,10 +485,9 @@ app.get('/api/nearby', async (req, res) => {
       if (type === "restaurant" || type === "bar") {
         const originalCount = data.results.length;
         
-        console.log(`Before filtering: ${originalCount} places found`);
+        console.log(`Nearby places response: status=${data.status}, results=${originalCount}`);
         
         // Make sure we get enough results even after filtering
-        // Only do minimal filtering here - the client will do more specific filtering
         if (originalCount > 0) {
           data.results = data.results.filter(place => {
             if (!place.types) return true; // Keep places with no types array
@@ -498,7 +497,7 @@ app.get('/api/nearby', async (req, res) => {
           });
         }
         
-        console.log(`After filtering: ${data.results.length} places remain`);
+        console.log(`Filtered out hotels, remaining places: ${data.results.length}`);
       }
 
       data.results.forEach(place => {
