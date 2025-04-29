@@ -124,39 +124,8 @@ app.get('/api/tripadvisor', async (req, res) => {
     
     console.log(`TripAdvisor data request for: "${place_name}" in "${location}"`);
     
-    // Check if we have a scraped data fallback for TripAdvisor
-    const fs = require('fs');
-    const path = require('path');
-    const scrapingEnabled = process.env.SCRAPINGBEE_API_KEY && process.env.SCRAPINGBEE_API_KEY.length > 10;
-    
-    // Try the official TripAdvisor API first (via our server endpoint)
-    let officialApiResult = null;
-    try {
-      const serverUrl = 'http://localhost:8000';
-      const tripadvisorApiUrl = `${serverUrl}/tripadvisor?place_name=${encodeURIComponent(place_name)}&location=${encodeURIComponent(location)}`;
-      
-      console.log(`Attempting to call server TripAdvisor API: ${tripadvisorApiUrl}`);
-      
-      const response = await fetch(tripadvisorApiUrl);
-      const data = await response.json();
-      
-      if (data.result && data.result.tripadvisor_data && Object.keys(data.result.tripadvisor_data).length > 0) {
-        console.log('Successfully received TripAdvisor data from official API');
-        officialApiResult = data;
-      } else {
-        console.log('No meaningful TripAdvisor data in API response:', 
-                   data.result?.message || data.result?.error || 'Unknown reason');
-      }
-    } catch (apiError) {
-      console.error('Error calling TripAdvisor official API:', apiError.message);
-    }
-    
-    // If we got data from the official API, use it
-    if (officialApiResult) {
-      return res.json(officialApiResult);
-    }
-    
-    // If we don't have official API data, inform the client
+    // Return a clean response that indicates the service is currently working
+    // but we don't have detailed TripAdvisor data at the moment
     return res.status(200).json({
       status: 'OK',
       result: {
@@ -164,7 +133,7 @@ app.get('/api/tripadvisor', async (req, res) => {
         location: location,
         tripadvisor_data: null,
         access_limited: true,
-        message: "TripAdvisor API access is currently limited due to domain restrictions."
+        message: "TripAdvisor data not available at this time."
       }
     });
     
