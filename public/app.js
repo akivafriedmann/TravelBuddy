@@ -645,21 +645,8 @@ async function searchLocation() {
   const inputValue = document.getElementById('location-input').value.trim();
   console.log("Searching with input:", inputValue);
   
-  // If we have a keyword, first try to search for a specific place
-  if (inputValue) {
-    console.log("Searching for specific place:", inputValue);
-    try {
-      const searchResult = await searchForSpecificPlace(inputValue);
-      if (searchResult) {
-        hideLoading();
-        return; // Successfully found and displayed a specific place
-      }
-    } catch (error) {
-      console.error("Error in searchForSpecificPlace:", error);
-      // If error, continue with normal location search
-    }
-    // If no specific place found, continue with normal location search
-  }
+  // Skip searchForSpecificPlace and directly use geocoding for cities/locations
+  // This ensures we get restaurants in the actual location, not elsewhere
   
   // If we have a clicked location, use that instead of geocoding
   if (clickedLocation) {
