@@ -782,8 +782,25 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
     console.log("Nearby places API response:", data);
     
     if (data.status === 'OK' && data.results && data.results.length > 0) {
-      // Update places container
-      renderPlaces(data.results);
+      // EMERGENCY FIX: Directly render places on the page without filters
+      const container = document.getElementById('places-container');
+      container.innerHTML = '';
+      
+      // Log the places we found
+      console.log(`EMERGENCY MODE: Showing all ${data.results.length} places without any filtering`);
+      
+      // Clear existing markers
+      clearMarkers();
+      
+      // Display all places directly
+      data.results.forEach((place, index) => {
+        // Create a card for each place
+        const card = createPlaceCard(place, index);
+        container.appendChild(card);
+        
+        // Add a marker for this place
+        addMarker(place, index);
+      });
     } else if (data.status === 'REQUEST_DENIED') {
       // API key issue
       console.error("Google Places API request denied:", data.error_message || "No error details available");
