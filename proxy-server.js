@@ -256,7 +256,8 @@ app.get('/api/maps-loader', (req, res) => {
     // Load the Google Maps API with the key from the server
     (function() {
       const script = document.createElement('script');
-      script.src = "https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap&loading=async";
+      // Use properly quoted version of the URL
+      script.src = \`https://maps.googleapis.com/maps/api/js?key=\${apiKey}&libraries=places&callback=initMap&loading=async\`;
       script.defer = true;
       script.async = true;
       document.head.appendChild(script);
