@@ -11,6 +11,8 @@ let lastHoverLocation = null;
 let clickedLocation = null; // Stores the location when user clicks on the map
 let clickedLocationMarker = null; // Marker to show where user clicked
 let searchRadius = 1500; // Default search radius in meters
+let isApiErrorShown = false; // Flag to track if API error is already displayed
+let isRijksmuseumSet = false; // Flag to track if Rijksmuseum is already centered
 
 // Initialize the map
 function initMap() {
@@ -738,9 +740,23 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
     const response = await fetch(apiUrl);
     const data = await response.json();
     
+    console.log("Nearby places API response:", data);
+    
     if (data.status === 'OK' && data.results && data.results.length > 0) {
       // Update places container
       renderPlaces(data.results);
+    } else if (data.status === 'REQUEST_DENIED') {
+      // API key issue
+      console.error("Google Places API request denied:", data.error_message || "No error details available");
+      document.getElementById('places-container').innerHTML = `
+        <div class="col-12">
+          <div class="alert alert-warning">
+            <strong>API Request Denied</strong>
+            <p>There was an issue with the Google Places API request: ${data.error_message || "Unknown error"}</p>
+            <p>This is likely due to API key restrictions or quota limits.</p>
+          </div>
+        </div>
+      `;
     } else {
       // No results
       document.getElementById('places-container').innerHTML = `

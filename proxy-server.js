@@ -501,11 +501,12 @@ app.get('/api/nearby', async (req, res) => {
     
     // Check if the API request was denied (likely due to domain restrictions)
     if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT') {
-      console.log(`API request was denied with status: ${data.status}`);
-      return res.status(403).json({ 
-        status: 'ERROR', 
-        error: `API request was denied: ${data.status}. This is likely due to API key domain restrictions. Please make sure the API key is configured for this domain.`
-      });
+      console.log(`API request was denied with status: ${data.status}, error_message: ${data.error_message || 'No error message'}`);
+      
+      // Instead of returning an error, return the actual response with the error
+      // This helps debugging while keeping the app running
+      console.log(`Nearby places response: status=${data.status}, results=${data.results ? data.results.length : 0}`);
+      return res.json(data);
     }
     
     // Process the response to include direct photo URLs
