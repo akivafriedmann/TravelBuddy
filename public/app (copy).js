@@ -488,59 +488,18 @@ function useMyLocation() {
   };
   
   try {
-    // Add a debug popup to make it very clear we're requesting location
-    const notification = document.createElement('div');
-    notification.className = 'alert alert-info alert-dismissible fade show';
-    notification.setAttribute('role', 'alert');
-    notification.innerHTML = `
-      <i class="fas fa-info-circle"></i> 
-      Requesting your location... Please allow location access in your browser when prompted.
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-    
-    try {
-      // Add notification to the page
-      const container = document.querySelector('.container');
-      if (container) {
-        container.insertBefore(notification, container.firstChild);
-      }
-    } catch (e) {
-      console.error("Error showing notification:", e);
-    }
-    
-    // Track when the request was started
-    console.log("Requesting user location at: " + new Date().toISOString());
-    
     navigator.geolocation.getCurrentPosition(
       position => {
-        console.log("Successfully obtained user location at: " + new Date().toISOString());
-        
         // Success - we have the location
         currentLocation = {
           lat: position.coords.latitude,
           lng: position.coords.longitude
         };
         
-        console.log("Location coordinates:", currentLocation);
+        console.log("Successfully obtained user location:", currentLocation);
         
-        // Update map center with animation and zoom
-        map.panTo(currentLocation);
-        map.setZoom(14); // Zoom in a bit
-        
-        // Add a marker at the current location
-        new google.maps.Marker({
-          position: currentLocation,
-          map: map,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: "#4285F4",
-            fillOpacity: 0.8,
-            strokeColor: "white",
-            strokeWeight: 2,
-          },
-          title: "Your Location"
-        });
+        // Update map center
+        map.setCenter(currentLocation);
         
         // Load nearby places
         loadNearbyPlaces(currentLocation);

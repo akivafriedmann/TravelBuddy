@@ -516,20 +516,17 @@ app.get('/api/nearby', async (req, res) => {
       if (type === "restaurant" || type === "bar") {
         const originalCount = data.results.length;
         
-        // Something is wrong with our filtering logic - multiple places come in but only one remains
         console.log(`Before filtering: ${originalCount} places found`);
         
-        // Let's debug what types all these places have
-        data.results.forEach((place, index) => {
-          console.log(`Place ${index}: ${place.name}, types: ${JSON.stringify(place.types || [])}`);
+        // Just filter out places that explicitly have "lodging" type
+        data.results = data.results.filter(place => {
+          if (!place.types) return true; // Keep places with no types array
+          
+          // Keep places that don't have "lodging" in their types
+          return !place.types.includes("lodging");
         });
         
-        // Remove the filtering for now to investigate
-        // data.results = data.results.filter(place => {
-        //   return !place.types || !place.types.includes("lodging");
-        // });
-        
-        console.log(`After testing (no filter applied): ${data.results.length} places`);
+        console.log(`After filtering: ${data.results.length} places remain`);
       }
 
       data.results.forEach(place => {
