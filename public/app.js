@@ -38,9 +38,27 @@ function initMap() {
   });
   
   // Add mousemove event to trigger hover search for nearby places
+  let isMouseDown = false;
+  
+  // Track mouse state to prevent unwanted events
+  google.maps.event.addListener(map, 'mousedown', function() {
+    isMouseDown = true;
+  });
+  
+  google.maps.event.addListener(map, 'mouseup', function() {
+    isMouseDown = false;
+  });
+  
+  google.maps.event.addListener(map, 'dragstart', function() {
+    // Close any hover info window when dragging starts
+    if (hoverInfoWindow) {
+      hoverInfoWindow.close();
+    }
+  });
+  
   google.maps.event.addListener(map, 'mousemove', debounce(function(event) {
-    // Only search when the user is hovering (not actively dragging the map)
-    if (!map.getDraggable || map.getDraggable()) {
+    // Only search when the user is hovering (not actively dragging or clicking)
+    if (!isMouseDown && (!map.getDraggable || map.getDraggable())) {
       const hoverLocation = {
         lat: event.latLng.lat(),
         lng: event.latLng.lng()
@@ -82,10 +100,19 @@ function initMap() {
   
   // Add click listener to the map for any POIs (points of interest)
   map.addListener('click', (event) => {
+    // Close any hover info window
+    if (hoverInfoWindow) {
+      hoverInfoWindow.close();
+    }
+    
     // Check if a POI (point of interest) was clicked
     if (event.placeId) {
-      // Prevent the default info window from showing
+      // Prevent the default info window from showing and stop the event from propagating
       event.stop();
+      
+      // Prevent map panning when clicking a place
+      map.setOptions({ draggable: false });
+      setTimeout(() => map.setOptions({ draggable: true }), 100);
       
       // Show loading in info window
       infoWindow.setContent('<div class="p-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</div>');
@@ -1852,6 +1879,11 @@ function updateHoverMarker(location) {
 
 // Search for nearby places when hovering over an area
 function searchNearbyOnHover(location) {
+  // Don't search if we're already showing a place info window or modal
+  if (document.getElementById('place-modal').classList.contains('show')) {
+    return;
+  }
+  
   // Cancel any existing hover search timeout
   if (hoverTimeout) {
     clearTimeout(hoverTimeout);
@@ -1859,14 +1891,21 @@ function searchNearbyOnHover(location) {
   
   // Set a timeout to avoid too many API calls
   hoverTimeout = setTimeout(() => {
-    // Close any existing hover info window
-    if (hoverInfoWindow) {
-      hoverInfoWindow.close();
-    }
-    
     // Create a new info window if needed
     if (!hoverInfoWindow) {
-      hoverInfoWindow = new google.maps.InfoWindow();
+      hoverInfoWindow = new google.maps.InfoWindow({
+        disableAutoPan: true // Prevent the map from auto-panning when opening the hover info window
+      });
+      
+      // Add a click listener to the map to close the hover info window
+      google.maps.event.addListener(map, 'click', function() {
+        if (hoverInfoWindow) {
+          hoverInfoWindow.close();
+        }
+      });
+    } else {
+      // Close any existing hover info window before showing a new one
+      hoverInfoWindow.close();
     }
     
     // Show loading indicator in the info window
