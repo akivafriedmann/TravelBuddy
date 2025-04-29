@@ -518,13 +518,16 @@ app.get('/api/nearby', async (req, res) => {
         
         console.log(`Before filtering: ${originalCount} places found`);
         
-        // Just filter out places that explicitly have "lodging" type
-        data.results = data.results.filter(place => {
-          if (!place.types) return true; // Keep places with no types array
-          
-          // Keep places that don't have "lodging" in their types
-          return !place.types.includes("lodging");
-        });
+        // Make sure we get enough results even after filtering
+        // Only do minimal filtering here - the client will do more specific filtering
+        if (originalCount > 0) {
+          data.results = data.results.filter(place => {
+            if (!place.types) return true; // Keep places with no types array
+            
+            // Keep places that don't have "lodging" in their types
+            return !place.types.includes("lodging");
+          });
+        }
         
         console.log(`After filtering: ${data.results.length} places remain`);
       }

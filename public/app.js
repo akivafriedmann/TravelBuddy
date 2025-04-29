@@ -857,29 +857,34 @@ function renderPlaces(places) {
     "car_dealer"
   ];
   
-  // Filter out Shell stations
-  const filteredPlaces = places.filter(place => {
-    // Skip this filter if not restaurant type
-    if (currentPlaceType !== 'restaurant') {
-      return true;
-    }
-    
-    // Check if this is a gas station or similar
-    if (place.types) {
-      for (const type of unwantedTypes) {
-        if (place.types.includes(type)) {
-          return false;
+  // Make a copy of the places to filter
+  let filteredPlaces = [...places];
+  
+  // Log the number of places before filtering
+  console.log(`Before client filtering: ${filteredPlaces.length} places`);
+  
+  // Only apply these filters for restaurant type to ensure we get results
+  if (currentPlaceType === 'restaurant' && filteredPlaces.length > 3) {
+    filteredPlaces = filteredPlaces.filter(place => {
+      // Check if this is a gas station or similar
+      if (place.types) {
+        for (const type of unwantedTypes) {
+          if (place.types.includes(type)) {
+            return false;
+          }
         }
       }
-    }
-    
-    // For restaurants only, filter by minimum rating
-    if (currentPlaceType === 'restaurant' && place.rating && place.rating < MIN_RATING) {
-      return false;
-    }
-    
-    return true;
-  });
+      
+      // Filter by minimum rating only if we have enough places
+      if (place.rating && place.rating < MIN_RATING) {
+        return false;
+      }
+      
+      return true;
+    });
+  }
+  
+  console.log(`After client filtering: ${filteredPlaces.length} places`);
   
   // If no results after filtering, show a message
   if (filteredPlaces.length === 0) {
