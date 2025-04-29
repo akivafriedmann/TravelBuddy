@@ -109,8 +109,8 @@ app.get('/api/places/details', async (req, res) => {
   }
 });
 
-// TripAdvisor integration - uses the Python scraper script
-app.get('/api/tripadvisor', (req, res) => {
+// TripAdvisor integration - using official API instead of Python scraper
+app.get('/api/tripadvisor', async (req, res) => {
   try {
     const { place_name, location } = req.query;
     
@@ -122,86 +122,50 @@ app.get('/api/tripadvisor', (req, res) => {
       });
     }
     
-    console.log(`TripAdvisor request for "${place_name}" in "${location}"`);
+    console.log(`TripAdvisor API request for: "${place_name}" in "${location}"`);
     
-    // Use the Python script with exec - the path is relative to where this proxy server is running
-    const { exec } = require('child_process');
-    const pythonPath = './tripadvisor_service_scraper.py';
-    const command = `python3 ${pythonPath} --place "${place_name}" --location "${location}"`;
+    // Forward the request to the official TripAdvisor API on our server
+    const serverUrl = process.env.SERVER_URL || 'http://localhost:8000';
+    const tripadvisorApiUrl = `${serverUrl}/tripadvisor?place_name=${encodeURIComponent(place_name)}&location=${encodeURIComponent(location)}`;
     
-    console.log(`Executing Python script: ${pythonPath}`);
+    // Make the API call
+    const http = serverUrl.startsWith('https') ? https : http;
     
-    exec(command, (error, stdout, stderr) => {
-      // Handle possible errors with the Python script
-      if (error) {
-        console.error(`Error executing TripAdvisor scraper: ${error.message}`);
-        return res.json({
-          status: 'OK',
-          result: {
-            name: place_name,
-            location: location,
-            tripadvisor_data: null,
-            source_error: error.message
-          }
-        });
-      }
-      
-      // Log any stderr output (usually debug info from the script)
-      if (stderr) {
-        console.log(`TripAdvisor scraper debug info: ${stderr}`);
-      }
-      
-      try {
-        // Parse the JSON output from the Python script
-        console.log(`TripAdvisor raw output: ${stdout}`);
-        const data = JSON.parse(stdout);
-        
-        // Check if we have meaningful TripAdvisor data
-        if (data && data.tripadvisor_data && 
-            (data.tripadvisor_data.rating || 
-             data.tripadvisor_data.url || 
-             data.tripadvisor_data.rank_position)) {
-          console.log(`Found TripAdvisor data for "${place_name}":`, data.tripadvisor_data);
-          
-          // Return the TripAdvisor data
-          return res.json({
-            status: 'OK',
-            result: data
-          });
-        } else {
-          console.log(`No meaningful TripAdvisor data found for "${place_name}"`);
-          // We have data but no meaningful TripAdvisor info
-          return res.json({
-            status: 'OK',
-            result: {
-              name: place_name,
-              location: location,
-              tripadvisor_data: null,
-              access_limited: true  // Flag indicating access is limited
-            }
-          });
+    // Create a promise to handle the HTTP request
+    const responseData = await new Promise((resolve, reject) => {
+      http.get(tripadvisorApiUrl, (apiRes) => {
+        if (apiRes.statusCode < 200 || apiRes.statusCode >= 300) {
+          return reject(new Error(`Status Code: ${apiRes.statusCode}`));
         }
-      } catch (parseError) {
-        console.error(`Error parsing TripAdvisor data: ${parseError.message}`);
-        console.error(`Raw output was: ${stdout}`);
         
-        return res.json({
-          status: 'OK',
-          result: {
-            name: place_name,
-            location: location,
-            tripadvisor_data: null,
-            parse_error: parseError.message
+        const chunks = [];
+        apiRes.on('data', (chunk) => chunks.push(chunk));
+        apiRes.on('end', () => {
+          try {
+            const data = JSON.parse(Buffer.concat(chunks).toString());
+            resolve(data);
+          } catch (e) {
+            reject(e);
           }
         });
-      }
+      }).on('error', reject);
     });
+    
+    // Return the API response
+    console.log(`TripAdvisor API response received with status: ${responseData.status}`);
+    return res.json(responseData);
+    
   } catch (error) {
     console.error('Error in TripAdvisor route:', error);
-    res.status(500).json({
-      status: 'ERROR',
-      message: 'Internal server error',
-      error: error.message
+    res.status(200).json({  // Use 200 to keep frontend working
+      status: 'OK',
+      result: {
+        name: req.query.place_name,
+        location: req.query.location,
+        tripadvisor_data: null,
+        api_error: true,
+        error_message: error.message
+      }
     });
   }
 });
