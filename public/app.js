@@ -863,24 +863,19 @@ function renderPlaces(places) {
     filteredPlaces = filteredPlaces.filter(place => {
       // Check if this is a gas station or similar
       if (place.types) {
-        // Remove places with unwanted types
-        for (const type of unwantedTypes) {
+        // Only filter out the most obvious non-restaurants
+        const criticalUnwantedTypes = ["gas_station", "convenience_store", "car_repair", "car_wash", "car_dealer", "grocery_or_supermarket"];
+        
+        // Check if place has any critical unwanted types
+        for (const type of criticalUnwantedTypes) {
           if (place.types.includes(type)) {
             return false;
           }
         }
-        
-        // Make sure it is actually a restaurant 
-        const restaurantTypes = ["restaurant", "meal_takeaway", "meal_delivery", "bar", "night_club", "dining"];
-        const isRestaurantType = place.types.some(type => restaurantTypes.includes(type));
-        
-        if (!isRestaurantType) {
-          return false;
-        }
       }
       
-      // Filter by minimum rating - only keep higher-rated places
-      if (place.rating && place.rating < MIN_RATING) {
+      // Filter by minimum rating only if we have enough places
+      if (place.rating && place.rating < MIN_RATING && filteredPlaces.length > 5) {
         return false;
       }
       
