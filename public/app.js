@@ -73,29 +73,40 @@ function initMap() {
       
       // Simple distance check using lat/lng coordinates
       if (lastHoverPosition) {
-        // Calculate distance in meters between two lat/lng points
-        const earthRadius = 6371000; // meters
-        const dLat = (hoverLocation.lat - lastHoverPosition.lat()) * Math.PI / 180;
-        const dLng = (hoverLocation.lng - lastHoverPosition.lng()) * Math.PI / 180;
-        const a = 
-          Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(lastHoverPosition.lat() * Math.PI / 180) * Math.cos(hoverLocation.lat * Math.PI / 180) *
-          Math.sin(dLng/2) * Math.sin(dLng/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const distance = earthRadius * c; // distance in meters
-        
-        // Only search if we've moved at least 25 meters
-        shouldSearch = distance > 25;
-      }
-        
-        // Store the hover point for visual reference
-        updateHoverMarker(hoverLocation);
-        
-        // Only search in certain zoom levels and if we've moved enough
-        if (map.getZoom() >= 15 && shouldSearch) {
-          lastHoverPosition = event.latLng;
-          searchNearbyOnHover(hoverLocation);
+        try {
+          // Get coordinates from the LatLng object
+          const lastLat = lastHoverPosition.lat();
+          const lastLng = lastHoverPosition.lng();
+          
+          // Calculate distance in meters between two lat/lng points
+          const earthRadius = 6371000; // meters
+          const dLat = (hoverLocation.lat - lastLat) * Math.PI / 180;
+          const dLng = (hoverLocation.lng - lastLng) * Math.PI / 180;
+          const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lastLat * Math.PI / 180) * Math.cos(hoverLocation.lat * Math.PI / 180) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          const distance = earthRadius * c; // distance in meters
+          
+          // Only search if we've moved at least 25 meters
+          shouldSearch = distance > 25;
+        } catch (e) {
+          // If anything goes wrong in the calculation, default to allowing the search
+          console.error("Error calculating hover distance:", e);
+          shouldSearch = true;
+          // Reset the last position to avoid future errors
+          lastHoverPosition = null;
         }
+      }
+      
+      // Store the hover point for visual reference
+      updateHoverMarker(hoverLocation);
+      
+      // Only search in certain zoom levels and if we've moved enough
+      if (map.getZoom() >= 15 && shouldSearch) {
+        lastHoverPosition = event.latLng;
+        searchNearbyOnHover(hoverLocation);
       }
     }
   }, 400)); // Increased debounce time
