@@ -8,6 +8,8 @@ let hoverMarker = null;
 let hoverInfoWindow = null;
 let hoverTimeout = null;
 let lastHoverLocation = null;
+let clickedLocation = null; // Stores the location when user clicks on the map
+let clickedLocationMarker = null; // Marker to show where user clicked
 
 // Initialize the map
 function initMap() {
@@ -135,12 +137,53 @@ function initMap() {
   // Initialize InfoWindow for place clicks
   const infoWindow = new google.maps.InfoWindow();
   
-  // Add click listener to the map for any POIs (points of interest)
+  // Add click listener to the map for clicks anywhere on the map
   map.addListener('click', (event) => {
     // Close any hover info window
     if (hoverInfoWindow) {
       hoverInfoWindow.close();
     }
+    
+    // Store the clicked location for search functionality
+    clickedLocation = {
+      lat: event.latLng.lat(),
+      lng: event.latLng.lng()
+    };
+    
+    // Show marker at clicked location
+    if (clickedLocationMarker) {
+      clickedLocationMarker.setMap(null); // Remove existing marker
+    }
+    
+    // Create a new marker at the clicked location
+    clickedLocationMarker = new google.maps.Marker({
+      position: clickedLocation,
+      map: map,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 8,
+        fillColor: "#FF5722", // Different color from current location
+        fillOpacity: 0.8,
+        strokeColor: "white",
+        strokeWeight: 2,
+      },
+      title: "Clicked Location"
+    });
+    
+    // Update location input field with the coordinates or address
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({
+      location: clickedLocation
+    }, (results, status) => {
+      if (status === google.maps.GeocoderStatus.OK && results[0]) {
+        // Update input field with readable address
+        document.getElementById('location-input').value = results[0].formatted_address;
+      } else {
+        // If geocoding fails, use coordinates
+        document.getElementById('location-input').value = 
+          `${clickedLocation.lat.toFixed(6)}, ${clickedLocation.lng.toFixed(6)}`;
+      }
+    });
     
     // Check if a POI (point of interest) was clicked
     if (event.placeId) {
@@ -510,14 +553,42 @@ function useMyLocation() {
 
 // Search for a location
 async function searchLocation() {
-  const locationInput = document.getElementById('location-input').value.trim();
+  showLoading();
   
-  if (!locationInput) {
-    alert('Please enter a location to search');
+  // If we have a clicked location, use that instead of geocoding
+  if (clickedLocation) {
+    console.log("Using clicked location for search:", clickedLocation);
+    
+    // Use the clicked location
+    currentLocation = {
+      lat: clickedLocation.lat,
+      lng: clickedLocation.lng
+    };
+    
+    // Update map center
+    map.setCenter(currentLocation);
+    map.setZoom(15); // Zoom in to show nearby places
+    
+    // Load nearby places based on clicked location
+    // Use a smaller radius (750m) since we likely clicked a specific spot
+    loadNearbyPlaces(currentLocation, '', 750);
+    
+    // Keep the clickedLocation marker visible so user knows where they clicked
+    // but clear the reference so another click will work
+    clickedLocation = null;
+    
+    hideLoading();
     return;
   }
   
-  showLoading();
+  // If no clicked location, proceed with location input search
+  const locationInput = document.getElementById('location-input').value.trim();
+  
+  if (!locationInput) {
+    hideLoading();
+    alert('Please enter a location to search or click directly on the map');
+    return;
+  }
   
   try {
     // Use geocoding to convert address to coordinates
@@ -541,6 +612,25 @@ async function searchLocation() {
         // Update map center
         map.setCenter(currentLocation);
         
+        // Add marker for the search location (replacing any clicked location marker)
+        if (clickedLocationMarker) {
+          clickedLocationMarker.setMap(null);
+        }
+        
+        clickedLocationMarker = new google.maps.Marker({
+          position: currentLocation,
+          map: map,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#FF5722",
+            fillOpacity: 0.8,
+            strokeColor: "white",
+            strokeWeight: 2,
+          },
+          title: "Search Location"
+        });
+        
         // Determine if this is a specific locality/neighborhood by checking the result types
         const isSpecificArea = results[0].types.some(type => 
           ['sublocality', 'neighborhood', 'postal_code'].includes(type)
@@ -556,13 +646,13 @@ async function searchLocation() {
         }
       } else {
         hideLoading();
-        alert('Location not found. Please try another search term.');
+        alert('Location not found. Please try another search term or click directly on the map.');
       }
     });
   } catch (error) {
     console.error('Geocoding error:', error);
     hideLoading();
-    alert('Error searching for location. Please try again.');
+    alert('Error searching for location. Please try again or click directly on the map.');
   }
 }
 
