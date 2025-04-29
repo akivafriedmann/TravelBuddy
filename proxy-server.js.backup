@@ -509,18 +509,8 @@ app.get('/api/nearby', async (req, res) => {
       return res.json(data);
     }
     
-        // Process the response to filter results and include direct photo URLs
+    // Process the response to include direct photo URLs
     if (data.results) {
-      // Filter out hotels from restaurant or bar searches
-      if (type === "restaurant" || type === "bar") {
-        const originalCount = data.results.length;
-        data.results = data.results.filter(place => {
-          // Filter out places that have "lodging" in their types
-          return !place.types || !place.types.includes("lodging");
-        });
-        console.log(`Filtered out hotels from ${type} search: ${originalCount} -> ${data.results.length} places`);
-      }
-
       data.results.forEach(place => {
         if (place.photos && place.photos.length > 0) {
           place.photos = place.photos.map(photo => {

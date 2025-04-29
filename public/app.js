@@ -1376,33 +1376,39 @@ async function showPlaceDetails(placeId) {
       // Prepare photo carousel HTML
       let photoHtml = '';
       if (place.photos && place.photos.length > 0) {
+        // Use Bootstrap carousel for better arrow navigation
         photoHtml = `
-          <div class="photo-carousel">
-            <div class="carousel-container">
-              <div class="carousel-slide">
-                <img src="/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=800" alt="${place.name}">
-              </div>
-              ${place.photos.length > 1 ? `
-                <div class="carousel-nav carousel-prev">
-                  <i class="bi bi-chevron-left"></i>
+          <div id="place-photos" class="carousel slide" data-bs-ride="false">
+            <div class="carousel-inner">
+              ${place.photos.map((photo, index) => `
+                <div class="carousel-item ${index === 0 ? 'active' : ''}">
+                  <img src="/api/photo?photoreference=${photo.photo_reference}&maxwidth=800" 
+                    class="d-block w-100" alt="Photo ${index + 1}">
                 </div>
-                <div class="carousel-nav carousel-next">
-                  <i class="bi bi-chevron-right"></i>
-                </div>
-                <div class="carousel-counter">1 / ${place.photos.length}</div>
-              ` : ''}
+              `).join('')}
             </div>
             ${place.photos.length > 1 ? `
-              <div class="thumbnail-container">
-                ${place.photos.map((photo, index) => `
-                  <img src="/api/photo?photoreference=${photo.photo_reference}&maxwidth=120" 
-                       class="thumbnail ${index === 0 ? 'active' : ''}" 
-                       data-index="${index}" 
-                       alt="Thumbnail ${index + 1}">
-                `).join('')}
-              </div>
+              <button class="carousel-control-prev" type="button" data-bs-target="#place-photos" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+              </button>
+              <button class="carousel-control-next" type="button" data-bs-target="#place-photos" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+              </button>
+              <div class="carousel-indicator-custom" id="photo-counter">1 / ${place.photos.length}</div>
             ` : ''}
           </div>
+          ${place.photos.length > 1 ? `
+            <div class="thumbnail-container mt-2 d-flex">
+              ${place.photos.map((photo, index) => `
+                <img src="/api/photo?photoreference=${photo.photo_reference}&maxwidth=120" 
+                    class="thumbnail mx-1 ${index === 0 ? 'active' : ''}" 
+                    data-bs-target="#place-photos" data-bs-slide-to="${index}"
+                    alt="Thumbnail ${index + 1}" style="width: 60px; height: 45px; object-fit: cover; cursor: pointer;">
+              `).join('')}
+            </div>
+          ` : ''}
         `;
         
         // Store photos data for later use
@@ -2446,60 +2452,45 @@ function hideLoading() {
 
 // Initialize photo carousel
 function initPhotoCarousel() {
-  // Get carousel elements
-  const container = document.querySelector('.carousel-slide');
-  const prevBtn = document.querySelector('.carousel-prev');
-  const nextBtn = document.querySelector('.carousel-next');
-  const counter = document.querySelector('.carousel-counter');
+  // We're now using Bootstrap's built-in carousel functionality
+  const carousel = document.getElementById('place-photos');
+  const counter = document.getElementById('photo-counter');
   const thumbnails = document.querySelectorAll('.thumbnail');
-  
-  // Store current index
-  let currentIndex = 0;
   const photos = window.currentPlacePhotos || [];
   
-  if (!photos || photos.length <= 1 || !container) return;
+  if (!photos || photos.length <= 1 || !carousel) return;
   
-  // Function to update carousel display
-  function updateCarousel() {
-    // Update image
-    container.innerHTML = `<img src="/api/photo?photoreference=${photos[currentIndex].photo_reference}&maxwidth=800" alt="Place photo ${currentIndex + 1}">`;
+  // Initialize Bootstrap carousel
+  const carouselInstance = new bootstrap.Carousel(carousel, {
+    interval: false, // Don't auto-rotate
+    wrap: true       // Allow wrapping
+  });
+  
+  // Update counter when carousel slides
+  carousel.addEventListener('slid.bs.carousel', (event) => {
+    const activeIndex = [...carousel.querySelectorAll('.carousel-item')].findIndex(
+      item => item.classList.contains('active')
+    );
     
     // Update counter
     if (counter) {
-      counter.textContent = `${currentIndex + 1} / ${photos.length}`;
+      counter.textContent = `${activeIndex + 1} / ${photos.length}`;
     }
     
     // Update thumbnails
     thumbnails.forEach((thumb, idx) => {
-      if (idx === currentIndex) {
+      if (idx === activeIndex) {
         thumb.classList.add('active');
       } else {
         thumb.classList.remove('active');
       }
     });
-  }
-  
-  // Previous button click
-  if (prevBtn) {
-    prevBtn.addEventListener('click', () => {
-      currentIndex = (currentIndex - 1 + photos.length) % photos.length;
-      updateCarousel();
-    });
-  }
-  
-  // Next button click
-  if (nextBtn) {
-    nextBtn.addEventListener('click', () => {
-      currentIndex = (currentIndex + 1) % photos.length;
-      updateCarousel();
-    });
-  }
+  });
   
   // Thumbnail clicks
   thumbnails.forEach((thumb, idx) => {
     thumb.addEventListener('click', () => {
-      currentIndex = idx;
-      updateCarousel();
+      carouselInstance.to(idx);
     });
   });
 }

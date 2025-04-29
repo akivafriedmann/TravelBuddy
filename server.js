@@ -174,6 +174,17 @@ app.get('/api/nearby', async (req, res) => {
     
     console.log(`Nearby places response: status=${result.status}, results=${result.results ? result.results.length : 0}`);
     
+    // Filter out hotels from restaurant or bar searches
+    if (type === 'restaurant' || type === 'bar') {
+      if (result.results && Array.isArray(result.results)) {
+        result.results = result.results.filter(place => {
+          // Filter out places that have 'lodging' in their types
+          return !place.types || !place.types.includes('lodging');
+        });
+        console.log(`Filtered out hotels, remaining places: ${result.results.length}`);
+      }
+    }
+    
     res.json(result);
   } catch (error) {
     console.error('Error fetching nearby places:', error);
