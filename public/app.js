@@ -587,15 +587,22 @@ async function searchLocation() {
   showLoading();
   
   // Get the keyword input to check if we're searching for a specific place
-  const keywordInput = document.getElementById('keyword-input').value.trim();
+  // We don't have a separate keyword input in this version, so use location input
+  const inputValue = document.getElementById('location-input').value.trim();
+  console.log("Searching with input:", inputValue);
   
   // If we have a keyword, first try to search for a specific place
-  if (keywordInput) {
-    console.log("Searching for specific place:", keywordInput);
-    const searchResult = await searchForSpecificPlace(keywordInput);
-    if (searchResult) {
-      hideLoading();
-      return; // Successfully found and displayed a specific place
+  if (inputValue) {
+    console.log("Searching for specific place:", inputValue);
+    try {
+      const searchResult = await searchForSpecificPlace(inputValue);
+      if (searchResult) {
+        hideLoading();
+        return; // Successfully found and displayed a specific place
+      }
+    } catch (error) {
+      console.error("Error in searchForSpecificPlace:", error);
+      // If error, continue with normal location search
     }
     // If no specific place found, continue with normal location search
   }
@@ -615,7 +622,7 @@ async function searchLocation() {
     map.setZoom(15); // Zoom in to show nearby places
     
     // Load nearby places based on clicked location and the current search radius
-    loadNearbyPlaces(currentLocation, keywordInput, searchRadius);
+    loadNearbyPlaces(currentLocation, inputValue, searchRadius);
     
     // Keep the clickedLocation marker visible so user knows where they clicked
     // but clear the reference so another click will work

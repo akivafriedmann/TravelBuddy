@@ -215,13 +215,15 @@ app.get('/api/maps-loader', (req, res) => {
   // Use the API key from environment variable
   const apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
   
+  console.log('Google Maps API key available:', !!apiKey);
+  
   if (!apiKey) {
     console.error('Google Maps API key is missing');
     res.status(500).send('console.error("Google Maps API key is missing");');
     return;
   }
   
-  console.log('Google Maps API loader called');
+  console.log('Google Maps API loader called with key (masked):', apiKey.substring(0, 5) + '...' + apiKey.substring(apiKey.length - 3));
   
   // Return a script that loads the Google Maps API with the server's API key
   // But does not expose the key in the client-side code
