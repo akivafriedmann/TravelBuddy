@@ -859,29 +859,8 @@ function renderPlaces(places) {
   console.log(`Before client filtering: ${filteredPlaces.length} places`);
   
   // Only apply these filters for restaurant type to ensure we get results
-  if (currentPlaceType === 'restaurant' && filteredPlaces.length > 3) {
-    filteredPlaces = filteredPlaces.filter(place => {
-      // Check if this is a gas station or similar
-      if (place.types) {
-        // Only filter out the most obvious non-restaurants
-        const criticalUnwantedTypes = ["gas_station", "convenience_store", "car_repair", "car_wash", "car_dealer", "grocery_or_supermarket"];
-        
-        // Check if place has any critical unwanted types
-        for (const type of criticalUnwantedTypes) {
-          if (place.types.includes(type)) {
-            return false;
-          }
-        }
-      }
-      
-      // Filter by minimum rating only if we have enough places
-      if (place.rating && place.rating < MIN_RATING && filteredPlaces.length > 5) {
-        return false;
-      }
-      
-      return true;
-    });
-  }
+  // DEBUG: Temporarily disable filtering completely to see if we get results
+  console.log("SKIPPING FILTERING TO DEBUG - We should see places now");
   
   console.log(`After client filtering: ${filteredPlaces.length} places`);
   
