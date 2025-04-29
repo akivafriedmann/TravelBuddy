@@ -22,6 +22,13 @@ function initMap() {
     console.error("Map element not found in the DOM");
     return;
   }
+
+  // Set Rijksmuseum as the center point
+  if (!isRijksmuseumSet) {
+    currentLocation = { lat: 52.3600, lng: 4.8852 }; // Rijksmuseum coordinates
+    isRijksmuseumSet = true;
+    console.log("Setting Rijksmuseum as center");
+  }
   
   console.log("Initializing map with center:", currentLocation);
 
@@ -329,6 +336,12 @@ function initMap() {
     
     // Update the global search radius variable
     searchRadius = parseInt(this.value);
+  });
+  
+  // Automatically search for nearby places once the map is ready
+  google.maps.event.addListenerOnce(map, 'idle', function() {
+    console.log("Map is ready, searching for Rijksmuseum nearby places");
+    loadNearbyPlaces(currentLocation, "Rijksmuseum");
   });
   
   // When slider changes are complete, trigger a new search if we have a location
