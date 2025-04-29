@@ -34,7 +34,7 @@ function initMap() {
   map = new google.maps.Map(mapElement, {
     center: currentLocation,
     zoom: 13,
-    mapId: "TRAVEL_PLANNER_MAP",
+    // Remove mapId to allow styles to work properly
     mapTypeControl: false,
     fullscreenControl: false,
     streetViewControl: false,

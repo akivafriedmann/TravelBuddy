@@ -256,7 +256,7 @@ app.get('/api/maps-loader', (req, res) => {
     // Load the Google Maps API with the key from the server
     (function() {
       const script = document.createElement('script');
-      script.src = "https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap";
+      script.src = "https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap&loading=async";
       script.defer = true;
       script.async = true;
       document.head.appendChild(script);
@@ -515,21 +515,20 @@ app.get('/api/nearby', async (req, res) => {
       if (type === "restaurant" || type === "bar") {
         const originalCount = data.results.length;
         
-        // Debug: print types of all places before filtering
+        // Something is wrong with our filtering logic - multiple places come in but only one remains
+        console.log(`Before filtering: ${originalCount} places found`);
+        
+        // Let's debug what types all these places have
         data.results.forEach((place, index) => {
           console.log(`Place ${index}: ${place.name}, types: ${JSON.stringify(place.types || [])}`);
         });
         
-        data.results = data.results.filter(place => {
-          // Keep places that are restaurants or bars and don't include lodging
-          return place.types && 
-                 (place.types.includes("restaurant") || 
-                  place.types.includes("bar") || 
-                  place.types.includes("cafe")) && 
-                 !place.types.includes("lodging");
-        });
+        // Remove the filtering for now to investigate
+        // data.results = data.results.filter(place => {
+        //   return !place.types || !place.types.includes("lodging");
+        // });
         
-        console.log(`Filtered out hotels from ${type} search: ${originalCount} -> ${data.results.length} places`);
+        console.log(`After testing (no filter applied): ${data.results.length} places`);
       }
 
       data.results.forEach(place => {
