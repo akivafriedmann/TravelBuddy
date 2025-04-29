@@ -212,12 +212,19 @@ app.get('/api/photo', (req, res) => {
 
 // API endpoint to load Google Maps API with key
 app.get('/api/maps-loader', (req, res) => {
-  // Use the API key from environment variable or fall back to a default key for testing
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
+  // Use the API key from environment variable
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
   
-  console.log('Google Maps API loader called with key:', apiKey.substring(0, 5) + '...');
+  if (!apiKey) {
+    console.error('Google Maps API key is missing');
+    res.status(500).send('console.error("Google Maps API key is missing");');
+    return;
+  }
+  
+  console.log('Google Maps API loader called');
   
   // Return a script that loads the Google Maps API with the server's API key
+  // But does not expose the key in the client-side code
   res.set('Content-Type', 'application/javascript');
   res.send(`
     // Load the Google Maps API with the key from the server
@@ -236,7 +243,11 @@ app.get('/api/maps-loader', (req, res) => {
 app.get('/api/nearby', async (req, res) => {
   try {
     const { lat, lng, type = 'restaurant', radius = 1500, keyword } = req.query;
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
+    
+    if (!apiKey) {
+      return res.status(500).json({ status: 'ERROR', error: 'API key is not configured' });
+    }
     
     if (!lat || !lng) {
       return res.status(400).json({ status: 'ERROR', error: 'Missing required location parameters' });
@@ -280,7 +291,11 @@ app.get('/api/nearby', async (req, res) => {
 app.get('/api/places/search', async (req, res) => {
   try {
     const { lat, lng, radius = 1500, type = 'tourist_attraction' } = req.query;
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
+    
+    if (!apiKey) {
+      return res.status(500).json({ status: 'ERROR', error: 'API key is not configured' });
+    }
     
     if (!lat || !lng) {
       return res.status(400).json({ error: 'Latitude and longitude are required' });
@@ -318,7 +333,11 @@ app.get('/api/places/search', async (req, res) => {
 app.get('/api/details', async (req, res) => {
   try {
     const { place_id } = req.query;
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY || 'AIzaSyCcFIrPb2u_y-T_efsH-XaJyc_eQUsYMB8';
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
+    
+    if (!apiKey) {
+      return res.status(500).json({ status: 'ERROR', error: 'API key is not configured' });
+    }
     
     if (!place_id) {
       return res.status(400).json({ status: 'ERROR', error: 'Place ID is required' });
