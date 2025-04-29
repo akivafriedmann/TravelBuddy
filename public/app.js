@@ -1869,10 +1869,14 @@ async function loadNearbyRecommendations(place) {
       "car_dealer"
     ];
     
-    // Filter out unwanted businesses and apply minimum rating
-    const MIN_RATING = 4.1;
+    // Filter out unwanted businesses
     nearbyRestaurants = nearbyRestaurants.filter(restaurant => {
-      // Check if this is a gas station or similar
+      // Keep only places with ratings or significant number of reviews
+      if (!restaurant.rating && !restaurant.user_ratings_total) {
+        return false;
+      }
+      
+      // Check if this is an unwanted business type
       if (restaurant.types) {
         for (const type of unwantedTypes) {
           if (restaurant.types.includes(type)) {
