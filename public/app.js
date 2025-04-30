@@ -683,64 +683,67 @@ async function searchLocation() {
   }
   
   try {
-    // Use geocoding to convert address to coordinates
-    const geocoder = new google.maps.Geocoder();
+    // Use our server's geocoding endpoint instead of direct Google Maps API
+    console.log("Geocoding using server endpoint for:", locationInput);
     
-    // Create geocoding options
-    const geocodingOptions = { 
-      address: locationInput
-    };
+    // Call our backend geocoding endpoint
+    const response = await fetch(`/api/geocoding?address=${encodeURIComponent(locationInput)}`);
     
-    geocoder.geocode(geocodingOptions, (results, status) => {
-      if (status === google.maps.GeocoderStatus.OK && results[0]) {
-        const result = results[0];
-        const location = result.geometry.location;
-        
-        currentLocation = {
-          lat: location.lat(),
-          lng: location.lng()
-        };
-        
-        // Update map center
-        map.setCenter(currentLocation);
-        
-        // Add marker for the search location (replacing any clicked location marker)
-        if (clickedLocationMarker) {
-          clickedLocationMarker.setMap(null);
-        }
-        
-        clickedLocationMarker = new google.maps.Marker({
-          position: currentLocation,
-          map: map,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: "#FF5722",
-            fillOpacity: 0.8,
-            strokeColor: "white",
-            strokeWeight: 2,
-          },
-          title: "Search Location"
-        });
-        
-        // Determine if this is a specific locality/neighborhood by checking the result types
-        const isSpecificArea = results[0].types.some(type => 
-          ['sublocality', 'neighborhood', 'postal_code'].includes(type)
-        );
-        
-        // Use a smaller radius for more specific area searches to keep results relevant
-        if (isSpecificArea) {
-          // Smaller radius for specific areas like neighborhoods (700m)
-          loadNearbyPlaces(currentLocation, '', 700);
-        } else {
-          // Use default radius for broader areas like cities
-          loadNearbyPlaces(currentLocation);
-        }
-      } else {
-        hideLoading();
-        alert('Location not found. Please try another search term or click directly on the map.');
+    if (!response.ok) {
+      throw new Error(`Geocoding API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log("Geocoding API response:", data);
+    
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      const result = data.results[0];
+      const location = result.geometry.location;
+      
+      currentLocation = {
+        lat: location.lat,
+        lng: location.lng
+      };
+      
+      // Update map center
+      map.setCenter(currentLocation);
+      
+      // Add marker for the search location (replacing any clicked location marker)
+      if (clickedLocationMarker) {
+        clickedLocationMarker.setMap(null);
       }
-    });
+      
+      clickedLocationMarker = new google.maps.Marker({
+        position: currentLocation,
+        map: map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: "#FF5722",
+          fillOpacity: 0.8,
+          strokeColor: "white",
+          strokeWeight: 2,
+        },
+        title: "Search Location"
+      });
+      
+      // Determine if this is a specific locality/neighborhood by checking the result types
+      const isSpecificArea = result.types && result.types.some(type => 
+        ['sublocality', 'neighborhood', 'postal_code'].includes(type)
+      );
+      
+      // Use a smaller radius for more specific area searches to keep results relevant
+      if (isSpecificArea) {
+        // Smaller radius for specific areas like neighborhoods (700m)
+        loadNearbyPlaces(currentLocation, '', 700);
+      } else {
+        // Use default radius for broader areas like cities
+        loadNearbyPlaces(currentLocation);
+      }
+    } else {
+      hideLoading();
+      alert('Location not found. Please try another search term or click directly on the map.');
+    }
   } catch (error) {
     console.error('Geocoding error:', error);
     hideLoading();
