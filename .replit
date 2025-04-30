@@ -77,15 +77,9 @@ waitForPort = 5000
 name = "ProxyServer"
 author = "agent"
 
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node server.js"
+args = "node proxy-server.js"
 waitForPort = 5000
 
 [deployment]
