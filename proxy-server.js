@@ -246,6 +246,9 @@ app.get('/api/photo', (req, res) => {
     
     // Stream the photo directly without using axios
     const photoReq = https.get(photoUrl, (photoRes) => {
+      // Log detailed information about the photo response
+      console.log(`Photo response for: ${shortRef}, status=${photoRes.statusCode}, content-type=${photoRes.headers['content-type']}`);
+      
       // Check if we got the image or an error from Google
       if (photoRes.statusCode === 403 || photoRes.statusCode === 400) {
         console.error(`Photo API request denied: status=${photoRes.statusCode}`);
