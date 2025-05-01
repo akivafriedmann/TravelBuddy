@@ -258,6 +258,33 @@ app.get('/api/photo', (req, res) => {
         });
       }
       
+      // If we got a redirect (302), follow it to get the actual image
+      if (photoRes.statusCode === 302 && photoRes.headers.location) {
+        console.log(`Following photo redirect to: ${photoRes.headers.location}`);
+        
+        // Create a new request to the redirect location
+        const redirectReq = https.get(photoRes.headers.location, (redirectRes) => {
+          // If we got a successful response from the redirect, stream it
+          console.log(`Redirect response: status=${redirectRes.statusCode}, content-type=${redirectRes.headers['content-type']}`);
+          
+          if (redirectRes.statusCode >= 200 && redirectRes.statusCode < 300) {
+            res.setHeader('Content-Type', redirectRes.headers['content-type'] || 'image/jpeg');
+            redirectRes.pipe(res);
+          } else {
+            console.error(`Failed to retrieve image after redirect: ${redirectRes.statusCode}`);
+            res.status(redirectRes.statusCode).send('Failed to retrieve image after redirect');
+          }
+        });
+        
+        redirectReq.on('error', (error) => {
+          console.error('Error following redirect:', error);
+          res.status(500).json({ error: 'Failed to follow redirect' });
+        });
+        
+        redirectReq.end();
+        return;
+      }
+      
       // If we got a successful response, stream it
       res.setHeader('Content-Type', photoRes.headers['content-type'] || 'image/jpeg');
       photoRes.pipe(res);
