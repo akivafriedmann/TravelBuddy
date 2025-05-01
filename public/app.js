@@ -793,20 +793,16 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       console.log(`EMERGENCY MODE: Starting with ${data.results.length} places before rating filter`);
       
       // Minimum rating to show
-      const MIN_RATING = 4.2; // User requested at least 4.2 rating
+      const MIN_RATING = currentPlaceType === 'restaurant' ? 4.0 : 3.8; // More lenient
+      
+      console.log(`Filtering with minimum rating of ${MIN_RATING} for ${currentPlaceType}s`);
 
       // Filter places with too low ratings
       const filteredPlaces = data.results.filter(place => {
         // Only apply filter to places with ratings
         if (!place.rating) return true;
         
-        // For restaurants, apply stricter filter
-        if (currentPlaceType === 'restaurant') {
-          return place.rating >= MIN_RATING;
-        }
-        
-        // For other place types, be a bit more lenient
-        return place.rating >= 4.0;
+        return place.rating >= MIN_RATING;
       });
       
       console.log(`After rating filter: ${filteredPlaces.length} places remain with rating >= ${MIN_RATING}`);
@@ -919,7 +915,7 @@ function renderPlaces(places) {
                           (currentPlaceType === 'restaurant' ? MIN_REVIEWS.restaurant : MIN_REVIEWS.default);
   
   // Minimum rating to show (only for restaurants)
-  const MIN_RATING = 4.3; // Increased from 4.1 to ensure better quality restaurants
+  const MIN_RATING = currentPlaceType === 'restaurant' ? 4.0 : 3.8; // More lenient rating threshold
   
   // Define unwanted business types
   const unwantedTypes = [

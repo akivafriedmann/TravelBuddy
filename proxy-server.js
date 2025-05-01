@@ -333,14 +333,61 @@ app.get('/api/nearby', async (req, res) => {
       url += `&keyword=${encodeURIComponent(keyword)}`;
     }
     
-    // Add a minimum rating if we're searching for restaurants to address user complaint
+    // Add params for restaurant searches
     if (type === 'restaurant') {
       url += '&minprice=0&maxprice=4&rankby=prominence';
     }
     
     console.log(`Fetching nearby places: ${url.replace(apiKey, 'API_KEY')}`);
     
+    // Make the first request to get initial results
     const data = await makeRequest(url);
+    
+    // Fetch more results if pagetoken is available (up to 2 more pages)
+    // This will give us up to 60 results instead of just 20
+    let allResults = [...(data.results || [])];
+    let pageToken = data.next_page_token;
+    
+    if (pageToken && allResults.length > 0) {
+      // Need to wait a bit before using the page token
+      console.log("Page token available, waiting to fetch more results...");
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      try {
+        // Make second request with page token
+        const secondPageUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${pageToken}&key=${apiKey}`;
+        const secondPageData = await makeRequest(secondPageUrl);
+        
+        if (secondPageData.status === 'OK' && secondPageData.results) {
+          console.log(`Got ${secondPageData.results.length} more places from second page`);
+          allResults = [...allResults, ...secondPageData.results];
+          pageToken = secondPageData.next_page_token;
+          
+          // Get third page if available
+          if (pageToken) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            try {
+              const thirdPageUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${pageToken}&key=${apiKey}`;
+              const thirdPageData = await makeRequest(thirdPageUrl);
+              
+              if (thirdPageData.status === 'OK' && thirdPageData.results) {
+                console.log(`Got ${thirdPageData.results.length} more places from third page`);
+                allResults = [...allResults, ...thirdPageData.results];
+              }
+            } catch (pageError) {
+              console.log("Error fetching third page:", pageError.message);
+            }
+          }
+        }
+      } catch (pageError) {
+        console.log("Error fetching second page:", pageError.message);
+      }
+    }
+    
+    // Replace the original results with all results
+    data.results = allResults;
+    console.log(`Total places found after pagination: ${allResults.length}`);
     
     // Check if the API request was denied (likely due to domain restrictions)
     if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT') {
