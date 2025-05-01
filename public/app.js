@@ -1099,10 +1099,10 @@ function createPlaceCard(place, index) {
     const photoRef = place.photos[0].photo_reference;
     if (photoRef) {
       const photoUrl = `/api/photo?photoreference=${photoRef}&maxwidth=400`;
-      photoHtml = `<img src="${photoUrl}" class="card-img-top place-image" alt="${place.name}" loading="lazy">`;
+      photoHtml = `<img src="${photoUrl}" class="card-img-top place-image" alt="${place.name}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x300?text=Image+Not+Available'">`;
     } else if (place.photos[0].url) {
       // Some API responses include a direct URL instead
-      photoHtml = `<img src="${place.photos[0].url}" class="card-img-top place-image" alt="${place.name}" loading="lazy">`;
+      photoHtml = `<img src="${place.photos[0].url}" class="card-img-top place-image" alt="${place.name}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x300?text=Image+Not+Available'">`;
     }
   }
   
@@ -1506,8 +1506,8 @@ async function showPlaceDetails(placeId) {
             <div class="carousel-inner">
               ${place.photos.map((photo, index) => `
                 <div class="carousel-item ${index === 0 ? 'active' : ''}">
-                  <img src="/api/photo?photoreference=${photo.photo_reference}&maxwidth=800" 
-                    class="d-block w-100" alt="Photo ${index + 1}">
+                  <img src="${photo.url || `/api/photo?photoreference=${photo.photo_reference}&maxwidth=800`}" 
+                    class="d-block w-100" alt="Photo ${index + 1}" onerror="this.src='https://via.placeholder.com/800x600?text=Image+Not+Available'">
                 </div>
               `).join('')}
             </div>
@@ -1526,10 +1526,11 @@ async function showPlaceDetails(placeId) {
           ${place.photos.length > 1 ? `
             <div class="thumbnail-container mt-2 d-flex">
               ${place.photos.map((photo, index) => `
-                <img src="/api/photo?photoreference=${photo.photo_reference}&maxwidth=120" 
+                <img src="${photo.url || `/api/photo?photoreference=${photo.photo_reference}&maxwidth=120`}" 
                     class="thumbnail mx-1 ${index === 0 ? 'active' : ''}" 
                     data-bs-target="#place-photos" data-bs-slide-to="${index}"
-                    alt="Thumbnail ${index + 1}" style="width: 60px; height: 45px; object-fit: cover; cursor: pointer;">
+                    alt="Thumbnail ${index + 1}" style="width: 60px; height: 45px; object-fit: cover; cursor: pointer;"
+                    onerror="this.src='https://via.placeholder.com/120x90?text=Thumbnail'">
               `).join('')}
             </div>
           ` : ''}
@@ -2094,8 +2095,8 @@ async function loadNearbyRecommendations(place) {
         // Prepare photo HTML
         let photoHtml = '<div class="bg-light text-center py-2">No Image</div>';
         if (recommendation.photos && recommendation.photos.length > 0) {
-          const photoUrl = `/api/photo?photoreference=${recommendation.photos[0].photo_reference}&maxwidth=200`;
-          photoHtml = `<img src="${photoUrl}" class="card-img-top recommendation-image" alt="${recommendation.name}">`;
+          const photoUrl = recommendation.photos[0].url || `/api/photo?photoreference=${recommendation.photos[0].photo_reference}&maxwidth=200`;
+          photoHtml = `<img src="${photoUrl}" class="card-img-top recommendation-image" alt="${recommendation.name}" onerror="this.src='https://via.placeholder.com/200x120?text=No+Image'">`;
         }
         
         // Create Google Maps link
@@ -2303,10 +2304,26 @@ async function searchForSpecificPlace(placeName) {
       // Format photos
       let photoHtml = '';
       if (placeDetails.photos && placeDetails.photos.length > 0) {
+        // Try to use the Google Photos API or direct URL if available
+        let photoUrl;
+        try {
+          photoUrl = placeDetails.photos[0].getUrl({ maxWidth: 800, maxHeight: 400 });
+        } catch(e) {
+          // If getUrl fails, check if we have a photo_reference
+          if (placeDetails.photos[0].photo_reference) {
+            photoUrl = `/api/photo?photoreference=${placeDetails.photos[0].photo_reference}&maxwidth=800`;
+          } else {
+            // Last resort fallback
+            photoUrl = '';
+          }
+        }
+        
         photoHtml = `
           <div class="position-relative">
-            <img src="${placeDetails.photos[0].getUrl({ maxWidth: 800, maxHeight: 400 })}" 
-                 class="card-img-top" alt="${placeDetails.name}" style="height: 200px; object-fit: cover;">
+            <img src="${photoUrl}" 
+                 class="card-img-top" alt="${placeDetails.name}" 
+                 style="height: 200px; object-fit: cover;"
+                 onerror="this.src='https://via.placeholder.com/800x400?text=No+Image'">
             <div class="position-absolute bottom-0 end-0 p-2">
               <button class="btn btn-sm btn-light" onclick="showPlaceDetails('${placeDetails.place_id}')">
                 <i class="fas fa-images"></i> More Photos
@@ -2531,8 +2548,8 @@ function searchNearbyOnHover(location) {
           // Create a place icon if available
           let placeIcon = '';
           if (place.photos && place.photos.length > 0) {
-            const photoUrl = `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=100`;
-            placeIcon = `<img src="${photoUrl}" class="float-start me-2 rounded" style="width: 40px; height: 40px; object-fit: cover;" alt="${place.name}">`;
+            const photoUrl = place.photos[0].url || `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=100`;
+            placeIcon = `<img src="${photoUrl}" class="float-start me-2 rounded" style="width: 40px; height: 40px; object-fit: cover;" alt="${place.name}" onerror="this.src='https://via.placeholder.com/40?text=...'">`;
           }
           
           // Make each list item a clickable button

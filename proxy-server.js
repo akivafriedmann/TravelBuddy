@@ -227,18 +227,19 @@ app.get('/api/photo', (req, res) => {
     const photoRef = photoreference || reference;
     
     if (!photoRef) {
+      console.log('Photo reference missing from request');
       return res.status(400).json({ error: 'Photo reference is required (use parameter "reference" or "photoreference")' });
     }
     
     if (!apiKey) {
-      return res.status(403).json({ 
-        status: 'ERROR', 
-        error: 'Google Maps API key is not configured' 
-      });
+      console.log('API key missing for photo request');
+      // When API key is missing, return a 302 redirect to a placeholder instead of an error
+      return res.redirect('https://via.placeholder.com/400x300?text=API+Key+Missing');
     }
     
-    // Log the API request
-    console.log(`Fetching photo with reference: ${photoRef}`);
+    // Log the API request (only the first 20 chars of the reference to avoid log pollution)
+    const shortRef = photoRef.length > 20 ? photoRef.substring(0, 20) + '...' : photoRef;
+    console.log(`Fetching photo with reference: ${shortRef}`);
     
     // Create URL to the actual Google Places Photo API
     const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photoRef}&maxwidth=${maxwidth}&maxheight=${maxheight}&key=${apiKey}`;
@@ -246,28 +247,30 @@ app.get('/api/photo', (req, res) => {
     // Stream the photo directly without using axios
     const photoReq = https.get(photoUrl, (photoRes) => {
       // Check if we got the image or an error from Google
-      if (photoRes.statusCode === 403 || photoRes.statusCode === 400) {
+      if (photoRes.statusCode === 403 || photoRes.statusCode === 400 || photoRes.statusCode >= 500) {
         console.error(`Photo API request denied: status=${photoRes.statusCode}`);
-        return res.status(403).json({ 
-          status: 'ERROR', 
-          error: `API request was denied with status: ${photoRes.statusCode}. This is likely due to API key domain restrictions.` 
-        });
+        
+        // Instead of returning an error JSON, redirect to a placeholder image
+        // This ensures the client still gets an image to display
+        return res.redirect(`https://via.placeholder.com/${maxwidth}x${maxheight}?text=Image+Unavailable`);
       }
       
       // If we got a successful response, stream it
-      res.setHeader('Content-Type', photoRes.headers['content-type']);
+      res.setHeader('Content-Type', photoRes.headers['content-type'] || 'image/jpeg');
       photoRes.pipe(res);
     });
     
     photoReq.on('error', (error) => {
       console.error('Error fetching photo:', error);
-      res.status(500).json({ error: 'Failed to fetch photo' });
+      // Redirect to placeholder on network error
+      res.redirect(`https://via.placeholder.com/${maxwidth}x${maxheight}?text=Network+Error`);
     });
     
     photoReq.end();
   } catch (error) {
     console.error('Error in photo proxy:', error);
-    res.status(500).json({ error: 'Failed to process photo request' });
+    // Redirect to placeholder on general error
+    res.redirect(`https://via.placeholder.com/400x300?text=Error`);
   }
 });
 
