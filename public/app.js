@@ -1507,7 +1507,7 @@ async function showPlaceDetails(placeId) {
               ${place.photos.map((photo, index) => `
                 <div class="carousel-item ${index === 0 ? 'active' : ''}">
                   <img src="${photo.url || `/api/photo?photoreference=${photo.photo_reference}&maxwidth=800`}" 
-                    class="d-block w-100" alt="Photo ${index + 1}" onerror="this.src='https://via.placeholder.com/800x600?text=Image+Not+Available'">
+                    class="d-block w-100" alt="Photo ${index + 1}">
                 </div>
               `).join('')}
             </div>
@@ -1529,8 +1529,7 @@ async function showPlaceDetails(placeId) {
                 <img src="${photo.url || `/api/photo?photoreference=${photo.photo_reference}&maxwidth=120`}" 
                     class="thumbnail mx-1 ${index === 0 ? 'active' : ''}" 
                     data-bs-target="#place-photos" data-bs-slide-to="${index}"
-                    alt="Thumbnail ${index + 1}" style="width: 60px; height: 45px; object-fit: cover; cursor: pointer;"
-                    onerror="this.src='https://via.placeholder.com/120x90?text=Thumbnail'">
+                    alt="Thumbnail ${index + 1}" style="width: 60px; height: 45px; object-fit: cover; cursor: pointer;">
               `).join('')}
             </div>
           ` : ''}
@@ -1810,7 +1809,7 @@ async function showPlaceDetails(placeId) {
             <div class="reviews-slide ${index === 0 ? 'active' : ''}">
               <div class="review">
                 <div class="review-author">
-                  <img src="${review.profile_photo_url || 'https://via.placeholder.com/40'}" alt="${review.author_name}">
+                  <img src="${review.profile_photo_url}" alt="${review.author_name}">
                   <div>
                     <strong>${review.author_name}</strong>
                     <div class="text-muted small">${formattedDate}</div>
@@ -2096,7 +2095,7 @@ async function loadNearbyRecommendations(place) {
         let photoHtml = '<div class="bg-light text-center py-2">No Image</div>';
         if (recommendation.photos && recommendation.photos.length > 0) {
           const photoUrl = recommendation.photos[0].url || `/api/photo?photoreference=${recommendation.photos[0].photo_reference}&maxwidth=200`;
-          photoHtml = `<img src="${photoUrl}" class="card-img-top recommendation-image" alt="${recommendation.name}" onerror="this.src='https://via.placeholder.com/200x120?text=No+Image'">`;
+          photoHtml = `<img src="${photoUrl}" class="card-img-top recommendation-image" alt="${recommendation.name}">`;
         }
         
         // Create Google Maps link
@@ -2322,8 +2321,7 @@ async function searchForSpecificPlace(placeName) {
           <div class="position-relative">
             <img src="${photoUrl}" 
                  class="card-img-top" alt="${placeDetails.name}" 
-                 style="height: 200px; object-fit: cover;"
-                 onerror="this.src='https://via.placeholder.com/800x400?text=No+Image'">
+                 style="height: 200px; object-fit: cover;">
             <div class="position-absolute bottom-0 end-0 p-2">
               <button class="btn btn-sm btn-light" onclick="showPlaceDetails('${placeDetails.place_id}')">
                 <i class="fas fa-images"></i> More Photos
@@ -2549,7 +2547,7 @@ function searchNearbyOnHover(location) {
           let placeIcon = '';
           if (place.photos && place.photos.length > 0) {
             const photoUrl = place.photos[0].url || `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=100`;
-            placeIcon = `<img src="${photoUrl}" class="float-start me-2 rounded" style="width: 40px; height: 40px; object-fit: cover;" alt="${place.name}" onerror="this.src='https://via.placeholder.com/40?text=...'">`;
+            placeIcon = `<img src="${photoUrl}" class="float-start me-2 rounded" style="width: 40px; height: 40px; object-fit: cover;" alt="${place.name}">`;
           }
           
           // Make each list item a clickable button
