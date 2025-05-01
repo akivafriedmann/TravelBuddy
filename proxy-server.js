@@ -333,9 +333,16 @@ app.get('/api/nearby', async (req, res) => {
       url += `&keyword=${encodeURIComponent(keyword)}`;
     }
     
-    // Add params for restaurant searches
+    // When using rankby=distance, we cannot specify a radius
     if (type === 'restaurant') {
-      url += '&minprice=0&maxprice=4&rankby=prominence';
+      // Use rankby=distance to get more restaurants
+      // Note: When using rankby=distance, radius parameter is ignored and must not be included
+      url = url.replace(`radius=${radius}&`, '');
+      url += '&rankby=distance';
+      // Add a keyword to narrow results - we want quality places
+      if (!keyword) {
+        url += '&keyword=restaurant';
+      }
     }
     
     console.log(`Fetching nearby places: ${url.replace(apiKey, 'API_KEY')}`);
@@ -343,46 +350,71 @@ app.get('/api/nearby', async (req, res) => {
     // Make the first request to get initial results
     const data = await makeRequest(url);
     
-    // Fetch more results if pagetoken is available (up to 2 more pages)
-    // This will give us up to 60 results instead of just 20
-    let allResults = [...(data.results || [])];
-    let pageToken = data.next_page_token;
+    // Log the full data response for debugging
+    console.log(`First page response status: ${data.status}`);
+    console.log(`First page results count: ${data.results ? data.results.length : 0}`);
+    console.log(`Next page token exists: ${!!data.next_page_token}`);
     
-    if (pageToken && allResults.length > 0) {
-      // Need to wait a bit before using the page token
-      console.log("Page token available, waiting to fetch more results...");
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    if (data.next_page_token) {
+      console.log(`Token: ${data.next_page_token.substring(0, 20)}...`);
+    }
+    
+    // For restaurants, we need to expand our search to get more high-rated places
+    // Google Places API returns results in pages of up to 20
+    let allResults = [...(data.results || [])];
+    
+    // If we have a next_page_token, we can get more results
+    if (data.next_page_token && allResults.length > 0) {
+      // Google requires a delay before using the page token
+      // https://developers.google.com/maps/documentation/places/web-service/search-nearby#PlacesSearchPaging
+      console.log("Page token available, waiting 2 seconds before fetching more results...");
+      await new Promise(resolve => setTimeout(resolve, 2500));
       
       try {
         // Make second request with page token
-        const secondPageUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${pageToken}&key=${apiKey}`;
+        const secondPageUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${encodeURIComponent(data.next_page_token)}&key=${apiKey}`;
+        console.log(`Fetching second page: ${secondPageUrl.replace(apiKey, 'API_KEY').substring(0, 100)}...`);
+        
         const secondPageData = await makeRequest(secondPageUrl);
+        console.log(`Second page response status: ${secondPageData.status}`);
         
         if (secondPageData.status === 'OK' && secondPageData.results) {
           console.log(`Got ${secondPageData.results.length} more places from second page`);
           allResults = [...allResults, ...secondPageData.results];
-          pageToken = secondPageData.next_page_token;
           
-          // Get third page if available
-          if (pageToken) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
+          // Check if we have a token for a third page
+          if (secondPageData.next_page_token) {
+            console.log(`Third page token exists: ${!!secondPageData.next_page_token}`);
+            // Wait again before using the next token
+            await new Promise(resolve => setTimeout(resolve, 2500));
             
             try {
-              const thirdPageUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${pageToken}&key=${apiKey}`;
+              const thirdPageUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${encodeURIComponent(secondPageData.next_page_token)}&key=${apiKey}`;
+              console.log(`Fetching third page: ${thirdPageUrl.replace(apiKey, 'API_KEY').substring(0, 100)}...`);
+              
               const thirdPageData = await makeRequest(thirdPageUrl);
+              console.log(`Third page response status: ${thirdPageData.status}`);
               
               if (thirdPageData.status === 'OK' && thirdPageData.results) {
                 console.log(`Got ${thirdPageData.results.length} more places from third page`);
                 allResults = [...allResults, ...thirdPageData.results];
+              } else {
+                console.log(`Third page error: ${thirdPageData.status}, ${thirdPageData.error_message || 'No error message'}`);
               }
             } catch (pageError) {
               console.log("Error fetching third page:", pageError.message);
             }
+          } else {
+            console.log("No third page token available");
           }
+        } else {
+          console.log(`Second page error: ${secondPageData.status}, ${secondPageData.error_message || 'No error message'}`);
         }
       } catch (pageError) {
         console.log("Error fetching second page:", pageError.message);
       }
+    } else {
+      console.log("No next page token available or no results in first page");
     }
     
     // Replace the original results with all results
