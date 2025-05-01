@@ -407,6 +407,52 @@ app.get('/api/details', async (req, res) => {
   }
 });
 
+// Geocoding proxy endpoint
+app.get('/api/geocoding', async (req, res) => {
+  try {
+    const { address } = req.query;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
+    
+    if (!address) {
+      return res.status(400).json({ 
+        status: 'ERROR', 
+        error: 'Address parameter is required' 
+      });
+    }
+    
+    // Check if API key is missing
+    if (!apiKey) {
+      console.log('API key is missing');
+      return res.status(500).json({ 
+        status: 'ERROR', 
+        error: 'Google Maps API key is not configured'
+      });
+    }
+    
+    // Build URL with parameters
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
+    
+    console.log(`Geocoding: ${address}`);
+    
+    const data = await makeRequest(url);
+    
+    // Check if the API request was denied
+    if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT') {
+      console.log(`Geocoding API request was denied with status: ${data.status}`);
+      return res.json(data); // Return the error response for debugging
+    }
+    
+    console.log(`Geocoding response: status=${data.status}, results=${data.results ? data.results.length : 0}`);
+    res.json(data);
+  } catch (error) {
+    console.error('Error with geocoding request:', error);
+    res.status(500).json({ 
+      status: 'ERROR', 
+      error: 'Failed to complete geocoding request' 
+    });
+  }
+});
+
 // Health check endpoint 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

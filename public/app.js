@@ -792,11 +792,45 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       // Log the places we found
       console.log(`EMERGENCY MODE: Showing all ${data.results.length} places without any filtering`);
       
+      // Sort places by rating (higher ratings first)
+      const sortedPlaces = [...data.results].sort((a, b) => {
+        // Minimum required reviews for statistical significance
+        const currentMinReviews = currentPlaceType === 'lodging' ? 8 : 
+                              (currentPlaceType === 'restaurant' ? 20 : 10);
+                              
+        const aSignificant = a.user_ratings_total >= currentMinReviews;
+        const bSignificant = b.user_ratings_total >= currentMinReviews;
+        
+        // If both places have significant number of reviews, sort by rating
+        if (aSignificant && bSignificant) {
+          return b.rating - a.rating;
+        }
+        // If only one has significant reviews, prioritize that one
+        else if (aSignificant) {
+          return -1;
+        }
+        else if (bSignificant) {
+          return 1;
+        }
+        // If neither has significant reviews, sort by number of reviews
+        else if (a.user_ratings_total && b.user_ratings_total) {
+          return b.user_ratings_total - a.user_ratings_total;
+        }
+        // Fallback to rating if available
+        else if (a.rating && b.rating) {
+          return b.rating - a.rating;
+        }
+        // Keep original order if no sorting criteria apply
+        return 0;
+      });
+      
+      console.log(`Sorted places: showing ${sortedPlaces.length} places sorted by rating`);
+      
       // Clear existing markers
       clearMarkers();
       
-      // Display all places directly
-      data.results.forEach((place, index) => {
+      // Display all places after sorting
+      sortedPlaces.forEach((place, index) => {
         // Create a card for each place
         const card = createPlaceCard(place, index);
         container.appendChild(card);
