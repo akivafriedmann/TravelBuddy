@@ -1095,8 +1095,15 @@ function createPlaceCard(place, index) {
   // Create card content
   let photoHtml = '<div class="bg-light text-center py-5">No Image Available</div>';
   if (place.photos && place.photos.length > 0) {
-    const photoUrl = `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=400`;
-    photoHtml = `<img src="${photoUrl}" class="card-img-top place-image" alt="${place.name}">`;
+    // Check if we have a photo_reference or if we have a reference property
+    const photoRef = place.photos[0].photo_reference;
+    if (photoRef) {
+      const photoUrl = `/api/photo?photoreference=${photoRef}&maxwidth=400`;
+      photoHtml = `<img src="${photoUrl}" class="card-img-top place-image" alt="${place.name}" loading="lazy">`;
+    } else if (place.photos[0].url) {
+      // Some API responses include a direct URL instead
+      photoHtml = `<img src="${place.photos[0].url}" class="card-img-top place-image" alt="${place.name}" loading="lazy">`;
+    }
   }
   
   // Create a numbered badge for the place

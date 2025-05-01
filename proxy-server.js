@@ -220,11 +220,14 @@ app.get('/api/tripadvisor', async (req, res) => {
 // Proxy for getting photos
 app.get('/api/photo', (req, res) => {
   try {
-    const { reference, maxwidth = 400, maxheight = 300 } = req.query;
+    const { reference, photoreference, maxwidth = 400, maxheight = 300 } = req.query;
     const apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
     
-    if (!reference) {
-      return res.status(400).json({ error: 'Photo reference is required' });
+    // Allow either 'reference' or 'photoreference' parameter
+    const photoRef = photoreference || reference;
+    
+    if (!photoRef) {
+      return res.status(400).json({ error: 'Photo reference is required (use parameter "reference" or "photoreference")' });
     }
     
     if (!apiKey) {
@@ -235,10 +238,10 @@ app.get('/api/photo', (req, res) => {
     }
     
     // Log the API request
-    console.log(`Fetching photo with reference: ${reference}`);
+    console.log(`Fetching photo with reference: ${photoRef}`);
     
     // Create URL to the actual Google Places Photo API
-    const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?photoreference=${reference}&maxwidth=${maxwidth}&maxheight=${maxheight}&key=${apiKey}`;
+    const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?photoreference=${photoRef}&maxwidth=${maxwidth}&maxheight=${maxheight}&key=${apiKey}`;
     
     // Stream the photo directly without using axios
     const photoReq = https.get(photoUrl, (photoRes) => {
@@ -287,12 +290,21 @@ app.get('/api/nearby', async (req, res) => {
       });
     }
     
+    // Log the search parameters for debugging
+    console.log(`Search requested for ${type} near location [${lat}, ${lng}] with radius ${radius}m` + 
+                (keyword ? ` and keyword "${keyword}"` : ''));
+    
     // Build URL with parameters
     let url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&key=${apiKey}`;
     
     // Add keyword if provided
     if (keyword) {
       url += `&keyword=${encodeURIComponent(keyword)}`;
+    }
+    
+    // Add a minimum rating if we're searching for restaurants to address user complaint
+    if (type === 'restaurant') {
+      url += '&minprice=0&maxprice=4&rankby=prominence';
     }
     
     console.log(`Fetching nearby places: ${url.replace(apiKey, 'API_KEY')}`);
@@ -311,11 +323,16 @@ app.get('/api/nearby', async (req, res) => {
     
     // Process the response to filter results and include direct photo URLs
     if (data.results) {
+      // Show detailed debug information about results
+      console.log(`Nearby places response: status=${data.status}, results=${data.results.length}`);
+      
+      // Log the names of places found
+      const placeNames = data.results.map(p => `${p.name} (${p.rating || 'No rating'})`).join(', ');
+      console.log(`Places found: ${placeNames}`);
+      
       // Filter out hotels from restaurant or bar searches
       if (type === "restaurant" || type === "bar") {
         const originalCount = data.results.length;
-        
-        console.log(`Nearby places response: status=${data.status}, results=${originalCount}`);
         
         // Make sure we get enough results even after filtering
         if (originalCount > 0) {
@@ -330,6 +347,7 @@ app.get('/api/nearby', async (req, res) => {
         console.log(`Filtered out hotels, remaining places: ${data.results.length}`);
       }
 
+      // Add direct photo URLs to each place
       data.results.forEach(place => {
         if (place.photos && place.photos.length > 0) {
           place.photos = place.photos.map(photo => {
