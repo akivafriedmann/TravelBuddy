@@ -785,15 +785,34 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
     console.log("Nearby places API response:", data);
     
     if (data.status === 'OK' && data.results && data.results.length > 0) {
-      // EMERGENCY FIX: Directly render places on the page without filters
+      // EMERGENCY FIX: Now with minimal filtering (only for low ratings)
       const container = document.getElementById('places-container');
       container.innerHTML = '';
       
       // Log the places we found
-      console.log(`EMERGENCY MODE: Showing all ${data.results.length} places without any filtering`);
+      console.log(`EMERGENCY MODE: Starting with ${data.results.length} places before rating filter`);
+      
+      // Minimum rating to show
+      const MIN_RATING = 4.2; // User requested at least 4.2 rating
+
+      // Filter places with too low ratings
+      const filteredPlaces = data.results.filter(place => {
+        // Only apply filter to places with ratings
+        if (!place.rating) return true;
+        
+        // For restaurants, apply stricter filter
+        if (currentPlaceType === 'restaurant') {
+          return place.rating >= MIN_RATING;
+        }
+        
+        // For other place types, be a bit more lenient
+        return place.rating >= 4.0;
+      });
+      
+      console.log(`After rating filter: ${filteredPlaces.length} places remain with rating >= ${MIN_RATING}`);
       
       // Sort places by rating (higher ratings first)
-      const sortedPlaces = [...data.results].sort((a, b) => {
+      const sortedPlaces = [...filteredPlaces].sort((a, b) => {
         // Minimum required reviews for statistical significance
         const currentMinReviews = currentPlaceType === 'lodging' ? 8 : 
                               (currentPlaceType === 'restaurant' ? 20 : 10);
@@ -829,15 +848,28 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       // Clear existing markers
       clearMarkers();
       
-      // Display all places after sorting
-      sortedPlaces.forEach((place, index) => {
-        // Create a card for each place
-        const card = createPlaceCard(place, index);
-        container.appendChild(card);
-        
-        // Add a marker for this place
-        addMarker(place, index);
-      });
+      if (sortedPlaces.length === 0) {
+        // Show a message if no places meet the rating criteria
+        container.innerHTML = `
+          <div class="col-12">
+            <div class="alert alert-info">
+              <strong>No high-rated places found</strong>
+              <p>No ${formatPlaceType(currentPlaceType)} with a rating of ${MIN_RATING} or higher found in this area.</p>
+              <p>Try another location or category, or adjust the search radius.</p>
+            </div>
+          </div>
+        `;
+      } else {
+        // Display filtered and sorted places
+        sortedPlaces.forEach((place, index) => {
+          // Create a card for each place
+          const card = createPlaceCard(place, index);
+          container.appendChild(card);
+          
+          // Add a marker for this place
+          addMarker(place, index);
+        });
+      }
     } else if (data.status === 'REQUEST_DENIED') {
       // API key issue
       console.error("Google Places API request denied:", data.error_message || "No error details available");
