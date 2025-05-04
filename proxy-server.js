@@ -62,13 +62,20 @@ app.get('/api/maps-loader', (req, res) => {
   res.set('Content-Type', 'application/javascript');
   res.send(`
     // Load the Google Maps API with the key from the server
+    console.log("Google Maps API loading with server-provided key");
     (function() {
       const script = document.createElement('script');
-      script.src = \`https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap&loading=async\`;
+      script.src = "https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap";
       script.defer = true;
       script.async = true;
+      
+      // Add error handler to the script
+      script.onerror = function() {
+        console.error("Error loading Google Maps API");
+        alert("Failed to load Google Maps. Please try refreshing the page.");
+      };
+      
       document.head.appendChild(script);
-      console.log("Google Maps API loading with server-provided key");
     })();
   `);
 });
