@@ -2587,25 +2587,42 @@ function hideLoading() {
 
 // Initialize photo carousel
 function initPhotoCarousel() {
+  console.log("Initializing photo carousel...");
   // We're now using Bootstrap's built-in carousel functionality
   const carousel = document.getElementById('place-photos');
   const counter = document.getElementById('photo-counter');
   const thumbnails = document.querySelectorAll('.thumbnail');
   const photos = window.currentPlacePhotos || [];
   
-  if (!photos || photos.length <= 1 || !carousel) return;
+  if (!photos || photos.length <= 1 || !carousel) {
+    console.warn("Cannot initialize carousel: photos missing or less than 2, or carousel element not found");
+    console.log("Photos:", photos ? photos.length : 0, "Carousel:", !!carousel);
+    return;
+  }
+  
+  // Ensure all Bootstrap carousels are properly disposed first
+  // to prevent duplicate initialization issues
+  if (bootstrap.Carousel.getInstance(carousel)) {
+    bootstrap.Carousel.getInstance(carousel).dispose();
+    console.log("Disposed existing carousel instance");
+  }
   
   // Initialize Bootstrap carousel
   const carouselInstance = new bootstrap.Carousel(carousel, {
     interval: false, // Don't auto-rotate
-    wrap: true       // Allow wrapping
+    wrap: true,      // Allow wrapping
+    touch: true      // Enable touch/swipe
   });
+  
+  console.log("Carousel initialized with", photos.length, "photos");
   
   // Update counter when carousel slides
   carousel.addEventListener('slid.bs.carousel', (event) => {
     const activeIndex = [...carousel.querySelectorAll('.carousel-item')].findIndex(
       item => item.classList.contains('active')
     );
+    
+    console.log("Carousel slid to index:", activeIndex);
     
     // Update counter
     if (counter) {
@@ -2622,12 +2639,45 @@ function initPhotoCarousel() {
     });
   });
   
-  // Thumbnail clicks
+  // Thumbnail clicks - add event listeners only once
   thumbnails.forEach((thumb, idx) => {
-    thumb.addEventListener('click', () => {
-      carouselInstance.to(idx);
-    });
+    // Remove existing click listeners first to prevent duplicates
+    thumb.removeEventListener('click', thumbnailClickHandler);
+    thumb.addEventListener('click', thumbnailClickHandler);
+    
+    // Store the index as a data attribute
+    thumb.dataset.index = idx;
   });
+  
+  // Ensure prev/next buttons work correctly
+  const prevButton = carousel.querySelector('.carousel-control-prev');
+  const nextButton = carousel.querySelector('.carousel-control-next');
+  
+  if (prevButton) {
+    prevButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      carouselInstance.prev();
+    });
+  }
+  
+  if (nextButton) {
+    nextButton.addEventListener('click', (e) => {
+      e.preventDefault();
+      carouselInstance.next();
+    });
+  }
+}
+
+// Helper function for thumbnail clicks
+function thumbnailClickHandler(e) {
+  const idx = parseInt(this.dataset.index, 10);
+  const carousel = document.getElementById('place-photos');
+  const carouselInstance = bootstrap.Carousel.getInstance(carousel);
+  
+  if (carouselInstance) {
+    carouselInstance.to(idx);
+    console.log("Moving to photo index:", idx);
+  }
 }
 
 // Initialize reviews carousel
