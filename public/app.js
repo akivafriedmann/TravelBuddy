@@ -1493,46 +1493,99 @@ async function showPlaceDetails(placeId) {
     if (data.status === 'OK' && data.result) {
       const place = data.result;
       
-      // Prepare photo carousel HTML
+      // Prepare custom photo gallery HTML (simpler than Bootstrap carousel)
       let photoHtml = '';
       if (place.photos && place.photos.length > 0) {
-        // Use Bootstrap carousel for better arrow navigation
+        // Store photos data for later use
+        window.currentPlacePhotos = place.photos;
+        window.currentPhotoIndex = 0;
+        
+        // Create a simpler custom photo gallery
         photoHtml = `
-          <div id="place-photos" class="carousel slide" data-bs-ride="false">
-            <div class="carousel-inner">
-              ${place.photos.map((photo, index) => `
-                <div class="carousel-item ${index === 0 ? 'active' : ''}">
-                  <img src="${photo.url || `/api/photo?photoreference=${photo.photo_reference}&maxwidth=800`}" 
-                    class="d-block w-100" alt="Photo ${index + 1}">
-                </div>
-              `).join('')}
+          <div id="custom-photo-gallery" class="position-relative">
+            <div id="photo-display" class="main-photo-container">
+              <img id="main-photo" src="${place.photos[0].url || `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=800`}" 
+                   class="w-100 rounded" alt="Photo of ${place.name}">
             </div>
+            
             ${place.photos.length > 1 ? `
-              <button class="carousel-control-prev" type="button" data-bs-target="#place-photos" data-bs-slide="prev">
-                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                <span class="visually-hidden">Previous</span>
-              </button>
-              <button class="carousel-control-next" type="button" data-bs-target="#place-photos" data-bs-slide="next">
-                <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                <span class="visually-hidden">Next</span>
-              </button>
-              <div class="carousel-indicator-custom" id="photo-counter">1 / ${place.photos.length}</div>
+              <div class="d-flex justify-content-between position-absolute top-50 start-0 end-0 px-2" style="transform: translateY(-50%);">
+                <button type="button" id="prev-photo" class="btn btn-dark btn-sm rounded-circle opacity-75" onclick="prevPhoto()">
+                  <i class="fas fa-chevron-left"></i>
+                </button>
+                <button type="button" id="next-photo" class="btn btn-dark btn-sm rounded-circle opacity-75" onclick="nextPhoto()">
+                  <i class="fas fa-chevron-right"></i>
+                </button>
+              </div>
+              <div id="photo-counter" class="position-absolute bottom-0 end-0 bg-dark bg-opacity-50 text-white px-2 py-1 rounded-top-left m-2">
+                1 / ${place.photos.length}
+              </div>
             ` : ''}
           </div>
+          
           ${place.photos.length > 1 ? `
-            <div class="thumbnail-container mt-2 d-flex">
+            <div class="thumbnail-container mt-2 d-flex flex-wrap justify-content-start">
               ${place.photos.map((photo, index) => `
                 <img src="${photo.url || `/api/photo?photoreference=${photo.photo_reference}&maxwidth=120`}" 
-                    class="thumbnail mx-1 ${index === 0 ? 'active' : ''}" 
-                    data-bs-target="#place-photos" data-bs-slide-to="${index}"
-                    alt="Thumbnail ${index + 1}" style="width: 60px; height: 45px; object-fit: cover; cursor: pointer;">
+                    class="thumbnail mx-1 mb-1 ${index === 0 ? 'active' : ''}" 
+                    onclick="showPhoto(${index})"
+                    alt="Thumbnail ${index + 1}" style="width: 60px; height: 45px; object-fit: cover; cursor: pointer; 
+                    border: 2px solid ${index === 0 ? '#007bff' : 'transparent'}; 
+                    opacity: ${index === 0 ? '1' : '0.7'};
+                    transition: all 0.2s ease;">
               `).join('')}
             </div>
           ` : ''}
         `;
         
-        // Store photos data for later use
-        window.currentPlacePhotos = place.photos;
+        // Add window functions to handle photo navigation
+        window.prevPhoto = function() {
+          const photos = window.currentPlacePhotos || [];
+          if (!photos || photos.length <= 1) return;
+          
+          let index = window.currentPhotoIndex - 1;
+          if (index < 0) index = photos.length - 1;
+          showPhoto(index);
+        };
+        
+        window.nextPhoto = function() {
+          const photos = window.currentPlacePhotos || [];
+          if (!photos || photos.length <= 1) return;
+          
+          let index = window.currentPhotoIndex + 1;
+          if (index >= photos.length) index = 0;
+          showPhoto(index);
+        };
+        
+        window.showPhoto = function(index) {
+          const photos = window.currentPlacePhotos || [];
+          if (!photos || index < 0 || index >= photos.length) return;
+          
+          const photo = photos[index];
+          const mainPhotoEl = document.getElementById('main-photo');
+          const counterEl = document.getElementById('photo-counter');
+          const thumbnails = document.querySelectorAll('.thumbnail');
+          
+          if (mainPhotoEl) {
+            mainPhotoEl.src = photo.url || `/api/photo?photoreference=${photo.photo_reference}&maxwidth=800`;
+          }
+          
+          if (counterEl) {
+            counterEl.textContent = `${index + 1} / ${photos.length}`;
+          }
+          
+          thumbnails.forEach((thumb, idx) => {
+            if (idx === index) {
+              thumb.style.border = '2px solid #007bff';
+              thumb.style.opacity = '1';
+            } else {
+              thumb.style.border = '2px solid transparent';
+              thumb.style.opacity = '0.7';
+            }
+          });
+          
+          window.currentPhotoIndex = index;
+        };
       }
       
       // TripAdvisor data is already fetched at the beginning of this function
@@ -1920,10 +1973,8 @@ async function showPlaceDetails(placeId) {
         ${nearbyRecommendationsHtml}
       `;
       
-      // Initialize photo carousel if there are multiple photos
-      if (place.photos && place.photos.length > 1) {
-        initPhotoCarousel();
-      }
+      // Our new photo gallery doesn't need initialization - it's all handled with 
+      // the functions we created directly within the photo HTML section
       
       // Initialize reviews carousel if there are multiple reviews
       if (place.reviews && place.reviews.length > 1) {
@@ -2585,100 +2636,8 @@ function hideLoading() {
   document.getElementById('loading-indicator').classList.add('d-none');
 }
 
-// Initialize photo carousel
-function initPhotoCarousel() {
-  console.log("Initializing photo carousel...");
-  // We're now using Bootstrap's built-in carousel functionality
-  const carousel = document.getElementById('place-photos');
-  const counter = document.getElementById('photo-counter');
-  const thumbnails = document.querySelectorAll('.thumbnail');
-  const photos = window.currentPlacePhotos || [];
-  
-  if (!photos || photos.length <= 1 || !carousel) {
-    console.warn("Cannot initialize carousel: photos missing or less than 2, or carousel element not found");
-    console.log("Photos:", photos ? photos.length : 0, "Carousel:", !!carousel);
-    return;
-  }
-  
-  // Ensure all Bootstrap carousels are properly disposed first
-  // to prevent duplicate initialization issues
-  if (bootstrap.Carousel.getInstance(carousel)) {
-    bootstrap.Carousel.getInstance(carousel).dispose();
-    console.log("Disposed existing carousel instance");
-  }
-  
-  // Initialize Bootstrap carousel
-  const carouselInstance = new bootstrap.Carousel(carousel, {
-    interval: false, // Don't auto-rotate
-    wrap: true,      // Allow wrapping
-    touch: true      // Enable touch/swipe
-  });
-  
-  console.log("Carousel initialized with", photos.length, "photos");
-  
-  // Update counter when carousel slides
-  carousel.addEventListener('slid.bs.carousel', (event) => {
-    const activeIndex = [...carousel.querySelectorAll('.carousel-item')].findIndex(
-      item => item.classList.contains('active')
-    );
-    
-    console.log("Carousel slid to index:", activeIndex);
-    
-    // Update counter
-    if (counter) {
-      counter.textContent = `${activeIndex + 1} / ${photos.length}`;
-    }
-    
-    // Update thumbnails
-    thumbnails.forEach((thumb, idx) => {
-      if (idx === activeIndex) {
-        thumb.classList.add('active');
-      } else {
-        thumb.classList.remove('active');
-      }
-    });
-  });
-  
-  // Thumbnail clicks - add event listeners only once
-  thumbnails.forEach((thumb, idx) => {
-    // Remove existing click listeners first to prevent duplicates
-    thumb.removeEventListener('click', thumbnailClickHandler);
-    thumb.addEventListener('click', thumbnailClickHandler);
-    
-    // Store the index as a data attribute
-    thumb.dataset.index = idx;
-  });
-  
-  // Ensure prev/next buttons work correctly
-  const prevButton = carousel.querySelector('.carousel-control-prev');
-  const nextButton = carousel.querySelector('.carousel-control-next');
-  
-  if (prevButton) {
-    prevButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      carouselInstance.prev();
-    });
-  }
-  
-  if (nextButton) {
-    nextButton.addEventListener('click', (e) => {
-      e.preventDefault();
-      carouselInstance.next();
-    });
-  }
-}
-
-// Helper function for thumbnail clicks
-function thumbnailClickHandler(e) {
-  const idx = parseInt(this.dataset.index, 10);
-  const carousel = document.getElementById('place-photos');
-  const carouselInstance = bootstrap.Carousel.getInstance(carousel);
-  
-  if (carouselInstance) {
-    carouselInstance.to(idx);
-    console.log("Moving to photo index:", idx);
-  }
-}
+// We no longer need the Bootstrap initPhotoCarousel function
+// since we've implemented a simpler, custom photo gallery with direct event handlers.
 
 // Initialize reviews carousel
 function initReviewsCarousel() {
