@@ -16,6 +16,7 @@ let isApiErrorShown = false;
 let weatherData = null;
 let isDarkMode = false; // Dark mode toggle state
 let currentKeyword = ''; // Keyword for searching (e.g., 'dessert', 'asian', etc.)
+let currentFilter = ''; // Filter mode (e.g., 'budget' for price level filtering)
 
 // Dark mode map style
 const darkMapStyle = [
@@ -557,13 +558,20 @@ function initMap() {
       // Update current place type 
       currentPlaceType = button.dataset.type;
       
-      // Update current keyword (for special categories like "dessert")
-      currentKeyword = button.dataset.keyword || '';
-      
-      console.log(`Selected category: ${currentPlaceType}${currentKeyword ? ', keyword: ' + currentKeyword : ''}`);
-      
-      // Pass both type and keyword to loadNearbyPlaces
-      loadNearbyPlaces(currentLocation, currentKeyword, searchRadius);
+      // Check for filter mode - this allows filtering by price level without using "cheap" as a keyword
+      if (button.dataset.filter === 'cheap') {
+        // Special case for budget options - mark as a filter and NOT a keyword search
+        currentFilter = 'budget';
+        currentKeyword = '';
+        console.log(`Selected category: ${currentPlaceType} with budget filter applied (no keyword search)`);
+        loadNearbyPlaces(currentLocation, '', searchRadius);
+      } else {
+        // Regular keyword handling for categories like "dessert", "asian", etc.
+        currentFilter = '';
+        currentKeyword = button.dataset.keyword || '';
+        console.log(`Selected category: ${currentPlaceType}${currentKeyword ? ', keyword: ' + currentKeyword : ''}`);
+        loadNearbyPlaces(currentLocation, currentKeyword, searchRadius);
+      }
     });
   });
   
@@ -994,10 +1002,73 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
     // Check if the "Open Now" checkbox is checked
     const openNowChecked = document.getElementById('open-now-checkbox').checked;
     
-    // Special handling for dessert search with multiple strategies
+    // Special handling for various special filters
     let rawPlaces = [];
     
-    if (keyword === 'dessert') {
+    // Special case for budget filter - don't send "cheap" as a keyword
+    if (currentFilter === 'budget') {
+      console.log('Using budget filter - NOT searching for keyword "cheap"');
+      
+      // Build API URL with only restaurant type - no keyword
+      let apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}&radius=5000`; // Use larger radius (5km) to get more budget options
+      
+      // Add the opennow parameter if checked
+      if (openNowChecked) {
+        apiUrl += '&opennow=true';
+      }
+      
+      console.log('Fetching nearby places with URL for budget filter:', apiUrl);
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+      
+      console.log("Nearby places API response for budget filter:", data);
+      
+      if (data.status === 'OK' && data.results && data.results.length > 0) {
+        // Store the results in rawPlaces
+        rawPlaces = data.results;
+      } else {
+        // Handle API errors
+        if (data.status === 'ZERO_RESULTS' || !data.results || data.results.length === 0) {
+          document.getElementById('places-container').innerHTML = `
+            <div class="col-12">
+              <div class="alert alert-info">
+                <strong>No budget places found</strong>
+                <p>No budget-friendly ${formatPlaceType(currentPlaceType)} found in this area.</p>
+                <p>Try another location or increase the search radius.</p>
+              </div>
+            </div>
+          `;
+          hideLoading();
+          return;
+        } else if (data.status === 'REQUEST_DENIED') {
+          console.error("API request denied:", data.error_message || "No error details available");
+          document.getElementById('places-container').innerHTML = `
+            <div class="col-12">
+              <div class="alert alert-warning">
+                <strong>API Request Denied</strong>
+                <p>There was an issue with the API request: ${data.error_message || "Unknown error"}</p>
+                <p>This is likely due to API key restrictions or quota limits.</p>
+              </div>
+            </div>
+          `;
+          hideLoading();
+          return;
+        } else {
+          document.getElementById('places-container').innerHTML = `
+            <div class="col-12">
+              <div class="alert alert-warning">
+                <strong>API Error</strong>
+                <p>There was an issue with the API request: ${data.status}</p>
+              </div>
+            </div>
+          `;
+          hideLoading();
+          return;
+        }
+      }
+    }
+    // Special handling for dessert search with multiple strategies
+    else if (keyword === 'dessert') {
       console.log('Using enhanced dessert search algorithm');
       const service = new google.maps.places.PlacesService(map);
       
@@ -1213,10 +1284,10 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
     // Minimum rating to show (different minimum ratings based on place type and search type)
     let MIN_RATING;
     
-    // Special case for cheap eats - use a lower threshold to show more options
-    if (keyword === 'cheap') {
-      MIN_RATING = 3.5; // Much lower threshold for cheap places to show more options
-      console.log("Using lower rating threshold for cheap eats search: 3.5");
+    // Special case for budget filter - use a lower threshold to show more options
+    if (currentFilter === 'budget' || keyword === 'cheap') {
+      MIN_RATING = 3.3; // Very low threshold for budget places to show many more options
+      console.log("Using lower rating threshold for budget places search: 3.3");
     } else if (currentPlaceType === 'restaurant') {
       MIN_RATING = 4.0;
     } else if (currentPlaceType === 'night_club') {
@@ -1227,9 +1298,9 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       MIN_RATING = 3.8; // Default more lenient threshold for other place types
     }
     
-    // Define minimum reviews for statistical significance - lower for 'cheap' to show more options
+    // Define minimum reviews for statistical significance - much lower for budget to show more options
     const MIN_REVIEWS = {
-      restaurant: keyword === 'cheap' ? 5 : 20, // Much lower for cheap eats to show more options
+      restaurant: (currentFilter === 'budget' || keyword === 'cheap') ? 3 : 20, // Very low for budget options
       lodging: 8,
       night_club: 10,
       supermarket: 5,
