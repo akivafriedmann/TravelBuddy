@@ -1,5 +1,47 @@
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark Mode Styles */
+body.dark-mode {
+  background-color: #121212;
+  color: #e0e0e0;
+}
+
+body.dark-mode .card {
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+  border-color: #333;
+}
+
+body.dark-mode .modal-content {
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+  border-color: #333;
+}
+
+body.dark-mode .text-muted {
+  color: #aaaaaa !important;
+}
+
+body.dark-mode .input-group input,
+body.dark-mode .input-group button,
+body.dark-mode .form-control {
+  background-color: #2d2d2d;
+  color: #e0e0e0;
+  border-color: #444;
+}
+
+body.dark-mode .btn-outline-primary,
+body.dark-mode .btn-outline-info,
+body.dark-mode .btn-outline-success,
+body.dark-mode .btn-outline-warning,
+body.dark-mode .btn-outline-danger,
+body.dark-mode .btn-outline-dark,
+body.dark-mode .btn-outline-purple {
+  color: #e0e0e0;
+  border-color: #606060;
 }
 
 #map {
@@ -143,6 +185,10 @@ body {
   justify-content: center;
   align-items: center;
   z-index: 1000;
+}
+
+body.dark-mode #loading-indicator {
+  background-color: rgba(0, 0, 0, 0.7);
 }
 
 .modal-img {
@@ -429,9 +475,12 @@ body {
 #weather-container .card {
   background: linear-gradient(to right, #3498db, #2c3e50);
   border: none;
-  color: white;
+  color: white !important;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   border-radius: 10px;
+  display: block;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 #weather-container .card-body {
@@ -441,13 +490,13 @@ body {
 
 #weather-container h5, 
 #weather-container h3 {
-  color: white;
+  color: white !important;
   font-weight: 600;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 #weather-container p {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.9) !important;
 }
 
 #weather-icon {

@@ -1,3 +1,56 @@
+// Global variables
+let map;
+let markers = [];
+let currentInfoWindow = null;
+let currentLocation = null;
+let placeModal;
+let currentPlaceType = 'restaurant';
+let hoverMarker = null;
+let hoverInfoWindow = null;
+let hoverTimeout = null;
+let lastHoverLocation = null;
+let clickedLocation = null;
+let clickedLocationMarker = null;
+let searchRadius = 1500; // Default search radius in meters
+let isApiErrorShown = false;
+let weatherData = null;
+let isDarkMode = false; // Dark mode toggle state
+let isDessertMode = false; // Dessert mode toggle state
+
+// Dark mode map style
+const darkMapStyle = [
+  { elementType: 'geometry', stylers: [{ color: '#212121' }] },
+  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
+  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#757575' }] },
+  { featureType: 'administrative.country', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
+  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#bdbdbd' }] },
+  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#181818' }] },
+  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+  { featureType: 'poi.park', elementType: 'labels.text.stroke', stylers: [{ color: '#1b1b1b' }] },
+  { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#2c2c2c' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
+  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#373737' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3c3c3c' }] },
+  { featureType: 'road.highway.controlled_access', elementType: 'geometry', stylers: [{ color: '#4e4e4e' }] },
+  { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+  { featureType: 'transit', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000000' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3d3d3d' }] }
+];
+
+// Comprehensive list of dessert-related keywords for filtering
+const dessertKeywords = [
+  'dessert', 'sweet', 'cake', 'pastry', 'cookie', 'ice cream', 'icecream', 'gelato',
+  'chocolate', 'bakery', 'patisserie', 'cupcake', 'muffin', 'candy', 'confection',
+  'donut', 'doughnut', 'froyo', 'frozen yogurt', 'yoghurt', 'custard', 'pie',
+  'waffle', 'crepe', 'pancake', 'churro', 'tiramisu', 'cheesecake', 'pudding',
+  'fudge', 'truffle', 'milkshake', 'sundae', 'sorbet', 'macaron', 'sweets', 'treat',
+  'sugar', 'caramel', 'honey', 'cinnamon', 'vanilla', 'frosting', 'glaze'
+];
+
 /**
  * Shared utility for filtering places based on radius, rating, and unwanted types
  * @param {Array} places - The array of place objects to filter
@@ -58,29 +111,130 @@ function filterAndSortPlaces(places, origin, options = {}) {
   return filtered;
 }
 
-// Global variables
-let map;
-let markers = [];
-let currentLocation = { lat: 52.3676, lng: 4.9041 }; // Default Amsterdam
-let placeModal;
-let currentPlaceType = 'restaurant';
-let hoverMarker = null;
-let hoverInfoWindow = null;
-let hoverTimeout = null;
-let lastHoverLocation = null;
-let clickedLocation = null; // Stores the location when user clicks on the map
-let clickedLocationMarker = null; // Marker to show where user clicked
-let searchRadius = 1500; // Default search radius in meters
-let isApiErrorShown = false; // Flag to track if API error is already displayed
-let weatherData = null; // Store current weather data
+// Global variables are defined at the top of the file
 
 // Initialize the map
+
+// Helper function to determine if a place is a dessert place with improved scoring system
+function isDessertPlace(place) {
+  if (!place) return false;
+  
+  const keywords = [
+    'dessert', 'cake', 'tiramisu', 'patisserie', 'ice cream',
+    'gelato', 'sweet', 'bakery', 'chocolate', 'donut', 'crêpe',
+    'pancake', 'crepe', 'waffle', 'pastry', 'cookie', 'muffin',
+    'froyo', 'yogurt', 'custard', 'pie', 'tart'
+  ];
+  
+  const name = (place.name || '').toLowerCase();
+  const types = (place.types || []).map(t => t.toLowerCase()).join(',');
+  const address = ((place.vicinity || '') + ' ' + (place.formatted_address || '')).toLowerCase();
+
+  // Boost name relevance more than types/address
+  let score = 0;
+  keywords.forEach(keyword => {
+    if (name.includes(keyword)) score += 3;
+    if (types.includes(keyword)) score += 1;
+    if (address.includes(keyword)) score += 1;
+  });
+  
+  // Additional point for cafe/bakery type places which often serve desserts
+  const dessertTypes = ['bakery', 'cafe', 'ice_cream_parlor'];
+  if (place.types && place.types.some(type => dessertTypes.includes(type))) {
+    score += 2;
+  }
+  
+  // Log for debugging
+  if (score > 0) {
+    console.log(`Dessert score for ${place.name}: ${score}`);
+  }
+
+  return score >= 3;  // Threshold for qualifying as a dessert place
+}
+
+// Function to toggle dark mode
+function toggleDarkMode(enabled) {
+  isDarkMode = enabled;
+  
+  if (enabled) {
+    // Apply dark mode to body
+    document.body.classList.add('dark-mode');
+    
+    // Apply dark mode to map if initialized
+    if (map) {
+      map.setOptions({ styles: darkMapStyle });
+    }
+  } else {
+    // Remove dark mode from body
+    document.body.classList.remove('dark-mode');
+    
+    // Reset map styles if initialized
+    if (map) {
+      map.setOptions({ 
+        styles: [
+          {
+            featureType: "poi",
+            elementType: "labels",
+            stylers: [{ visibility: "on" }]
+          }
+        ] 
+      });
+    }
+  }
+}
+
 function initMap() {
   // Make sure the map element exists
   const mapElement = document.getElementById('map');
   if (!mapElement) {
     console.error("Map element not found in the DOM");
     return;
+  }
+  
+  // Set up the dessert mode toggle
+  const dessertCheckbox = document.getElementById('dessert-mode-toggle');
+  if (dessertCheckbox) {
+    // Initialize with stored preference if any
+    isDessertMode = localStorage.getItem('dessertMode') === 'true';
+    dessertCheckbox.checked = isDessertMode;
+    
+    // Log the initial state
+    console.log(`Dessert mode is ${isDessertMode ? 'enabled' : 'disabled'} on initialization`);
+    
+    dessertCheckbox.addEventListener('change', function() {
+      isDessertMode = this.checked;
+      localStorage.setItem('dessertMode', isDessertMode);
+      
+      console.log(`Dessert mode ${isDessertMode ? 'enabled' : 'disabled'} - Will filter dessert places`);
+      
+      // Reload places if we have a current location
+      if (currentLocation) {
+        // Pass 'dessert' as a keyword if dessert mode is enabled
+        loadNearbyPlaces(currentLocation, isDessertMode ? 'dessert' : '', searchRadius);
+      }
+    });
+  } else {
+    console.warn("Dessert mode checkbox not found with ID 'dessert-mode-toggle'");
+  }
+  
+  // Set up the dark mode toggle
+  const darkModeCheckbox = document.getElementById('dark-mode-toggle');
+  if (darkModeCheckbox) {
+    // Initialize with stored preference if any
+    isDarkMode = localStorage.getItem('darkMode') === 'true';
+    darkModeCheckbox.checked = isDarkMode;
+    toggleDarkMode(isDarkMode);
+    
+    console.log(`Dark mode is ${isDarkMode ? 'enabled' : 'disabled'} on initialization`);
+    
+    darkModeCheckbox.addEventListener('change', function() {
+      isDarkMode = this.checked;
+      localStorage.setItem('darkMode', isDarkMode);
+      console.log(`Dark mode ${isDarkMode ? 'enabled' : 'disabled'}`);
+      toggleDarkMode(isDarkMode);
+    });
+  } else {
+    console.warn("Dark mode checkbox not found with ID 'dark-mode-toggle'");
   }
 
   // Set Amsterdam as default location if not already set
@@ -907,11 +1061,24 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
         Places are sorted by rating, prioritizing those with at least ${minReviews} reviews
       `;
       
-      // Add "Open Now" indicator to the sort text
+      // Build indicators for various filters
+      const indicators = [];
+      
+      // Add "Open Now" indicator
       if (openNowChecked) {
+        indicators.push('open now');
+      }
+      
+      // Add "Dessert Mode" indicator
+      if (isDessertMode) {
+        indicators.push('<i class="fas fa-ice-cream"></i> dessert places only');
+      }
+      
+      // Apply indicators to sort text if any are active
+      if (indicators.length > 0) {
         sortText = `
           <i class="fas fa-info-circle"></i> 
-          Showing only places open now, sorted by rating (min ${minReviews} reviews)
+          Showing ${indicators.join(', ')}, sorted by rating (min ${minReviews} reviews)
         `;
       }
       
@@ -973,26 +1140,41 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
         unwantedTypes: UNWANTED_TYPES
       });
       
+      // Additional dessert mode filtering if enabled
+      let finalPlaces = filteredPlaces;
+      if (isDessertMode) {
+        // Log information about dessert filtering
+        console.log("Applying additional dessert filtering");
+        finalPlaces = filteredPlaces.filter(place => isDessertPlace(place));
+        console.log(`After dessert filtering: ${finalPlaces.length} of ${filteredPlaces.length} places remain`);
+      } else {
+        finalPlaces = filteredPlaces;
+      }
+      
       // Log filtering information
-      console.log(`After filtering: ${filteredPlaces.length} of ${data.results.length} places remaining`);
+      console.log(`After filtering: ${finalPlaces.length} of ${data.results.length} places remaining`);
       
       // Places are already sorted by our utility function
-      console.log(`Showing ${filteredPlaces.length} places sorted by rating and review count`);
+      console.log(`Showing ${finalPlaces.length} places sorted by rating and review count`);
       
-      if (filteredPlaces.length === 0) {
+      if (finalPlaces.length === 0) {
         // Show a message if no places meet the criteria
+        const messageText = isDessertMode ? 
+          `No dessert places found matching your criteria` : 
+          `No places found matching your criteria`;
+          
         container.innerHTML = `
           <div class="col-12">
             <div class="alert alert-info">
-              <strong>No places found matching your criteria</strong>
-              <p>No ${formatPlaceType(currentPlaceType)} with a rating of ${MIN_RATING}+ within ${radius}m found in this area.</p>
+              <strong>${messageText}</strong>
+              <p>No ${formatPlaceType(currentPlaceType)}${isDessertMode ? ' serving desserts' : ''} with a rating of ${MIN_RATING}+ within ${radius}m found in this area.</p>
               <p>Try another location or category, or adjust the search radius.</p>
             </div>
           </div>
         `;
       } else {
         // Display filtered and sorted places
-        filteredPlaces.forEach((place, index) => {
+        finalPlaces.forEach((place, index) => {
           // Create a card for each place (the TripAdvisor fetch happens inside createPlaceCard,
           // no need to call fetchTripAdvisorData again)
           const card = createPlaceCard(place, index);
@@ -1101,12 +1283,26 @@ function renderPlaces(places) {
   
   // If no results after filtering, show a message
   if (filteredPlaces.length === 0) {
+    let message = `No high-rated ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.`;
+    if (isDessertMode) {
+      message = `No dessert places found in this area. Try another location or disable dessert mode.`;
+    }
     container.innerHTML = `
       <div class="col-12">
-        <div class="alert alert-info">No high-rated ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.</div>
+        <div class="alert alert-info">${message}</div>
       </div>
     `;
     return;
+  }
+  
+  // Update sort indicator with dessert mode indicator if active
+  const sortIndicator = document.getElementById('sort-indicator');
+  if (sortIndicator) {
+    let indicatorText = `Showing ${filteredPlaces.length} places sorted by Google rating`;
+    if (isDessertMode) {
+      indicatorText = `<span class="badge bg-warning text-dark me-2"><i class="fas fa-ice-cream"></i> Dessert Mode</span> Showing ${filteredPlaces.length} dessert places sorted by rating`;
+    }
+    sortIndicator.innerHTML = indicatorText;
   }
   
   // Sort places by rating but only consider places with at least currentMinReviews
@@ -1254,6 +1450,12 @@ function createPlaceCard(place, index) {
     <div class="place-number-badge">${placeNumber}</div>
   `;
   
+  // Add dessert badge if place is a dessert place and dessert mode is on
+  let dessertBadge = '';
+  if (isDessertMode && isDessertPlace(place)) {
+    dessertBadge = `<span class="badge bg-warning text-dark position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-ice-cream"></i> Dessert</span>`;
+  }
+
   col.innerHTML = `
     <div class="card place-card h-100">
       <div class="position-relative">
@@ -1261,6 +1463,7 @@ function createPlaceCard(place, index) {
         <div class="position-absolute top-0 start-0 mt-2 ms-2 bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-weight: bold;">
           ${placeNumber}
         </div>
+        ${dessertBadge}
       </div>
       <div class="card-body">
         <h5 class="card-title">${placeNumber}. ${place.name}</h5>
@@ -2766,12 +2969,20 @@ function searchNearbyOnHover(location) {
     // Search for nearby places
     const placesService = new google.maps.places.PlacesService(map);
     
-    placesService.nearbySearch({
+    // Build search parameters with dessert mode support
+    const searchParams = {
       location: location,
       radius: 300,
       type: currentPlaceType,
       rankBy: google.maps.places.RankBy.PROMINENCE
-    }, function(results, status) {
+    };
+    
+    // Add keyword if in dessert mode
+    if (isDessertMode) {
+      searchParams.keyword = 'dessert';
+    }
+    
+    placesService.nearbySearch(searchParams, function(results, status) {
       // Handle error or no results
       if (status !== google.maps.places.PlacesServiceStatus.OK || !results || results.length === 0) {
         hoverInfoWindow.setContent(`<div class="p-2">No ${formatPlaceType(currentPlaceType)}s found here</div>`);
@@ -2786,19 +2997,34 @@ function searchNearbyOnHover(location) {
         unwantedTypes: UNWANTED_TYPES
       });
       
+      // Apply dessert-specific filtering when in dessert mode
+      let placesToShow = filteredPlaces;
+      if (isDessertMode) {
+        // Filter places to only include dessert places when in dessert mode
+        placesToShow = filteredPlaces.filter(place => isDessertPlace(place));
+        console.log(`Found ${placesToShow.length} dessert places out of ${filteredPlaces.length} filtered places`);
+      }
+      
       // Take top 5 places for display
-      const topPlaces = filteredPlaces.slice(0, 5);
+      const topPlaces = placesToShow.slice(0, 5);
       
       // Handle no results after filtering
       if (topPlaces.length === 0) {
-        hoverInfoWindow.setContent(`<div class="p-2">No high-rated ${formatPlaceType(currentPlaceType)}s nearby</div>`);
+        let noResultsMessage = `No high-rated ${formatPlaceType(currentPlaceType)}s nearby`;
+        if (isDessertMode) {
+          noResultsMessage = `No dessert places nearby`;
+        }
+        hoverInfoWindow.setContent(`<div class="p-2">${noResultsMessage}</div>`);
         return;
       }
       
       // Build content HTML
       let contentHtml = `
         <div class="p-2" style="max-width: 300px;">
-          <h6 class="mb-2">Nearby ${formatPlaceType(currentPlaceType)}s</h6>
+          <h6 class="mb-2">
+            Nearby ${isDessertMode ? 'Dessert ' : ''}${formatPlaceType(currentPlaceType)}s
+            ${isDessertMode ? '<i class="fas fa-ice-cream text-warning ms-1"></i>' : ''}
+          </h6>
           <ul class="list-group list-group-flush ps-0">
       `;
       
@@ -2960,8 +3186,11 @@ function displayWeatherData(data) {
     forecastContainer.appendChild(forecastItem);
   }
   
-  // Show the weather container
+  // Show the weather container with important flag
   container.style.display = 'block';
+  container.style.visibility = 'visible';
+  container.style.opacity = '1';
+  console.log("Weather container should now be visible:", container);
 }
 
 // We no longer need the Bootstrap initPhotoCarousel function
