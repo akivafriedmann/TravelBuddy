@@ -1018,8 +1018,11 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
         console.log(`Executing dessert search: type=${s.type}${s.keyword ? ', keyword=' + s.keyword : ''}`);
         
         const results = await new Promise(resolve => {
+          // Ensure location is properly formatted for Google Maps
+          const locationObj = new google.maps.LatLng(location.lat, location.lng);
+          
           service.nearbySearch({
-            location: location,
+            location: locationObj,
             radius: radius,
             type: s.type,
             keyword: s.keyword || '',
@@ -1243,51 +1246,78 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
                              'delicious dessert', 'amazing dessert', 'gelato', 
                              'ice cream', 'chocolate', 'custard', 'pie'];
       
-      const goodDesserts = [];
+      // Pre-filter places to only include food-related establishments
+      const foodTypes = ['restaurant', 'cafe', 'bakery', 'food', 'bar', 'meal_takeaway', 
+                        'meal_delivery', 'ice_cream_parlor', 'dessert'];
+                        
+      // First filter places by types to include only food-related places
+      const foodPlaces = filteredPlaces.filter(place => {
+        if (!place.types || place.types.length === 0) return false;
+        return place.types.some(type => foodTypes.includes(type.toLowerCase()));
+      });
       
-      // Only check the top 20 to save API calls
-      const topCandidates = filteredPlaces.slice(0, 20);
-      console.log(`Checking reviews for ${topCandidates.length} dessert place candidates`);
+      console.log(`Found ${foodPlaces.length} food-related places out of ${filteredPlaces.length} total`);
       
-      // Process each place to check reviews for dessert mentions
-      for (let place of topCandidates) {
-        try {
-          const details = await new Promise(resolve => {
-            service.getDetails({
-              placeId: place.place_id,
-              fields: ['reviews']
-            }, (details, status) => {
-              resolve(status === google.maps.places.PlacesServiceStatus.OK ? details : null);
+      // Check for dessert places based on name first
+      const nameBasedDesserts = foodPlaces.filter(place => {
+        const name = (place.name || '').toLowerCase();
+        return dessertKeywords.some(keyword => name.includes(keyword));
+      });
+      
+      console.log(`Found ${nameBasedDesserts.length} places with dessert keywords in names`);
+      
+      // If we have places with dessert in their names, prioritize those
+      if (nameBasedDesserts.length > 0) {
+        finalPlaces = nameBasedDesserts;
+        console.log("Using name-based dessert places");
+      } else {
+        // Otherwise, check reviews for dessert mentions
+        const goodDesserts = [];
+        
+        // Only check the top 20 to save API calls
+        const topCandidates = foodPlaces.slice(0, 20);
+        console.log(`Checking reviews for ${topCandidates.length} food place candidates`);
+        
+        // Process each place to check reviews for dessert mentions
+        for (let place of topCandidates) {
+          try {
+            const details = await new Promise(resolve => {
+              service.getDetails({
+                placeId: place.place_id,
+                fields: ['reviews', 'types']
+              }, (details, status) => {
+                resolve(status === google.maps.places.PlacesServiceStatus.OK ? details : null);
+              });
             });
-          });
-          
-          if (!details || !details.reviews) {
-            console.log(`No reviews available for: ${place.name}`);
-            continue;
+            
+            if (!details || !details.reviews) {
+              console.log(`No reviews available for: ${place.name}`);
+              continue;
+            }
+            
+            // Check the most recent 5 reviews
+            const reviews = details.reviews.slice(0, 5);
+            
+            // Count reviews with dessert mentions
+            const count = reviews.filter(review => {
+              const text = (review.text || '').toLowerCase();
+              return dessertKeywords.some(keyword => text.includes(keyword));
+            }).length;
+            
+            console.log(`Place "${place.name}" has ${count} reviews mentioning desserts`);
+            
+            // Add to good desserts if at least 2 reviews mention desserts
+            if (count >= 2) {
+              goodDesserts.push(place);
+            }
+          } catch (error) {
+            console.error(`Error getting details for place ${place.name}:`, error);
           }
-          
-          // Check the most recent 5 reviews
-          const reviews = details.reviews.slice(0, 5);
-          
-          // Count reviews with dessert mentions
-          const count = reviews.filter(review => {
-            const text = (review.text || '').toLowerCase();
-            return dessertKeywords.some(keyword => text.includes(keyword));
-          }).length;
-          
-          console.log(`Place "${place.name}" has ${count} reviews mentioning desserts`);
-          
-          // Add to good desserts if at least 2 reviews mention desserts
-          if (count >= 2) {
-            goodDesserts.push(place);
-          }
-        } catch (error) {
-          console.error(`Error getting details for place ${place.name}:`, error);
         }
+        
+        // Use the places that have good dessert mentions in reviews
+        finalPlaces = goodDesserts.length > 0 ? goodDesserts : foodPlaces;
       }
-      
-      // Use the places that have good dessert mentions in reviews
-      finalPlaces = goodDesserts.length > 0 ? goodDesserts : finalPlaces;
       console.log(`After dessert review analysis: ${finalPlaces.length} places remain`);
     }
       
