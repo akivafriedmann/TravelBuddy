@@ -412,9 +412,11 @@ app.get('/api/nearby', async (req, res) => {
     
     // Only override parameters for specific cases
     if (keyword === 'cheap') {
-      // For cheap eats search, we explicitly want to use radius parameter
-      console.log('Performing cheap eats search with radius parameter');
-      // No change to parameters for cheap eats search
+      // For cheap eats search, use a larger radius to get more results
+      console.log('Performing cheap eats search with expanded radius parameter');
+      // Override radius to be larger for cheap eats to catch more potential options
+      const expandedRadius = 5000; // 5km radius for cheap eats search
+      url = url.replace(`radius=${radius}&`, `radius=${expandedRadius}&`);
     } else if (keyword && ['italian', 'asian', 'mexican', 'indian', 'french', 'mediterranean'].includes(keyword.toLowerCase())) {
       // For cuisine searches, keep the radius parameter and send both type=restaurant and the cuisine keyword
       console.log(`Performing ${keyword} cuisine search with radius parameter`);
@@ -540,41 +542,103 @@ app.get('/api/nearby', async (req, res) => {
       const placeNames = data.results.map(p => `${p.name} (${p.rating || 'No rating'})`).join(', ');
       console.log(`Places found: ${placeNames}`);
       
-      // Apply distance filtering if a radius was specified
+      // Apply distance filtering if a radius was specified, but with special handling for cheap eats
       if (radius && !isNaN(parseInt(radius))) {
         const requestedRadius = parseInt(radius);
         const originalCount = data.results.length;
         
-        // When using rankby=distance, we still need to filter by the actual distance
-        // since Google ignores the radius parameter when rankby=distance is used
-        data.results = data.results.filter(place => {
-          if (!place.geometry || !place.geometry.location) return false;
+        // Special case for cheap eats - be more lenient with distance filtering
+        if (keyword === 'cheap') {
+          console.log(`Using expanded distance filtering for cheap eats search`);
           
-          const placeLat = place.geometry.location.lat;
-          const placeLng = place.geometry.location.lng;
-          const distance = getDistanceInMeters(parseFloat(lat), parseFloat(lng), placeLat, placeLng);
+          // For cheap eats, just calculate the distance but don't filter out
+          data.results.forEach(place => {
+            if (!place.geometry || !place.geometry.location) return;
+            
+            const placeLat = place.geometry.location.lat;
+            const placeLng = place.geometry.location.lng;
+            const distance = getDistanceInMeters(parseFloat(lat), parseFloat(lng), placeLat, placeLng);
+            
+            // Add the calculated distance to the place object
+            place.distance_meters = Math.round(distance);
+          });
           
-          // Add the calculated distance to the place object (useful for debugging)
-          place.distance_meters = Math.round(distance);
+          // Sort by distance within price categories for cheap eats
+          // This keeps the cheap places ($ and $$) first, but sorts by distance within those categories
+          data.results.sort((a, b) => {
+            // First prioritize $ places
+            if (a.price_level === 1 && b.price_level !== 1) return -1;
+            if (a.price_level !== 1 && b.price_level === 1) return 1;
+            
+            // Then prioritize $$ places
+            if (a.price_level === 2 && b.price_level !== 2) return -1;
+            if (a.price_level !== 2 && b.price_level === 2) return 1;
+            
+            // Within same price level, sort by distance
+            if (a.distance_meters && b.distance_meters) {
+              return a.distance_meters - b.distance_meters;
+            }
+            
+            // If no distance info, use rating
+            return (b.rating || 0) - (a.rating || 0);
+          });
           
-          return distance <= requestedRadius;
-        });
-        
-        console.log(`Distance filtering applied: ${data.results.length} of ${originalCount} places are within ${requestedRadius}m radius`);
+          // Limit to a larger number of results but not too many
+          if (data.results.length > 20) {
+            console.log(`Limiting cheap eats results to 20 (from ${data.results.length})`);
+            data.results = data.results.slice(0, 20);
+          }
+          
+          console.log(`Distance sorting applied for cheap eats search: ${data.results.length} places shown`);
+        } else {
+          // Standard distance filtering for non-cheap searches
+          // When using rankby=distance, we still need to filter by the actual distance
+          // since Google ignores the radius parameter when rankby=distance is used
+          data.results = data.results.filter(place => {
+            if (!place.geometry || !place.geometry.location) return false;
+            
+            const placeLat = place.geometry.location.lat;
+            const placeLng = place.geometry.location.lng;
+            const distance = getDistanceInMeters(parseFloat(lat), parseFloat(lng), placeLat, placeLng);
+            
+            // Add the calculated distance to the place object (useful for debugging)
+            place.distance_meters = Math.round(distance);
+            
+            return distance <= requestedRadius;
+          });
+          
+          console.log(`Distance filtering applied: ${data.results.length} of ${originalCount} places are within ${requestedRadius}m radius`);
+        }
       }
       
-      // Special handling for cheap eats - filter by price_level 1 or 2 ($, $$)
+      // Special handling for cheap eats - SIMPLE filtering by price_level 1 or 2 ($ or $$)
       if (keyword === 'cheap') {
-        console.log('Applying price level filtering for cheap eats search');
+        console.log('Applying SIMPLE price level filtering for cheap eats search');
         const originalCount = data.results.length;
         
-        data.results = data.results.filter(place => {
-          // If price_level is 1 or 2 ($ or $$), keep it
-          // If price_level is missing, include it anyway in case it's a good budget option
-          return place.price_level === undefined || place.price_level <= 2;
+        // Log all places with their price levels for debugging
+        data.results.forEach(place => {
+          console.log(`Place: ${place.name}, Price Level: ${place.price_level}, Rating: ${place.rating}`);
         });
         
-        console.log(`Price level filtering applied: ${data.results.length} of ${originalCount} places remain after cheap filter`);
+        // Simply filter to include only places with price_level 1 or 2 ($ or $$)
+        data.results = data.results.filter(place => {
+          return place.price_level === 1 || place.price_level === 2;
+        });
+        
+        // First sort by price level ($ before $$)
+        // Then by rating (high to low)
+        data.results.sort((a, b) => {
+          // First prioritize $ places over $$ places
+          if (a.price_level !== b.price_level) {
+            return a.price_level - b.price_level;
+          }
+          
+          // Then sort by rating within same price level
+          return b.rating - a.rating;
+        });
+        
+        console.log(`SIMPLE cheap eats filtering applied: ${data.results.length} of ${originalCount} places remain with price_level 1-2`);
       }
       
       // Extra filtering for dessert places if the keyword is dessert

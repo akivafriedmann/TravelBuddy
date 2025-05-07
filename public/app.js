@@ -1046,8 +1046,16 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       console.log(`Found ${rawPlaces.length} potential dessert places from combined searches`);
     } else {
       // Standard search for non-dessert categories
+      // For cheap eats search, use a larger radius to get more results
+      let searchRadius = radius;
+      if (keyword === 'cheap') {
+        // Use a larger radius for cheap eats to get more options
+        searchRadius = 5000; // 5km radius for cheap eats search
+        console.log(`Using expanded radius (${searchRadius}m) for cheap eats search`);
+      }
+      
       // Build API URL with required parameters
-      let apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}&radius=${radius}`;
+      let apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}&radius=${searchRadius}`;
       
       // Add keyword if provided (for special categories like "cheap eats")
       if (keyword) {
@@ -1202,9 +1210,14 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       "car_dealer"
     ];
     
-    // Minimum rating to show (different minimum ratings based on place type)
+    // Minimum rating to show (different minimum ratings based on place type and search type)
     let MIN_RATING;
-    if (currentPlaceType === 'restaurant') {
+    
+    // Special case for cheap eats - use a lower threshold to show more options
+    if (keyword === 'cheap') {
+      MIN_RATING = 3.5; // Much lower threshold for cheap places to show more options
+      console.log("Using lower rating threshold for cheap eats search: 3.5");
+    } else if (currentPlaceType === 'restaurant') {
       MIN_RATING = 4.0;
     } else if (currentPlaceType === 'night_club') {
       MIN_RATING = 3.7; // Lower threshold for nightclubs as requested
@@ -1214,9 +1227,9 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       MIN_RATING = 3.8; // Default more lenient threshold for other place types
     }
     
-    // Define minimum reviews for statistical significance
+    // Define minimum reviews for statistical significance - lower for 'cheap' to show more options
     const MIN_REVIEWS = {
-      restaurant: 20,
+      restaurant: keyword === 'cheap' ? 5 : 20, // Much lower for cheap eats to show more options
       lodging: 8,
       night_club: 10,
       supermarket: 5,
@@ -1228,10 +1241,11 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
 
     // Use our shared utility function to filter and sort places
     const filteredPlaces = filterAndSortPlaces(rawPlaces, location, {
-      radius: radius,
+      radius: searchRadius || radius, // Use expanded radius for cheap eats
       minRating: MIN_RATING,
       minReviews: currentMinReviews,
-      unwantedTypes: UNWANTED_TYPES
+      unwantedTypes: UNWANTED_TYPES,
+      isCheapSearch: keyword === 'cheap' // Add flag for cheap eats search
     });
     
     // Apply additional analysis for dessert places if needed
@@ -1578,14 +1592,51 @@ function createPlaceCard(place, index) {
     // We don't call fetchTripAdvisorData here to avoid duplicate requests
   }
   
-  // Format price level
+  // Format price level - more prominent display
   let priceHtml = '';
   if (place.price_level) {
-    priceHtml = '<div class="price-level">';
+    // Different colors based on price level
+    let priceClass = '';
+    let priceTooltip = '';
+    
+    if (place.price_level === 1) {
+      priceClass = 'bg-success'; // Green for cheapest
+      priceTooltip = 'Budget friendly';
+    } else if (place.price_level === 2) {
+      priceClass = 'bg-info'; // Blue for moderate
+      priceTooltip = 'Moderately priced';
+    } else if (place.price_level === 3) {
+      priceClass = 'bg-warning'; // Yellow for expensive
+      priceTooltip = 'Somewhat expensive';
+    } else if (place.price_level === 4) {
+      priceClass = 'bg-danger'; // Red for very expensive
+      priceTooltip = 'Expensive';
+    }
+    
+    // Build the price level badge with appropriate styling
+    priceHtml = `<div class="price-level mb-2">`;
+    priceHtml += `<span class="badge ${priceClass} p-2" title="${priceTooltip}">`;
+    
+    // Add dollar signs
     for (let i = 0; i < place.price_level; i++) {
       priceHtml += '$';
     }
+    
+    // Fill in remaining dollar signs in gray
+    for (let i = place.price_level; i < 4; i++) {
+      priceHtml += '<span class="text-muted">$</span>';
+    }
+    
+    priceHtml += '</span>';
+    
+    // Add textual description for clarity
+    if (currentKeyword === 'cheap') {
+      priceHtml += `<small class="ms-2 text-muted">${priceTooltip}</small>`;
+    }
+    
     priceHtml += '</div>';
+  } else {
+    priceHtml = '<div class="price-level mb-2"><span class="badge bg-secondary p-2" title="Price not specified">Price unknown</span></div>';
   }
   
   // Create card content
