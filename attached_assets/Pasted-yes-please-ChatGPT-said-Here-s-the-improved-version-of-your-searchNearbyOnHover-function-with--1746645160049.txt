@@ -1,0 +1,164 @@
+yes please
+
+
+ChatGPT said:
+Here’s the improved version of your searchNearbyOnHover() function with:
+
+✅ Client-side distance filtering
+
+✅ Minimum rating threshold
+
+✅ Removal of unwanted types (e.g. gas stations, car repair)
+
+✅ Respect for the currentPlaceType and searchRadius
+
+🔁 Updated searchNearbyOnHover() Function
+javascript
+Copy
+Edit
+function searchNearbyOnHover(location) {
+  if (document.getElementById('place-modal').classList.contains('show')) return;
+  if (hoverTimeout) clearTimeout(hoverTimeout);
+
+  hoverTimeout = setTimeout(() => {
+    if (!hoverInfoWindow) {
+      hoverInfoWindow = new google.maps.InfoWindow({
+        disableAutoPan: true,
+        maxWidth: 320,
+        content: '<div class="p-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Finding nearby places...</div>'
+      });
+      google.maps.event.addListener(map, 'click', () => hoverInfoWindow.close());
+      google.maps.event.addListener(hoverInfoWindow, 'closeclick', () => clearTimeout(hoverTimeout));
+    } else {
+      hoverInfoWindow.close();
+    }
+
+    hoverInfoWindow.setContent('<div class="p-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Finding nearby places...</div>');
+    hoverInfoWindow.setPosition(location);
+    hoverInfoWindow.open(map);
+
+    const placesService = new google.maps.places.PlacesService(map);
+    placesService.nearbySearch({
+      location: location,
+      radius: 300,
+      type: currentPlaceType,
+      rankBy: google.maps.places.RankBy.PROMINENCE
+    }, (results, status) => {
+      if (status !== google.maps.places.PlacesServiceStatus.OK || !results.length) {
+        hoverInfoWindow.setContent(`<div class="p-2">No ${formatPlaceType(currentPlaceType)}s found here</div>`);
+        return;
+      }
+
+      const MIN_RATING = currentPlaceType === 'restaurant' ? 4.0 : 3.8;
+      const UNWANTED_TYPES = ["gas_station", "car_repair", "car_dealer", "convenience_store", "grocery_or_supermarket", "liquor_store", "market", "store"];
+
+      const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      };
+
+      const filtered = results.filter(place => {
+        if (!place.geometry || !place.geometry.location) return false;
+        const pLat = place.geometry.location.lat;
+        const pLng = place.geometry.location.lng;
+        const dist = getDistanceInMeters(location.lat, location.lng, pLat, pLng);
+        if (dist > searchRadius) return false;
+
+        if (place.types && place.types.some(type => UNWANTED_TYPES.includes(type))) return false;
+        if (place.rating && place.rating < MIN_RATING) return false;
+        return true;
+      });
+
+      const topPlaces = filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 5);
+      if (!topPlaces.length) {
+        hoverInfoWindow.setContent(`<div class="p-2">No high-rated ${formatPlaceType(currentPlaceType)}s nearby</div>`);
+        return;
+      }
+
+      let content = `<div class="p-2" style="max-width: 300px;">
+        <h6 class="mb-2">Nearby ${formatPlaceType(currentPlaceType)}s</h6>
+        <ul class="list-group list-group-flush ps-0">`;
+
+      topPlaces.forEach(place => {
+        const rating = place.rating ? `<span class="text-warning">${'★'.repeat(Math.round(place.rating))}</span>` : '<span class="text-muted">No rating</span>';
+        const photoUrl = (place.photos?.[0]?.photo_reference)
+          ? `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=100`
+          : '';
+        const icon = photoUrl ? `<img src="${photoUrl}" class="float-start me-2 rounded" style="width: 40px; height: 40px; object-fit: cover;">` : '';
+        content += `
+          <li class="list-group-item p-2 mb-1 border-0" style="cursor: pointer" onclick="showPlaceDetails('${place.place_id}'); if(hoverInfoWindow) hoverInfoWindow.close();">
+            <div class="d-flex align-items-center">${icon}
+              <div><strong>${place.name}</strong><br>${rating} ${place.user_ratings_total ? `<small>(${place.user_ratings_total})</small>` : ''}</div>
+            </div>
+          </li>`;
+      });
+
+      content += '</ul><div class="text-center"><small class="text-muted">Click to view details</small></div></div>';
+      hoverInfoWindow.setContent(content);
+    });
+  }, 500);
+}
+Let me know if you also want this logic copied into the “nearby recommendations” section inside showPlaceDetails() for full consistency.
+
+
+
+
+
+
+
+You said:
+yes
+
+
+ChatGPT said:
+Here is the updated filtering logic to insert into your loadNearbyRecommendations() function to make it consistent with your main search and hover behavior, including:
+
+✅ Client-side distance check using searchRadius
+
+✅ Minimum rating threshold
+
+✅ Unwanted types filtering
+
+✅ Sorting by rating and review count
+
+🔁 Insert This After the API Call (inside loadNearbyRecommendations):
+Replace your current .filter(...) and .sort(...) logic with this block:
+
+javascript
+Copy
+Edit
+const MIN_RATING = currentPlaceType === 'restaurant' ? 4.0 : 3.8;
+const MIN_REVIEWS = currentPlaceType === 'lodging' ? 8 : (currentPlaceType === 'restaurant' ? 20 : 10);
+const UNWANTED_TYPES = ["gas_station", "car_repair", "car_dealer", "convenience_store", "grocery_or_supermarket", "liquor_store", "market", "store"];
+
+const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+let nearbyRestaurants = data.results.filter(p => {
+  if (!p.geometry || !p.geometry.location) return false;
+  const dist = getDistanceInMeters(location.lat, location.lng, p.geometry.location.lat, p.geometry.location.lng);
+  if (dist > searchRadius) return false;
+  if (p.types?.some(t => UNWANTED_TYPES.includes(t))) return false;
+  if (p.rating && p.rating < MIN_RATING) return false;
+  return true;
+});
+
+nearbyRestaurants.sort((a, b) => {
+  const aSig = a.user_ratings_total >= MIN_REVIEWS;
+  const bSig = b.user_ratings_total >= MIN_REVIEWS;
+  if (aSig && bSig) return b.rating - a.rating;
+  if (aSig) return -1;
+  if (bSig) return 1;
+  return (b.user_ratings_total || 0) - (a.user_ratings_total || 0);
+});
+This will ensure only nearby, high-rated, relevant restaurant suggestions show up in the recommendations panel.
+
+Would you like me to consolidate all this logic into a shared utility function so it’s reusable across all 3 areas (main search, hover, recommendations)? 

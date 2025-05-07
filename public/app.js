@@ -816,11 +816,32 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       console.log('Filtering for places open now');
     }
     
+    // Define the Haversine formula for distance calculation
+    const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
+      const R = 6371000; // Earth radius in meters
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    };
+    
     // Update the sort indicator based on place type
     const sortIndicator = document.querySelector('.sort-indicator small');
     if (sortIndicator) {
-      const minReviews = currentPlaceType === 'lodging' ? 8 : 
-                        (currentPlaceType === 'restaurant' ? 20 : 10);
+      // Get minimum reviews based on place type
+      const MIN_REVIEWS = {
+        restaurant: 20,
+        lodging: 8,
+        night_club: 10,
+        supermarket: 5,
+        default: 10
+      };
+      const minReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
+      
       let sortText = `
         <i class="fas fa-info-circle"></i> 
         Places are sorted by rating, prioritizing those with at least ${minReviews} reviews
@@ -845,12 +866,20 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
     console.log("Nearby places API response:", data);
     
     if (data.status === 'OK' && data.results && data.results.length > 0) {
-      // EMERGENCY FIX: Now with minimal filtering (only for low ratings)
       const container = document.getElementById('places-container');
       container.innerHTML = '';
       
       // Log the places we found
-      console.log(`EMERGENCY MODE: Starting with ${data.results.length} places before rating filter`);
+      console.log(`Starting with ${data.results.length} places before filtering`);
+      
+      // Define unwanted business types
+      const UNWANTED_TYPES = [
+        "gas_station", 
+        "convenience_store", 
+        "car_repair", 
+        "car_wash",
+        "car_dealer"
+      ];
       
       // Minimum rating to show (different minimum ratings based on place type)
       let MIN_RATING;
@@ -864,24 +893,56 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
         MIN_RATING = 3.8; // Default more lenient threshold for other place types
       }
       
-      console.log(`Filtering with minimum rating of ${MIN_RATING} for ${currentPlaceType}s`);
+      // Define minimum reviews for statistical significance
+      const MIN_REVIEWS = {
+        restaurant: 20,
+        lodging: 8,
+        night_club: 10,
+        supermarket: 5,
+        default: 10
+      };
+      const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
+      
+      console.log(`Filtering with minimum rating of ${MIN_RATING} and within ${radius}m for ${currentPlaceType}s`);
 
-      // Filter places with too low ratings
+      // Apply various filters: rating, distance, and unwanted types
       const filteredPlaces = data.results.filter(place => {
-        // Only apply filter to places with ratings
-        if (!place.rating) return true;
+        // Filter by geometry/location existence
+        if (!place.geometry || !place.geometry.location) return false;
         
-        return place.rating >= MIN_RATING;
+        // Get location coordinates, handling both function and property access
+        const pLat = typeof place.geometry.location.lat === 'function' ? 
+                    place.geometry.location.lat() : place.geometry.location.lat;
+        const pLng = typeof place.geometry.location.lng === 'function' ? 
+                    place.geometry.location.lng() : place.geometry.location.lng;
+        
+        // Filter by distance using Haversine formula
+        const distance = getDistanceInMeters(location.lat, location.lng, pLat, pLng);
+        if (distance > radius) {
+          console.log(`Excluding place due to distance: ${place.name} (${distance.toFixed(0)}m > ${radius}m)`);
+          return false;
+        }
+        
+        // Filter by unwanted place types
+        if (place.types && place.types.some(type => UNWANTED_TYPES.includes(type))) {
+          console.log(`Excluding unwanted place type: ${place.name} (${place.types.join(', ')})`);
+          return false;
+        }
+        
+        // Filter by rating (only for places with ratings)
+        if (place.rating && place.rating < MIN_RATING) {
+          console.log(`Excluding place due to low rating: ${place.name} (${place.rating} < ${MIN_RATING})`);
+          return false;
+        }
+        
+        // Keep places that passed all filters
+        return true;
       });
       
-      console.log(`After rating filter: ${filteredPlaces.length} places remain with rating >= ${MIN_RATING}`);
+      console.log(`After combined filtering: ${filteredPlaces.length} places remain`);
       
-      // Sort places by rating (higher ratings first)
+      // Sort places by rating and statistical significance
       const sortedPlaces = [...filteredPlaces].sort((a, b) => {
-        // Minimum required reviews for statistical significance
-        const currentMinReviews = currentPlaceType === 'lodging' ? 8 : 
-                              (currentPlaceType === 'restaurant' ? 20 : 10);
-                              
         const aSignificant = a.user_ratings_total >= currentMinReviews;
         const bSignificant = b.user_ratings_total >= currentMinReviews;
         
@@ -910,16 +971,13 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       
       console.log(`Sorted places: showing ${sortedPlaces.length} places sorted by rating`);
       
-      // Clear existing markers
-      clearMarkers();
-      
       if (sortedPlaces.length === 0) {
-        // Show a message if no places meet the rating criteria
+        // Show a message if no places meet the criteria
         container.innerHTML = `
           <div class="col-12">
             <div class="alert alert-info">
-              <strong>No high-rated places found</strong>
-              <p>No ${formatPlaceType(currentPlaceType)} with a rating of ${MIN_RATING} or higher found in this area.</p>
+              <strong>No places found matching your criteria</strong>
+              <p>No ${formatPlaceType(currentPlaceType)} with a rating of ${MIN_RATING}+ within ${radius}m found in this area.</p>
               <p>Try another location or category, or adjust the search radius.</p>
             </div>
           </div>
@@ -927,7 +985,8 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       } else {
         // Display filtered and sorted places
         sortedPlaces.forEach((place, index) => {
-          // Create a card for each place
+          // Create a card for each place (the TripAdvisor fetch happens inside createPlaceCard,
+          // no need to call fetchTripAdvisorData again)
           const card = createPlaceCard(place, index);
           container.appendChild(card);
           
@@ -1154,8 +1213,8 @@ function createPlaceCard(place, index) {
     
     ratingHtml += '</div>'; // End star-rating div
     
-    // Trigger TripAdvisor data fetch
-    fetchTripAdvisorData(place);
+    // Note: TripAdvisor data will be fetched once in the main function
+    // We don't call fetchTripAdvisorData here to avoid duplicate requests
   }
   
   // Format price level
@@ -2110,34 +2169,75 @@ async function loadNearbyRecommendations(place) {
       return;
     }
     
-    // Remove the current place from recommendations
+    // First filter out the current place
     let nearbyRestaurants = data.results.filter(nearbyPlace => 
       nearbyPlace.place_id !== place.place_id
     );
     
+    // Define minimum ratings and review thresholds based on place type
+    const MIN_RATING = currentPlaceType === 'restaurant' ? 4.0 : 
+                      (currentPlaceType === 'night_club' ? 3.7 : 
+                      (currentPlaceType === 'supermarket' ? 3.5 : 3.8));
+    
+    const MIN_REVIEWS = {
+      restaurant: 20,
+      lodging: 8,
+      night_club: 10,
+      supermarket: 5,
+      default: 10
+    };
+    
+    const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
+    
     // Define unwanted business types
-    const unwantedTypes = [
+    const UNWANTED_TYPES = [
       "gas_station", 
-      "convenience_store", 
       "car_repair", 
-      "car_wash",
-      "car_dealer"
+      "car_dealer", 
+      "convenience_store", 
+      "grocery_or_supermarket", 
+      "liquor_store", 
+      "market", 
+      "store"
     ];
     
-    // Filter out unwanted businesses
+    // Define the Haversine formula for accurate distance calculation
+    const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
+      const R = 6371000; // Earth radius in meters
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    };
+    
+    // Apply enhanced filtering logic
     nearbyRestaurants = nearbyRestaurants.filter(restaurant => {
-      // Keep only places with ratings or significant number of reviews
-      if (!restaurant.rating && !restaurant.user_ratings_total) {
-        return false;
-      }
+      // Filter by geometry existence
+      if (!restaurant.geometry || !restaurant.geometry.location) return false;
       
-      // Check if this is an unwanted business type
-      if (restaurant.types) {
-        for (const type of unwantedTypes) {
-          if (restaurant.types.includes(type)) {
-            return false;
-          }
-        }
+      // Get location coordinates, handling both function and property access
+      const pLat = typeof restaurant.geometry.location.lat === 'function' ? 
+                  restaurant.geometry.location.lat() : restaurant.geometry.location.lat;
+      const pLng = typeof restaurant.geometry.location.lng === 'function' ? 
+                  restaurant.geometry.location.lng() : restaurant.geometry.location.lng;
+      
+      // Calculate distance using Haversine formula
+      const dist = getDistanceInMeters(
+        location.lat, 
+        location.lng, 
+        pLat, 
+        pLng
+      );
+      
+      // Exclude places that are too far away
+      if (dist > radius) return false;
+      
+      // Filter unwanted business types
+      if (restaurant.types && restaurant.types.some(type => UNWANTED_TYPES.includes(type))) {
+        return false;
       }
       
       // Filter by minimum rating
@@ -2151,31 +2251,14 @@ async function loadNearbyRecommendations(place) {
     if (nearbyRestaurants.length === 0) {
       container.innerHTML = `
         <div class="alert alert-info">
-          No high-quality restaurants found nearby within ${radius}m.
+          <i class="fas fa-info-circle"></i> No high-quality restaurants found nearby within ${radius}m.
+          <p class="small mt-1">Try adjusting your search or exploring a different area.</p>
         </div>
       `;
       return;
     }
     
-    // Minimum required reviews for statistical significance
-    // Different minimum reviews based on place type
-    const MIN_REVIEWS = {
-      restaurant: 20,
-      lodging: 8,
-      default: 10
-    };
-    
-    // Get the appropriate minimum review count based on place type
-    const getMinReviews = (placeType) => {
-      if (placeType === 'lodging') return MIN_REVIEWS.lodging;
-      if (placeType === 'restaurant') return MIN_REVIEWS.restaurant;
-      return MIN_REVIEWS.default;
-    };
-    
-    // Determine the minimum reviews required for the current place type
-    const currentMinReviews = getMinReviews(currentPlaceType);
-    
-    // Sort places by rating but only consider places with sufficient reviews
+    // Apply the improved sorting logic
     nearbyRestaurants.sort((a, b) => {
       const aSignificant = a.user_ratings_total >= currentMinReviews;
       const bSignificant = b.user_ratings_total >= currentMinReviews;
@@ -2602,7 +2685,7 @@ function updateHoverMarker(location) {
 
 // Search for nearby places when hovering over an area
 function searchNearbyOnHover(location) {
-  // Don't search if we're already showing a place info window or modal
+  // Don't search if a place modal is open
   if (document.getElementById('place-modal').classList.contains('show')) {
     return;
   }
@@ -2614,96 +2697,172 @@ function searchNearbyOnHover(location) {
   
   // Set a timeout to avoid too many API calls
   hoverTimeout = setTimeout(() => {
-    // Create a new info window if needed
+    // Initialize or reuse info window
     if (!hoverInfoWindow) {
       hoverInfoWindow = new google.maps.InfoWindow({
-        disableAutoPan: true, // Prevent the map from auto-panning when opening the hover info window
-        maxWidth: 320, // Make the window larger 
+        disableAutoPan: true,
+        maxWidth: 320,
         content: '<div class="p-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Finding nearby places...</div>'
       });
       
-      // Add a click listener to the map to close the hover info window
+      // Add event listeners
       google.maps.event.addListener(map, 'click', function() {
-        if (hoverInfoWindow) {
-          hoverInfoWindow.close();
-        }
+        hoverInfoWindow.close();
       });
       
-      // Add a close listener
       google.maps.event.addListener(hoverInfoWindow, 'closeclick', function() {
-        if (hoverTimeout) {
-          clearTimeout(hoverTimeout);
-        }
+        if (hoverTimeout) clearTimeout(hoverTimeout);
       });
     } else {
-      // Close any existing hover info window before showing a new one
       hoverInfoWindow.close();
     }
     
-    // Show loading indicator in the info window
+    // Show loading indicator
     hoverInfoWindow.setContent('<div class="p-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Finding nearby places...</div>');
     hoverInfoWindow.setPosition(location);
     hoverInfoWindow.open(map);
     
-    // Search for nearby places using Places API
+    // Define our filtering constants
+    let MIN_RATING;
+    if (currentPlaceType === 'restaurant') {
+      MIN_RATING = 4.0;
+    } else if (currentPlaceType === 'night_club') {
+      MIN_RATING = 3.7;
+    } else if (currentPlaceType === 'supermarket') {
+      MIN_RATING = 3.5;
+    } else {
+      MIN_RATING = 3.8;
+    }
+    
+    const UNWANTED_TYPES = [
+      "gas_station", 
+      "car_repair", 
+      "car_dealer", 
+      "convenience_store", 
+      "grocery_or_supermarket", 
+      "liquor_store", 
+      "market", 
+      "store"
+    ];
+    
+    // Define Haversine formula for distance calculation
+    const getDistanceInMeters = function(lat1, lon1, lat2, lon2) {
+      const R = 6371000; // Earth radius in meters
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    };
+    
+    // Search for nearby places
     const placesService = new google.maps.places.PlacesService(map);
+    
     placesService.nearbySearch({
       location: location,
-      radius: 200, // Increased radius for better search results
+      radius: 300,
       type: currentPlaceType,
-      rankBy: google.maps.places.RankBy.PROMINENCE // Prioritize more prominent places
-    }, (results, status) => {
-      if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
-        // Sort by rating (highest first)
-        results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-        
-        // Take only the top 5 places
-        const topPlaces = results.slice(0, 5);
-        
-        // Create the content for the info window with clickable places
-        let content = '<div class="p-2" style="max-width: 300px;">';
-        content += `<h6 class="mb-2">Nearby ${formatPlaceType(currentPlaceType)}s</h6>`;
-        content += '<ul class="list-group list-group-flush ps-0">';
-        
-        topPlaces.forEach(place => {
-          const rating = place.rating ? 
-            `<span class="text-warning">${'★'.repeat(Math.round(place.rating))}</span>` : 
-            '<span class="text-muted">No rating</span>';
-          
-          // Create a place icon if available
-          let placeIcon = '';
-          if (place.photos && place.photos.length > 0) {
-            const photoUrl = place.photos[0].url || `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=100`;
-            placeIcon = `<img src="${photoUrl}" class="float-start me-2 rounded" style="width: 40px; height: 40px; object-fit: cover;" alt="${place.name}">`;
-          }
-          
-          // Make each list item a clickable button
-          content += `
-            <li class="list-group-item p-2 mb-1 border-0" style="cursor: pointer" 
-                onclick="showPlaceDetails('${place.place_id}'); if(hoverInfoWindow) hoverInfoWindow.close();">
-              <div class="d-flex align-items-center">
-                ${placeIcon}
-                <div>
-                  <strong>${place.name}</strong><br>
-                  ${rating} ${place.user_ratings_total ? `<small>(${place.user_ratings_total})</small>` : ''}
-                </div>
-              </div>
-            </li>
-          `;
-        });
-        
-        content += '</ul>';
-        content += '<div class="text-center"><small class="text-muted">Click on a place to view details</small></div>';
-        content += '</div>';
-        
-        // Update the info window
-        hoverInfoWindow.setContent(content);
-      } else {
-        // No places found or error
-        hoverInfoWindow.setContent(`<div class="p-2">No ${formatPlaceType(currentPlaceType)}s found in this area</div>`);
+      rankBy: google.maps.places.RankBy.PROMINENCE
+    }, function(results, status) {
+      // Handle error or no results
+      if (status !== google.maps.places.PlacesServiceStatus.OK || !results || results.length === 0) {
+        hoverInfoWindow.setContent(`<div class="p-2">No ${formatPlaceType(currentPlaceType)}s found here</div>`);
+        return;
       }
+      
+      // Filter places by criteria
+      const filteredPlaces = results.filter(function(place) {
+        // Filter places without geometry
+        if (!place.geometry || !place.geometry.location) {
+          return false;
+        }
+        
+        // Get coordinates, handling different formats
+        const placeLat = typeof place.geometry.location.lat === 'function' ? 
+                      place.geometry.location.lat() : place.geometry.location.lat;
+        const placeLng = typeof place.geometry.location.lng === 'function' ? 
+                      place.geometry.location.lng() : place.geometry.location.lng;
+        
+        // Check distance
+        const distance = getDistanceInMeters(location.lat, location.lng, placeLat, placeLng);
+        if (distance > searchRadius) {
+          return false;
+        }
+        
+        // Filter by business types
+        if (place.types && place.types.some(function(type) { 
+          return UNWANTED_TYPES.includes(type); 
+        })) {
+          return false;
+        }
+        
+        // Filter by minimum rating
+        if (place.rating && place.rating < MIN_RATING) {
+          return false;
+        }
+        
+        return true;
+      });
+      
+      // Sort by rating and take top 5
+      const sortedPlaces = filteredPlaces.sort(function(a, b) {
+        return (b.rating || 0) - (a.rating || 0);
+      }).slice(0, 5);
+      
+      // Handle no results after filtering
+      if (sortedPlaces.length === 0) {
+        hoverInfoWindow.setContent(`<div class="p-2">No high-rated ${formatPlaceType(currentPlaceType)}s nearby</div>`);
+        return;
+      }
+      
+      // Build content HTML
+      let contentHtml = `
+        <div class="p-2" style="max-width: 300px;">
+          <h6 class="mb-2">Nearby ${formatPlaceType(currentPlaceType)}s</h6>
+          <ul class="list-group list-group-flush ps-0">
+      `;
+      
+      // Add each place to the content
+      sortedPlaces.forEach(function(place) {
+        const ratingHtml = place.rating ? 
+          `<span class="text-warning">${'★'.repeat(Math.round(place.rating))}</span>` : 
+          '<span class="text-muted">No rating</span>';
+        
+        // Get place photo if available
+        let photoHtml = '';
+        if (place.photos && place.photos.length > 0 && place.photos[0].photo_reference) {
+          const photoUrl = `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=100`;
+          photoHtml = `<img src="${photoUrl}" class="float-start me-2 rounded" style="width: 40px; height: 40px; object-fit: cover;" alt="${place.name}">`;
+        }
+        
+        // Add clickable list item
+        contentHtml += `
+          <li class="list-group-item p-2 mb-1 border-0" style="cursor: pointer" 
+              onclick="showPlaceDetails('${place.place_id}'); if(hoverInfoWindow) hoverInfoWindow.close();">
+            <div class="d-flex align-items-center">
+              ${photoHtml}
+              <div>
+                <strong>${place.name}</strong><br>
+                ${ratingHtml} ${place.user_ratings_total ? `<small>(${place.user_ratings_total})</small>` : ''}
+              </div>
+            </div>
+          </li>
+        `;
+      });
+      
+      // Finish content HTML
+      contentHtml += `
+          </ul>
+          <div class="text-center"><small class="text-muted">Click to view details</small></div>
+        </div>
+      `;
+      
+      // Update the info window with the content
+      hoverInfoWindow.setContent(contentHtml);
     });
-  }, 500); // Wait 500ms before searching
+  }, 500);
 }
 
 // Show loading indicator
