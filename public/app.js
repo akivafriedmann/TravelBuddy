@@ -746,9 +746,6 @@ async function searchLocation() {
 async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
   showLoading();
   
-  // Fetch weather data for this location
-  fetchWeatherData(location);
-  
   // Clear existing markers
   clearMarkers();
   
