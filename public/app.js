@@ -696,14 +696,49 @@ async function searchLocation() {
     const data = await response.json();
     console.log("Geocoding API response:", data);
     
+    // Handle different API response statuses
+    if (data.status === 'ZERO_RESULTS') {
+      hideLoading();
+      alert(`No results found for "${locationInput}". Please try a different search term or click directly on the map.`);
+      return;
+    }
+    
+    if (data.status === 'OVER_QUERY_LIMIT') {
+      hideLoading();
+      alert('The geocoding service is temporarily unavailable due to too many requests. Please try again later.');
+      return;
+    }
+    
+    if (data.status === 'REQUEST_DENIED') {
+      hideLoading();
+      alert('The geocoding service cannot process your request right now. Please try again later.');
+      return;
+    }
+    
+    if (data.status === 'INVALID_REQUEST') {
+      hideLoading();
+      alert('Invalid location search. Please enter a city, address, or place name.');
+      return;
+    }
+    
+    if (data.status === 'UNKNOWN_ERROR') {
+      hideLoading();
+      alert('An unknown error occurred with the geocoding service. Please try again.');
+      return;
+    }
+    
+    // Check for valid results
     if (data.status === 'OK' && data.results && data.results.length > 0) {
       const result = data.results[0];
       const location = result.geometry.location;
       
+      // Store current location
       currentLocation = {
         lat: location.lat,
         lng: location.lng
       };
+      
+      console.log("Found location:", currentLocation);
       
       // Update map center
       map.setCenter(currentLocation);
@@ -742,7 +777,8 @@ async function searchLocation() {
       }
     } else {
       hideLoading();
-      alert('Location not found. Please try another search term or click directly on the map.');
+      console.error('Unexpected geocoding response:', data);
+      alert('Location search failed. Please try another search term or click directly on the map.');
     }
   } catch (error) {
     console.error('Geocoding error:', error);
@@ -759,7 +795,10 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
   clearMarkers();
   
   try {
-    // Build API URL with optional keyword parameter
+    // Check if the "Open Now" checkbox is checked
+    const openNowChecked = document.getElementById('open-now-checkbox').checked;
+    
+    // Build API URL with required parameters
     let apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}&radius=${radius}`;
     
     // Add keyword if provided (for special categories like "cheap eats")
@@ -767,18 +806,35 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       apiUrl += `&keyword=${encodeURIComponent(keyword)}`;
     }
     
+    // Add the opennow parameter if checked
+    if (openNowChecked) {
+      apiUrl += '&opennow=true';
+      console.log('Filtering for places open now');
+    }
+    
     // Update the sort indicator based on place type
     const sortIndicator = document.querySelector('.sort-indicator small');
     if (sortIndicator) {
       const minReviews = currentPlaceType === 'lodging' ? 8 : 
                         (currentPlaceType === 'restaurant' ? 20 : 10);
-      sortIndicator.innerHTML = `
+      let sortText = `
         <i class="fas fa-info-circle"></i> 
         Places are sorted by rating, prioritizing those with at least ${minReviews} reviews
       `;
+      
+      // Add "Open Now" indicator to the sort text
+      if (openNowChecked) {
+        sortText = `
+          <i class="fas fa-info-circle"></i> 
+          Showing only places open now, sorted by rating (min ${minReviews} reviews)
+        `;
+      }
+      
+      sortIndicator.innerHTML = sortText;
     }
     
     // Call our backend API to get nearby places
+    console.log('Fetching nearby places with URL:', apiUrl);
     const response = await fetch(apiUrl);
     const data = await response.json();
     

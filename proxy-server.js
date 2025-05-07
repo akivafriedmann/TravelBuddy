@@ -5,6 +5,22 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Simple in-memory cache for photo redirects to avoid repeated API calls and redirects
+const photoRedirectCache = new Map();
+
+// Cache expiration time (30 minutes)
+const CACHE_EXPIRATION = 30 * 60 * 1000; 
+
+// Regularly clear old cache entries (every hour)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of photoRedirectCache.entries()) {
+    if (now - entry.timestamp > CACHE_EXPIRATION) {
+      photoRedirectCache.delete(key);
+    }
+  }
+}, 60 * 60 * 1000);
+
 // Middleware
 app.use(express.json());
 
@@ -246,6 +262,40 @@ app.get('/api/photo', (req, res) => {
     
     // Log the API request (abbreviated)
     const shortRef = photoRef.length > 20 ? photoRef.substring(0, 20) + '...' : photoRef;
+    
+    // Generate a cache key based on the photo reference and dimensions
+    const cacheKey = `${photoRef}_${maxwidth}_${maxheight}`;
+    
+    // Check if we have this photo URL cached
+    if (photoRedirectCache.has(cacheKey)) {
+      const cachedData = photoRedirectCache.get(cacheKey);
+      console.log(`Using cached photo URL for: ${shortRef}`);
+      
+      // Create a request to the cached redirect URL
+      const cachedReq = https.get(cachedData.url, (cachedRes) => {
+        if (cachedRes.statusCode >= 200 && cachedRes.statusCode < 300) {
+          res.setHeader('Content-Type', cachedRes.headers['content-type'] || 'image/jpeg');
+          cachedRes.pipe(res);
+        } else {
+          // If the cached URL is no longer valid, remove it from cache and try again without cache
+          console.log(`Cached URL is no longer valid, refetching for: ${shortRef}`);
+          photoRedirectCache.delete(cacheKey);
+          // Try again without using cache
+          res.redirect(307, `/api/photo?reference=${photoRef}&maxwidth=${maxwidth}&maxheight=${maxheight}`);
+        }
+      });
+      
+      cachedReq.on('error', () => {
+        // If there's an error with the cached URL, remove it from cache and try again
+        console.log(`Error with cached URL, refetching for: ${shortRef}`);
+        photoRedirectCache.delete(cacheKey);
+        res.redirect(307, `/api/photo?reference=${photoRef}&maxwidth=${maxwidth}&maxheight=${maxheight}`);
+      });
+      
+      cachedReq.end();
+      return;
+    }
+    
     console.log(`Fetching photo with reference: ${shortRef}`);
     
     // Create URL to the actual Google Places Photo API
@@ -268,6 +318,12 @@ app.get('/api/photo', (req, res) => {
       // If we got a redirect (302), follow it to get the actual image
       if (photoRes.statusCode === 302 && photoRes.headers.location) {
         console.log(`Following photo redirect to: ${photoRes.headers.location}`);
+        
+        // Store the redirect URL in cache
+        photoRedirectCache.set(cacheKey, {
+          url: photoRes.headers.location,
+          timestamp: Date.now()
+        });
         
         // Create a new request to the redirect location
         const redirectReq = https.get(photoRes.headers.location, (redirectRes) => {

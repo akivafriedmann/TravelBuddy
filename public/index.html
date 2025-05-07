@@ -49,6 +49,13 @@
             <span>4km</span>
             <span>5km</span>
           </div>
+          <!-- Open Now Filter -->
+          <div class="form-check mt-3">
+            <input class="form-check-input" type="checkbox" id="open-now-checkbox">
+            <label class="form-check-label" for="open-now-checkbox">
+              <i class="fas fa-clock text-success"></i> Show only places open now
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -84,9 +91,24 @@
           <button class="btn btn-outline-warning category-btn" data-type="lodging">
             <i class="fas fa-bed"></i> Hotels
           </button>
+          <button class="btn btn-outline-purple category-btn" data-type="restaurant" data-keyword="dessert">
+            <i class="fas fa-ice-cream"></i> Desserts
+          </button>
         </div>
       </div>
     </div>
+    
+    <style>
+      .btn-outline-purple {
+        color: #8e44ad;
+        border-color: #8e44ad;
+      }
+      .btn-outline-purple:hover, .btn-outline-purple.active {
+        color: white;
+        background-color: #8e44ad;
+        border-color: #8e44ad;
+      }
+    </style>
     
     <div class="row mb-2">
       <div class="col-12 text-end">

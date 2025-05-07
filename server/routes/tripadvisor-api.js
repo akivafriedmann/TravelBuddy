@@ -37,6 +37,8 @@ router.get('/', async (req, res) => {
       });
     }
     
+    console.log('TripAdvisor API key available:', !!TRIPADVISOR_API_KEY, 'Length:', TRIPADVISOR_API_KEY.length);
+    
     console.log(`TripAdvisor API request for: "${place_name}" in "${location}"`);
     
     try {

@@ -43,6 +43,18 @@ router.get('/', async (req, res) => {
     console.log(`Using TripAdvisor API key: ${TRIPADVISOR_API_KEY.substring(0, 5)}...${TRIPADVISOR_API_KEY.substring(TRIPADVISOR_API_KEY.length - 5)}`);
     console.log(`API key length: ${TRIPADVISOR_API_KEY.length}`);
     
+    // Try to validate the API key by checking if it contains only valid characters
+    const validKeyPattern = /^[a-zA-Z0-9\-_]+$/;
+    if (!validKeyPattern.test(TRIPADVISOR_API_KEY)) {
+      console.log('WARNING: TripAdvisor API key contains invalid characters (should only contain letters, numbers, hyphens, and underscores)');
+    }
+    
+    // Check if the key might have extra quotes or spaces
+    if (TRIPADVISOR_API_KEY.includes('"') || TRIPADVISOR_API_KEY.includes("'") || 
+        TRIPADVISOR_API_KEY.startsWith(' ') || TRIPADVISOR_API_KEY.endsWith(' ')) {
+      console.log('WARNING: TripAdvisor API key contains quotes or extra spaces which might cause authentication issues');
+    }
+    
     // Add fallback for testing if official TripAdvisor API fails
     let useScraperFallback = false;
     

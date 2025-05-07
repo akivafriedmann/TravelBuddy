@@ -22,6 +22,8 @@ router.get('/', async (req, res) => {
       });
     }
     
+    console.log(`Geocoding request received: address=${address || 'not provided'}, latlng=${latlng || 'not provided'}`);
+    
     if (!GOOGLE_MAPS_API_KEY) {
       console.warn('No Google Maps API key provided. Using mock data.');
       return mockGeocodingResponse(req, res);
@@ -38,9 +40,46 @@ router.get('/', async (req, res) => {
       params.latlng = latlng;
     }
     
-    const response = await axios.get(GEOCODING_API_BASE_URL, { params });
+    console.log(`Making geocoding API request to: ${GEOCODING_API_BASE_URL}`);
     
-    res.json(response.data);
+    try {
+      const response = await axios.get(GEOCODING_API_BASE_URL, { params });
+      console.log(`Geocoding API response status: ${response.status}, results: ${response.data?.results?.length || 0}`);
+      
+      // Handle zero results case more explicitly
+      if (response.data && response.data.status === 'ZERO_RESULTS') {
+        console.log('Geocoding API returned zero results');
+        return res.json({
+          status: 'ZERO_RESULTS',
+          results: [],
+          error_message: 'No locations found for the given address'
+        });
+      }
+      
+      // Include a fallback location if no results were found
+      if (!response.data?.results || response.data.results.length === 0) {
+        // Don't use mock data here to respect data integrity, just return the actual empty result
+        console.log('No results found in geocoding API response');
+      }
+      
+      return res.json(response.data);
+    } catch (requestError) {
+      console.error('Geocoding API request error:', requestError.message);
+      
+      // Check if it's a rate limit or quota issue
+      if (requestError.response && 
+         (requestError.response.status === 429 || 
+          (requestError.response.data && requestError.response.data.status === 'OVER_QUERY_LIMIT'))) {
+        console.error('Geocoding API quota exceeded or rate limited');
+        return res.status(429).json({
+          status: 'OVER_QUERY_LIMIT',
+          error: 'Geocoding API quota exceeded, please try again later'
+        });
+      }
+      
+      // Use mock for development environments only - for production we would return an error
+      return mockGeocodingResponse(req, res);
+    }
   } catch (error) {
     console.error('Error with geocoding request:', error);
     res.status(500).json({ 

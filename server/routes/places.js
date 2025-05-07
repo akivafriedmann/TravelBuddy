@@ -10,11 +10,11 @@ const PLACES_API_BASE_URL = 'https://maps.googleapis.com/maps/api/place';
 
 /**
  * Search for nearby places
- * GET /places?location=lat,lng&radius=1000&type=restaurant|lodging
+ * GET /places?location=lat,lng&radius=1000&type=restaurant|lodging&opennow=true
  */
 router.get('/', async (req, res) => {
   try {
-    const { location, radius = 1000, type } = req.query;
+    const { location, radius = 1000, type, keyword, opennow } = req.query;
     
     if (!location) {
       return res.status(400).json({ error: 'Location parameter is required' });
@@ -25,14 +25,30 @@ router.get('/', async (req, res) => {
       return mockNearbyPlacesResponse(req, res);
     }
     
-    const response = await axios.get(`${PLACES_API_BASE_URL}/nearbysearch/json`, {
-      params: {
-        location,
-        radius,
-        type,
-        key: GOOGLE_MAPS_API_KEY
-      }
-    });
+    console.log(`Searching for places near ${location} with radius ${radius}m, type: ${type || 'any'}, keyword: ${keyword || 'none'}, open now: ${opennow ? 'yes' : 'no'}`);
+    
+    // Build parameters object
+    const params = {
+      location,
+      radius,
+      key: GOOGLE_MAPS_API_KEY
+    };
+    
+    // Add optional parameters
+    if (type) {
+      params.type = type;
+    }
+    
+    if (keyword) {
+      params.keyword = keyword;
+    }
+    
+    // Add opennow parameter only if it's provided and equals 'true'
+    if (opennow === 'true') {
+      params.opennow = true;
+    }
+    
+    const response = await axios.get(`${PLACES_API_BASE_URL}/nearbysearch/json`, { params });
     
     res.json(response.data);
   } catch (error) {
