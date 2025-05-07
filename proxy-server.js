@@ -595,62 +595,25 @@ app.get('/api/nearby', async (req, res) => {
           console.log(`Place: ${place.name}, Price Level: ${place.price_level}, Rating: ${place.rating}`);
         });
         
-        // Simple rule: show places with $ or $$ price level AND include those without price level
+        // ONLY show places with $ or $$ price level - nothing else
         data.results = originalPlaces.filter(place => {
-          if (place.price_level === 1 || place.price_level === 2) {
-            return true;  // Keep $ and $$ places
-          }
-          
-          if (place.price_level === undefined || place.price_level === null) {
-            return true;  // Keep places with unknown price (could be cheap)
-          }
-          
-          return false;   // Filter out $$$ and $$$$ places
+          return place.price_level === 1 || place.price_level === 2;
         });
         
-        // Simple sort: first $ places, then $$ places, then unknown price places
+        // Very simple sort: first $ places, then $$ places (we only have these two options now)
         data.results.sort((a, b) => {
-          // Special values for sorting:
-          // $ (1) = 10
-          // $$ (2) = 20  
-          // Unknown = 30
-          // Higher price levels won't be in the list
-          
-          const getPriceScore = (place) => {
-            if (place.price_level === 1) return 10;       // $ places are highest priority
-            if (place.price_level === 2) return 20;       // $$ places are medium priority
-            return 30;                                    // Unknown price is lowest priority
-          };
-          
-          const scoreA = getPriceScore(a);
-          const scoreB = getPriceScore(b);
-          
-          // First priority: price level ($ before $$ before unknown)
-          if (scoreA !== scoreB) {
-            return scoreA - scoreB;
+          // First sort by price level ($ before $$)
+          if (a.price_level !== b.price_level) {
+            return a.price_level - b.price_level; // $ (1) comes before $$ (2)
           }
           
-          // Second priority: rating (high to low)
+          // Within the same price level, sort by rating (high to low)
           return (b.rating || 0) - (a.rating || 0);
         });
         
-        // If we have almost no results, just show all places sorted by price
-        if (data.results.length < 3) {
-          console.log("Extremely few results, showing all places sorted by price");
-          
-          data.results = originalPlaces.sort((a, b) => {
-            // Convert price levels to numbers for sorting
-            const priceA = a.price_level !== undefined && a.price_level !== null ? a.price_level : 2.5;
-            const priceB = b.price_level !== undefined && b.price_level !== null ? b.price_level : 2.5;
-            
-            // First by price
-            if (priceA !== priceB) {
-              return priceA - priceB;
-            }
-            
-            // Then by rating
-            return (b.rating || 0) - (a.rating || 0);
-          });
+        // No fallback logic - we only want to show $ and $$ places, even if there are very few
+        if (data.results.length === 0) {
+          console.log("No places with $ or $$ price levels found");
         }
         
         console.log(`ULTRA SIMPLE cheap eats filtering applied: ${data.results.length} of ${originalCount} places shown`);
