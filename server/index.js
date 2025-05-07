@@ -6,6 +6,7 @@ const placesRoutes = require('./routes/places');
 const geocodingRoutes = require('./routes/geocoding');
 const itineraryRoutes = require('./routes/itineraries');
 const tripadvisorRoutes = require('./routes/tripadvisor');
+const weatherRoutes = require('./routes/weather');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -771,6 +772,7 @@ app.use('/api/places', placesRoutes);
 app.use('/api/geocoding', geocodingRoutes);
 app.use('/api/itineraries', itineraryRoutes);
 app.use('/api/tripadvisor', tripadvisorRoutes);
+app.use('/api/weather', weatherRoutes);
 
 // Direct API endpoint for photo proxy
 app.get('/api/photo', async (req, res) => {

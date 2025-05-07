@@ -425,9 +425,91 @@ body {
   text-overflow: ellipsis;
 }
 
+/* Weather Component Styles */
+#weather-container .card {
+  background: linear-gradient(to right, #3498db, #2c3e50);
+  border: none;
+  color: white;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+#weather-container .card-body {
+  position: relative;
+  overflow: hidden;
+}
+
+#weather-container h5, 
+#weather-container h3 {
+  color: white;
+  font-weight: 600;
+}
+
+#weather-container p {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+#weather-icon img {
+  width: 60px;
+  height: 60px;
+}
+
+#weather-forecast {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.forecast-item {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px;
+  min-width: 80px;
+  text-align: center;
+}
+
+.forecast-item img {
+  width: 40px;
+  height: 40px;
+}
+
+.forecast-item .forecast-temp {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.forecast-item .forecast-time {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+#weather-details {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 10px 5px;
+}
+
+#weather-details i {
+  font-size: 1.2rem;
+}
+
 @media (max-width: 768px) {
   .category-btn {
     font-size: 14px;
     padding: 5px;
+  }
+  
+  #weather-container .card {
+    margin-bottom: 15px;
+  }
+  
+  #weather-icon img {
+    width: 50px;
+    height: 50px;
+  }
+  
+  #weather-temp {
+    font-size: 1.5rem;
   }
 }

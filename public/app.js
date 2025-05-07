@@ -12,6 +12,7 @@ let clickedLocation = null; // Stores the location when user clicks on the map
 let clickedLocationMarker = null; // Marker to show where user clicked
 let searchRadius = 1500; // Default search radius in meters
 let isApiErrorShown = false; // Flag to track if API error is already displayed
+let weatherData = null; // Store current weather data
 
 // Initialize the map
 function initMap() {
@@ -791,6 +792,9 @@ async function searchLocation() {
 async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
   showLoading();
   
+  // Fetch weather data for this location
+  fetchWeatherData(location);
+  
   // Clear existing markers
   clearMarkers();
   
@@ -848,8 +852,17 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       // Log the places we found
       console.log(`EMERGENCY MODE: Starting with ${data.results.length} places before rating filter`);
       
-      // Minimum rating to show
-      const MIN_RATING = currentPlaceType === 'restaurant' ? 4.0 : 3.8; // More lenient
+      // Minimum rating to show (different minimum ratings based on place type)
+      let MIN_RATING;
+      if (currentPlaceType === 'restaurant') {
+        MIN_RATING = 4.0;
+      } else if (currentPlaceType === 'night_club') {
+        MIN_RATING = 3.7; // Lower threshold for nightclubs as requested
+      } else if (currentPlaceType === 'supermarket') {
+        MIN_RATING = 3.5; // Lower threshold for supermarkets
+      } else {
+        MIN_RATING = 3.8; // Default more lenient threshold for other place types
+      }
       
       console.log(`Filtering with minimum rating of ${MIN_RATING} for ${currentPlaceType}s`);
 
@@ -965,13 +978,23 @@ function renderPlaces(places) {
   const MIN_REVIEWS = {
     restaurant: 20,
     lodging: 8,
+    night_club: 10,
+    supermarket: 5,
     default: 10
   };
-  const currentMinReviews = currentPlaceType === 'lodging' ? MIN_REVIEWS.lodging : 
-                          (currentPlaceType === 'restaurant' ? MIN_REVIEWS.restaurant : MIN_REVIEWS.default);
+  const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
   
-  // Minimum rating to show (only for restaurants)
-  const MIN_RATING = currentPlaceType === 'restaurant' ? 4.0 : 3.8; // More lenient rating threshold
+  // Minimum rating to show (different minimum ratings based on place type)
+  let MIN_RATING;
+  if (currentPlaceType === 'restaurant') {
+    MIN_RATING = 4.0;
+  } else if (currentPlaceType === 'night_club') {
+    MIN_RATING = 3.7; // Lower threshold for nightclubs as requested
+  } else if (currentPlaceType === 'supermarket') {
+    MIN_RATING = 3.5; // Lower threshold for supermarkets
+  } else {
+    MIN_RATING = 3.8; // Default more lenient threshold for other place types
+  }
   
   // Define unwanted business types
   const unwantedTypes = [
@@ -1098,10 +1121,11 @@ function createPlaceCard(place, index) {
       const minReviews = {
         restaurant: 20,
         lodging: 8,
+        night_club: 10,
+        supermarket: 5,
         default: 10
       };
-      const currentMin = currentPlaceType === 'lodging' ? minReviews.lodging : 
-                        (currentPlaceType === 'restaurant' ? minReviews.restaurant : minReviews.default);
+      const currentMin = minReviews[currentPlaceType] || minReviews.default;
       
       if (place.user_ratings_total > 500) {
         ratingHtml += ` <span class="badge bg-danger ms-2"><i class="fas fa-fire"></i> ${place.user_ratings_total} reviews</span>`;
@@ -2690,6 +2714,117 @@ function showLoading() {
 // Hide loading indicator
 function hideLoading() {
   document.getElementById('loading-indicator').classList.add('d-none');
+}
+
+/**
+ * Fetch weather data for a specific location
+ * @param {Object} location - Location coordinates {lat, lng}
+ */
+async function fetchWeatherData(location) {
+  try {
+    const weatherUrl = `/api/weather?lat=${location.lat}&lng=${location.lng}`;
+    console.log("Fetching weather data from:", weatherUrl);
+    
+    const response = await fetch(weatherUrl);
+    
+    if (!response.ok) {
+      throw new Error(`Weather API returned ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.result) {
+      weatherData = data.result;
+      displayWeatherData(weatherData);
+    } else {
+      console.error("Weather API error:", data.message || "Unknown error");
+      // Hide weather container if there's an error
+      document.getElementById('weather-container').style.display = 'none';
+    }
+  } catch (error) {
+    console.error("Error fetching weather data:", error);
+    document.getElementById('weather-container').style.display = 'none';
+  }
+}
+
+/**
+ * Display weather data in the UI
+ * @param {Object} data - Weather data
+ */
+function displayWeatherData(data) {
+  const container = document.getElementById('weather-container');
+  
+  if (!data || !data.current) {
+    container.style.display = 'none';
+    return;
+  }
+  
+  // Get current weather data
+  const current = data.current;
+  const forecast = data.forecast || [];
+  
+  // Update location name
+  const locationElement = document.getElementById('weather-location');
+  let locationName = 'Current Location';
+  if (current.location && current.location.name) {
+    locationName = current.location.name;
+    if (current.location.country) {
+      locationName += `, ${current.location.country}`;
+    }
+  }
+  locationElement.textContent = locationName;
+  
+  // Update weather description
+  const descriptionElement = document.getElementById('weather-description');
+  descriptionElement.textContent = current.weather?.description || '';
+  
+  // Update temperature
+  const tempElement = document.getElementById('weather-temp');
+  tempElement.textContent = `${current.temperature?.current || 0}°C`;
+  
+  // Update feels like
+  const feelsLikeElement = document.getElementById('weather-feels-like');
+  feelsLikeElement.textContent = `Feels like ${current.temperature?.feels_like || 0}°C`;
+  
+  // Update weather icon
+  const iconElement = document.getElementById('weather-icon');
+  if (current.weather && current.weather.icon) {
+    iconElement.innerHTML = `<img src="${current.weather.icon_url || `https://openweathermap.org/img/wn/${current.weather.icon}@2x.png`}" alt="${current.weather.description}">`;
+  }
+  
+  // Update weather details
+  document.getElementById('weather-wind').textContent = `${current.wind?.speed || 0} m/s`;
+  document.getElementById('weather-humidity').textContent = `${current.humidity || 0}%`;
+  
+  // Update sun times (sunrise and sunset)
+  const sunriseTime = new Date(current.sunrise).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  const sunsetTime = new Date(current.sunset).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  document.getElementById('weather-sun-times').textContent = `${sunriseTime} / ${sunsetTime}`;
+  
+  // Update forecast
+  const forecastContainer = document.getElementById('weather-forecast');
+  forecastContainer.innerHTML = '';
+  
+  // Only display up to 6 forecast items
+  const displayCount = Math.min(forecast.length, 6);
+  
+  for (let i = 0; i < displayCount; i++) {
+    const item = forecast[i];
+    const time = new Date(item.datetime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    const forecastItem = document.createElement('div');
+    forecastItem.className = 'forecast-item';
+    forecastItem.innerHTML = `
+      <div class="forecast-time">${time}</div>
+      <img src="${item.weather?.icon_url || `https://openweathermap.org/img/wn/${item.weather?.icon}@2x.png`}" alt="${item.weather?.description}">
+      <div class="forecast-temp">${item.temperature?.value || 0}°C</div>
+    `;
+    
+    forecastContainer.appendChild(forecastItem);
+  }
+  
+  // Show the weather container
+  container.style.display = 'block';
 }
 
 // We no longer need the Bootstrap initPhotoCarousel function

@@ -21,6 +21,20 @@ setInterval(() => {
   }
 }, 60 * 60 * 1000);
 
+// Weather data cache
+const weatherCache = new Map();
+const WEATHER_CACHE_EXPIRATION = 30 * 60 * 1000; // 30 minutes
+
+// Clean up weather cache too
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of weatherCache.entries()) {
+    if (now - entry.timestamp > WEATHER_CACHE_EXPIRATION) {
+      weatherCache.delete(key);
+    }
+  }
+}, 60 * 60 * 1000);
+
 // Middleware
 app.use(express.json());
 
@@ -714,6 +728,58 @@ app.get('/api/geocoding', async (req, res) => {
 // Health check endpoint 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Weather API proxy endpoint
+app.get('/api/weather', async (req, res) => {
+  try {
+    const { lat, lng } = req.query;
+    
+    if (!lat || !lng) {
+      return res.status(400).json({
+        status: 'ERROR',
+        message: 'Latitude and longitude parameters are required'
+      });
+    }
+    
+    const cacheKey = `${lat},${lng}`;
+    
+    // Check if we have cached weather data that's still fresh
+    if (weatherCache.has(cacheKey)) {
+      const cachedData = weatherCache.get(cacheKey);
+      const now = Date.now();
+      
+      // If cache is less than 30 minutes old, use it
+      if (now - cachedData.timestamp < WEATHER_CACHE_EXPIRATION) {
+        console.log(`Using cached weather data for [${lat}, ${lng}]`);
+        return res.json(cachedData.data);
+      }
+      
+      // Cache expired, delete it
+      weatherCache.delete(cacheKey);
+    }
+    
+    console.log(`Fetching weather data for location [${lat}, ${lng}]`);
+    
+    // Forward request to our backend server
+    const serverUrl = `http://localhost:8000/api/weather?lat=${lat}&lng=${lng}`;
+    const weatherData = await makeRequest(serverUrl);
+    
+    // Cache the result
+    weatherCache.set(cacheKey, {
+      timestamp: Date.now(),
+      data: weatherData
+    });
+    
+    res.json(weatherData);
+  } catch (error) {
+    console.error('Error fetching weather data:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Failed to fetch weather data',
+      details: error.message
+    });
+  }
 });
 
 // Start the server
