@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Travel App</title>
+  <style>
+    body.dark-mode { background-color: #121212; color: white; }
+    .dark-mode .card { background-color: #1e1e1e; color: white; }
+    .card { margin: 1em; padding: 1em; border: 1px solid #ccc; border-radius: 8px; }
+    .bookmark-btn { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Travel App</h1>
+  <input type="text" id="nlInput" placeholder="e.g., best dessert near me open now" />
+  <button onclick="searchFromNaturalInput()">Search</button>
+  <label><input type="checkbox" id="dessertToggle" /> Dessert Mode</label>
+  <label><input type="checkbox" id="darkModeToggle" onchange="this.checked ? enableDarkMode() : disableDarkMode()"> Dark Mode</label>
+
+  <div id="results"></div>
+
+  <script>
+    const dessertKeywords = ['dessert', 'cake', 'tiramisu', 'patisserie', 'ice cream', 'gelato', 'sweet'];
+
+    function isDessertPlace(place) {
+      const name = place.name?.toLowerCase() || '';
+      const types = place.types?.join(',') || '';
+      return dessertKeywords.some(k => name.includes(k) || types.includes(k));
+    }
+
+    function toggleBookmark(place) {
+      const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '{}');
+      if (bookmarks[place.place_id]) delete bookmarks[place.place_id];
+      else bookmarks[place.place_id] = place;
+      localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+    }
+
+    function trackClick(place) {
+      const data = JSON.parse(localStorage.getItem('userClicks') || '{}');
+      data[place.place_id] = { name: place.name, timestamp: Date.now() };
+      localStorage.setItem('userClicks', JSON.stringify(data));
+    }
+
+    function parseInput(text) {
+      const out = {};
+      if (/dessert|cake|ice cream/.test(text)) out.category = 'dessert';
+      if (/open now/.test(text)) out.opennow = true;
+      if (/near me/.test(text)) out.location = 'current';
+      return out;
+    }
+
+    function searchFromNaturalInput() {
+      const input = document.getElementById('nlInput').value;
+      const parsed = parseInput(input);
+      const dessertMode = parsed.category === 'dessert' || document.getElementById('dessertToggle').checked;
+      performSearch(dessertMode);
+    }
+
+    function performSearch(dessertMode = false) {
+      const fakeResults = [
+        { name: "Mama's Tiramisu", place_id: '1', types: ['restaurant'], rating: 4.7 },
+        { name: "Burger Palace", place_id: '2', types: ['restaurant'], rating: 4.2 },
+        { name: "Ice Cream Heaven", place_id: '3', types: ['dessert_shop'], rating: 4.8 },
+      ];
+      const results = !dessertMode ? fakeResults : fakeResults.filter(isDessertPlace);
+      renderResults(results);
+    }
+
+    function renderResults(places) {
+      const container = document.getElementById('results');
+      container.innerHTML = '';
+      places.forEach(place => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <h3>${place.name}</h3>
+          <p>Rating: ${place.rating}</p>
+          <button onclick='trackClick(${JSON.stringify(place)})'>View</button>
+          <button class='bookmark-btn' onclick='toggleBookmark(${JSON.stringify(place)})'>★</button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    const darkMapStyle = [
+      { elementType: 'geometry', stylers: [{ color: '#212121' }] },
+      { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+      { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+      { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
+    ];
+
+    function enableDarkMode() {
+      document.body.classList.add('dark-mode');
+    }
+
+    function disableDarkMode() {
+      document.body.classList.remove('dark-mode');
+    }
+
+    window.onload = () => {
+      const cache = localStorage.getItem('cachedResults');
+      if (cache) renderResults(JSON.parse(cache));
+    };
+  </script>
+</body>
+</html>

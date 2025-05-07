@@ -1,0 +1,167 @@
+Travel App Feature Roadmap + Code Integration Plan
+
+1. Dessert-Focused Search Improvements
+
+Goal: Show only restaurants known for desserts or with high dessert quality.
+
+Implementation Plan:
+
+Add a dessertMode toggle in UI.
+
+When dessertMode is true:
+
+Use keyword=dessert in Google Places API.
+
+Filter results post-API using keywords: ['cake', 'dessert', 'patisserie', 'gelato', 'tiramisu', 'ice cream', 'sweet'].
+
+Optional: Integrate OCR or image tagging API for photo validation (future step).
+
+Code Snippet for Post-filter:
+
+function isDessertPlace(place) {
+  const dessertKeywords = ['dessert', 'cake', 'tiramisu', 'patisserie', 'ice cream', 'gelato', 'sweet'];
+  const name = place.name?.toLowerCase() || '';
+  const types = place.types?.join(',') || '';
+  return dessertKeywords.some(keyword => name.includes(keyword) || types.includes(keyword));
+}
+
+Use in filter:
+
+const dessertMode = true;
+const places = results.filter(place => !dessertMode || isDessertPlace(place));
+
+2. Personalized Suggestions
+
+Goal: Tailor results to user preferences over time.
+
+Implementation Plan:
+
+Store clicked/viewed places in localStorage.
+
+Track keyword frequency.
+
+Use that to bias searches.
+
+Code Example:
+
+function trackClick(place) {
+  const data = JSON.parse(localStorage.getItem('userClicks') || '{}');
+  data[place.place_id] = { name: place.name, timestamp: Date.now() };
+  localStorage.setItem('userClicks', JSON.stringify(data));
+}
+
+Use in click handler:
+
+document.querySelector('.view-details').addEventListener('click', () => {
+  trackClick(place);
+  showPlaceDetails(place.place_id);
+});
+
+3. Enhanced Map UI
+
+Features:
+
+Clustered markers
+
+Heatmap overlay
+
+Route preview for pinned places
+
+Tools: Google Maps MarkerClusterer + DirectionsRenderer
+
+Basic Route Builder:
+
+function drawRoute(points) {
+  const directionsService = new google.maps.DirectionsService();
+  const directionsRenderer = new google.maps.DirectionsRenderer({ map });
+  directionsService.route({
+    origin: points[0],
+    destination: points[points.length - 1],
+    waypoints: points.slice(1, -1).map(p => ({ location: p, stopover: true })),
+    travelMode: 'WALKING'
+  }, (res, status) => {
+    if (status === 'OK') directionsRenderer.setDirections(res);
+  });
+}
+
+4. Natural Language Input
+
+Idea: Parse inputs like "best dessert near me open now".
+
+Approach:
+
+Use a basic regex-based parser or OpenAI API for parsing.
+
+Extract: category (dessert), modifiers (open now), location (near me).
+
+Example:
+
+function parseInput(text) {
+  const keywords = {};
+  if (/dessert|cake|ice cream/.test(text)) keywords.category = 'dessert';
+  if (/open now/.test(text)) keywords.opennow = true;
+  if (/near me/.test(text)) keywords.location = 'current';
+  return keywords;
+}
+
+Use parsed result to modify API call logic.
+
+6. Offline Cache + Bookmarks
+
+Features:
+
+Cache last search results in localStorage
+
+Let user bookmark favorite places and persist
+
+Bookmark Functionality:
+
+function toggleBookmark(place) {
+  const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '{}');
+  if (bookmarks[place.place_id]) delete bookmarks[place.place_id];
+  else bookmarks[place.place_id] = place;
+  localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+}
+
+Example Button Integration:
+
+<button onclick="toggleBookmark(place)">★ Bookmark</button>
+
+7. Dark Mode + Polish
+
+UI/UX Tasks:
+
+Add dark mode toggle that switches Google Maps style
+
+Lazy-load images
+
+Add animations to card transitions
+
+Make everything mobile-first responsive
+
+Dark Mode Code:
+
+const darkMapStyle = [
+  { elementType: 'geometry', stylers: [{ color: '#212121' }] },
+  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
+  // Add additional style elements as needed
+];
+
+function enableDarkMode() {
+  map.setOptions({ styles: darkMapStyle });
+  document.body.classList.add('dark-mode');
+}
+
+function disableDarkMode() {
+  map.setOptions({ styles: [] });
+  document.body.classList.remove('dark-mode');
+}
+
+Add a toggle switch:
+
+<input type="checkbox" id="darkModeToggle" onchange="this.checked ? enableDarkMode() : disableDarkMode()"> Dark Mode
+
+Let me know which code module you want wired into your main script now, and I’ll adapt it for your app’s structure.
+
