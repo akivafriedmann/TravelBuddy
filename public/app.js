@@ -1435,16 +1435,36 @@ function renderPlaces(places) {
   // Log the number of places before filtering
   console.log(`Before client filtering: ${filteredPlaces.length} places`);
   
-  // Completely bypass filtering and force places to render
-  console.log("SKIPPING FILTERING TO DEBUG - We should see places now");
-  
-  // Force rendering all places received from API
-  const unfilteredPlaces = [...places]; 
-  
-  console.log(`Forcing display of all ${unfilteredPlaces.length} unfiltered places`);
-  
-  // Override the filteredPlaces variable to ensure we show something
-  filteredPlaces = unfilteredPlaces;
+  // For cheap eats search, bypass filtering completely
+  if (currentKeyword === 'cheap') {
+    console.log("CHEAP EATS SEARCH: Skipping client-side filtering");
+    filteredPlaces = [...places];
+  } else {
+    // For other searches, apply standard filtering
+    // Filter places by minimum rating and exclude unwanted types
+    filteredPlaces = filteredPlaces.filter(place => {
+      // Skip places with no ratings or too few reviews
+      if (!place.rating || place.user_ratings_total < currentMinReviews) {
+        return false;
+      }
+      
+      // Filter by minimum rating
+      if (place.rating < MIN_RATING) {
+        return false;
+      }
+      
+      // Filter out unwanted types (like gas stations when searching for restaurants)
+      if (place.types && place.types.some(type => unwantedTypes.includes(type))) {
+        // But if we specifically searched for that type, include it
+        if (currentPlaceType === type) {
+          return true;
+        }
+        return false;
+      }
+      
+      return true;
+    });
+  }
   
   console.log(`After client filtering: ${filteredPlaces.length} places`);
   
@@ -1470,39 +1490,60 @@ function renderPlaces(places) {
     let indicatorText = `Showing ${filteredPlaces.length} places sorted by Google rating`;
     if (currentKeyword === 'dessert') {
       indicatorText = `<span class="badge bg-warning text-dark me-2"><i class="fas fa-ice-cream"></i> Dessert</span> Showing ${filteredPlaces.length} dessert places sorted by rating`;
+    } else if (currentKeyword === 'cheap') {
+      indicatorText = `<span class="badge bg-success me-2"><i class="fas fa-dollar-sign"></i> Budget Options</span> Showing ${filteredPlaces.length} affordable places ($ or $$) sorted by price level`;
     } else if (currentKeyword) {
       indicatorText = `<span class="badge bg-info text-white me-2"><i class="fas fa-utensils"></i> ${currentKeyword}</span> Showing ${filteredPlaces.length} ${currentKeyword} places sorted by rating`;
     }
     sortIndicator.innerHTML = indicatorText;
   }
   
-  // Sort places by rating but only consider places with at least currentMinReviews
-  const sortedPlaces = [...filteredPlaces].sort((a, b) => {
-    const aSignificant = a.user_ratings_total >= currentMinReviews;
-    const bSignificant = b.user_ratings_total >= currentMinReviews;
-    
-    // If both places have significant number of reviews, sort by rating
-    if (aSignificant && bSignificant) {
+  // Choose sort method based on keyword
+  let sortedPlaces;
+  
+  if (currentKeyword === 'cheap') {
+    // For cheap eats, sort by price level first, then by rating
+    sortedPlaces = [...filteredPlaces].sort((a, b) => {
+      // First sort by price level ($ before $$)
+      if (a.price_level !== b.price_level) {
+        // Handle undefined price levels by giving them a high value
+        const priceA = a.price_level === undefined ? 999 : a.price_level;
+        const priceB = b.price_level === undefined ? 999 : b.price_level;
+        return priceA - priceB;
+      }
+      
+      // Then by rating (high to low)
       return b.rating - a.rating;
-    }
-    // If only one has significant reviews, prioritize that one
-    else if (aSignificant) {
-      return -1;
-    }
-    else if (bSignificant) {
-      return 1;
-    }
-    // If neither has significant reviews, sort by number of reviews
-    else if (a.user_ratings_total && b.user_ratings_total) {
-      return b.user_ratings_total - a.user_ratings_total;
-    }
-    // Fallback to rating if available
-    else if (a.rating && b.rating) {
-      return b.rating - a.rating;
-    }
-    // Keep original order if no sorting criteria apply
-    return 0;
-  });
+    });
+  } else {
+    // For other searches, use the standard rating-based sorting
+    sortedPlaces = [...filteredPlaces].sort((a, b) => {
+      const aSignificant = a.user_ratings_total >= currentMinReviews;
+      const bSignificant = b.user_ratings_total >= currentMinReviews;
+      
+      // If both places have significant number of reviews, sort by rating
+      if (aSignificant && bSignificant) {
+        return b.rating - a.rating;
+      }
+      // If only one has significant reviews, prioritize that one
+      else if (aSignificant) {
+        return -1;
+      }
+      else if (bSignificant) {
+        return 1;
+      }
+      // If neither has significant reviews, sort by number of reviews
+      else if (a.user_ratings_total && b.user_ratings_total) {
+        return b.user_ratings_total - a.user_ratings_total;
+      }
+      // Fallback to rating if available
+      else if (a.rating && b.rating) {
+        return b.rating - a.rating;
+      }
+      // Keep original order if no sorting criteria apply
+      return 0;
+    });
+  }
   
   // Reset markers before adding new ones
   clearMarkers();
@@ -1662,6 +1703,13 @@ function createPlaceCard(place, index) {
   let categoryBadge = '';
   if (currentKeyword === 'dessert' && isDessertPlace(place)) {
     categoryBadge = `<span class="badge bg-warning text-dark position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-ice-cream"></i> Dessert</span>`;
+  } else if (currentKeyword === 'cheap') {
+    // Special badge for cheap eats based on price level
+    if (place.price_level === 1) {
+      categoryBadge = `<span class="badge bg-success position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-dollar-sign"></i> Budget</span>`;
+    } else if (place.price_level === 2) {
+      categoryBadge = `<span class="badge bg-info position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-dollar-sign"></i><i class="fas fa-dollar-sign"></i> Affordable</span>`;
+    }
   } else if (currentKeyword && currentKeyword !== 'cheap') {
     categoryBadge = `<span class="badge bg-info text-white position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-utensils"></i> ${currentKeyword}</span>`;
   }
