@@ -1908,10 +1908,11 @@ async function fetchTripAdvisorData(place) {
 function addMarker(place, index) {
   if (!place.geometry || !place.geometry.location) return;
   
-  const position = {
-    lat: place.geometry.location.lat,
-    lng: place.geometry.location.lng
-  };
+  // Ensure proper LatLng format for marker position
+  const position = new google.maps.LatLng(
+    place.geometry.location.lat,
+    place.geometry.location.lng
+  );
   
   // Create a custom marker with a number
   const markerNumber = index + 1;

@@ -410,16 +410,17 @@ app.get('/api/nearby', async (req, res) => {
       url += `&keyword=${encodeURIComponent(keyword)}`;
     }
     
-    // When using rankby=distance, we cannot specify a radius
-    if (type === 'restaurant') {
-      // Use rankby=distance to get more restaurants
-      // Note: When using rankby=distance, radius parameter is ignored and must not be included
+    // Only override parameters for specific cases
+    if (keyword === 'cheap') {
+      // For cheap eats search, we want to keep the radius parameter
+      console.log('Performing cheap eats search with radius parameter');
+    } else if (type === 'restaurant' && !keyword) {
+      // For regular restaurant searches with no keyword, use rankby=distance 
+      // When using rankby=distance, radius parameter is ignored and must not be included
       url = url.replace(`radius=${radius}&`, '');
       url += '&rankby=distance';
       // Add a keyword to narrow results - we want quality places
-      if (!keyword) {
-        url += '&keyword=restaurant';
-      }
+      url += '&keyword=restaurant';
     }
     
     console.log(`Fetching nearby places: ${url.replace(apiKey, 'API_KEY')}`);
