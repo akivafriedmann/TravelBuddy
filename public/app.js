@@ -4,8 +4,6 @@ let markers = [];
 let currentLocation = { lat: 52.3676, lng: 4.9041 }; // Default Amsterdam
 let placeModal;
 let currentPlaceType = 'restaurant';
-let currentFilter = ''; // Current filter (e.g., 'budget', 'dessert')
-let currentKeyword = ''; // Current keyword being searched
 let hoverMarker = null;
 let hoverInfoWindow = null;
 let hoverTimeout = null;
@@ -365,34 +363,14 @@ function initMap() {
       categoryButtons.forEach(btn => btn.classList.remove('active'));
       button.classList.add('active');
       
-      // Update current place type, filter, and keyword
+      // Update current place type and search again
       currentPlaceType = button.dataset.type;
       
-      // Reset previous filter and keyword
-      currentFilter = '';
-      currentKeyword = '';
+      // Check if there's a keyword (for special categories like "cheap eats")
+      const keyword = button.dataset.keyword || '';
       
-      // Check if there's a specific filter
-      if (button.dataset.filter) {
-        console.log(`Setting filter to ${button.dataset.filter}`);
-        currentFilter = button.dataset.filter;
-        
-        // If it's the budget filter, use "cheap" as the keyword
-        if (currentFilter === 'cheap' || currentFilter === 'budget') {
-          currentKeyword = 'cheap';
-        }
-      }
-      
-      // Check if there's a keyword (for special categories like "asian" or "dessert")
-      if (button.dataset.keyword) {
-        console.log(`Setting keyword to ${button.dataset.keyword}`);
-        currentKeyword = button.dataset.keyword;
-      }
-      
-      console.log(`Filter button clicked: type=${currentPlaceType}, filter=${currentFilter}, keyword=${currentKeyword}`);
-      
-      // Pass the keyword to loadNearbyPlaces
-      loadNearbyPlaces(currentLocation, currentKeyword);
+      // Pass both type and keyword to loadNearbyPlaces
+      loadNearbyPlaces(currentLocation, keyword);
     });
   });
   
@@ -750,275 +728,54 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
   clearMarkers();
   
   try {
-    const openNowChecked = document.getElementById('open-now-checkbox').checked;
-    const isBudget = keyword === 'cheap' || currentFilter === 'budget';
-    const isDessert = keyword === 'dessert';
+    // Build API URL with optional keyword parameter
+    let apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}&radius=${radius}`;
     
-    let rawPlaces = [];
+    // Add keyword if provided (for special categories like "cheap eats")
+    if (keyword) {
+      apiUrl += `&keyword=${encodeURIComponent(keyword)}`;
+    }
     
-    // Update the sort indicator based on place type and search
+    // Update the sort indicator based on place type
     const sortIndicator = document.querySelector('.sort-indicator small');
     if (sortIndicator) {
       const minReviews = currentPlaceType === 'lodging' ? 8 : 
                         (currentPlaceType === 'restaurant' ? 20 : 10);
-      
-      let sortText = `
+      sortIndicator.innerHTML = `
         <i class="fas fa-info-circle"></i> 
         Places are sorted by rating, prioritizing those with at least ${minReviews} reviews
       `;
-      
-      // Special text for budget mode
-      if (isBudget) {
-        sortText = `
-          <i class="fas fa-info-circle"></i> 
-          <i class="fas fa-dollar-sign"></i> Budget-friendly options prioritized ($ before $$)
-        `;
-      } else if (isDessert) {
-        sortText = `
-          <i class="fas fa-info-circle"></i> 
-          <i class="fas fa-ice-cream"></i> Showing places with good desserts
-        `;
-      }
-      
-      sortIndicator.innerHTML = sortText;
     }
     
-    // 🔍 STEP 1: Get places - different approach for budget vs. regular search
-    if (isBudget) {
-      console.log("Using direct Google Places API for budget search with 5km radius");
-      
-      // Use Google Maps Places API directly for better budget filtering
-      const service = new google.maps.places.PlacesService(map);
-      
-      // Make the direct API request with larger radius for budget search
-      rawPlaces = await new Promise(resolve => {
-        service.nearbySearch({
-          location: location,
-          radius: 5000, // 5km for budget search to find more options
-          type: currentPlaceType || 'restaurant',
-          openNow: openNowChecked
-        }, (results, status) => {
-          resolve(status === google.maps.places.PlacesServiceStatus.OK ? results : []);
-        });
-      });
-      
-      console.log(`Found ${rawPlaces?.length || 0} places for budget search`);
-    } else if (isDessert) {
-      console.log("Using enhanced dessert search algorithm with multiple search strategies");
-      
-      // For dessert mode, use direct API calls with multiple search strategies
-      const service = new google.maps.places.PlacesService(map);
-      
-      // Multiple search strategies for finding dessert places
-      const searches = [
-        { type: 'ice_cream_parlor' },
-        { type: 'bakery' },
-        { type: 'cafe', keyword: 'dessert' },
-        { type: 'restaurant', keyword: 'dessert' },
-        { type: 'restaurant', keyword: 'cake' }
-      ];
-      
-      // Use Map to avoid duplicates
-      const seen = new Map();
-      
-      // Execute all search strategies
-      for (let s of searches) {
-        console.log(`Executing dessert search: type=${s.type}${s.keyword ? ', keyword=' + s.keyword : ''}`);
-        
-        const results = await new Promise(resolve => {
-          service.nearbySearch({
-            location: location,
-            radius: radius,
-            type: s.type,
-            keyword: s.keyword || '',
-            openNow: openNowChecked
-          }, (results, status) => {
-            resolve(status === google.maps.places.PlacesServiceStatus.OK ? results : []);
-          });
-        });
-        
-        if (results) {
-          console.log(`Found ${results.length} places for dessert search type=${s.type}${s.keyword ? ', keyword=' + s.keyword : ''}`);
-          results.forEach(place => seen.set(place.place_id, place));
-        }
-        
-        // Break early if we have enough places
-        if (seen.size >= 30) break;
-      }
-      
-      // Convert Map values to array
-      rawPlaces = Array.from(seen.values());
-      console.log(`Found ${rawPlaces.length} total potential dessert places`);
-    } else {
-      // Standard searching through our API
-      console.log("Using standard API search");
-      
-      // Build API URL with optional keyword parameter
-      let apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}&radius=${radius}`;
-      
-      // Add keyword if provided (for special categories)
-      if (keyword) {
-        apiUrl += `&keyword=${encodeURIComponent(keyword)}`;
-      }
-      
-      // Add the opennow parameter if checked
-      if (openNowChecked) {
-        apiUrl += '&opennow=true';
-      }
-      
-      // Call our backend API to get nearby places
-      console.log('Fetching nearby places with URL:', apiUrl);
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-      
-      console.log("Nearby places API response:", data);
-      
-      if (data.status === 'OK' && data.results && data.results.length > 0) {
-        rawPlaces = data.results;
-      } else if (data.status === 'REQUEST_DENIED') {
-        // API key issue
-        console.error("Google Places API request denied:", data.error_message || "No error details available");
-        document.getElementById('places-container').innerHTML = `
-          <div class="col-12">
-            <div class="alert alert-warning">
-              <strong>API Request Denied</strong>
-              <p>There was an issue with the Google Places API request: ${data.error_message || "Unknown error"}</p>
-              <p>This is likely due to API key restrictions or quota limits.</p>
-            </div>
-          </div>
-        `;
-        hideLoading();
-        return;
-      } else {
-        // No results
-        document.getElementById('places-container').innerHTML = `
-          <div class="col-12">
-            <div class="alert alert-info">No ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.</div>
-          </div>
-        `;
-        hideLoading();
-        return;
-      }
-    }
+    // Call our backend API to get nearby places
+    const response = await fetch(apiUrl);
+    const data = await response.json();
     
-    // If no results after first step, show message
-    if (!rawPlaces || rawPlaces.length === 0) {
+    console.log("Nearby places API response:", data);
+    
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      // Update places container
+      renderPlaces(data.results);
+    } else if (data.status === 'REQUEST_DENIED') {
+      // API key issue
+      console.error("Google Places API request denied:", data.error_message || "No error details available");
       document.getElementById('places-container').innerHTML = `
         <div class="col-12">
-          <div class="alert alert-info">
-            <strong>No places found</strong>
-            <p>No ${formatPlaceType(currentPlaceType)}${keyword ? ` with ${keyword}` : ''} found in this area.</p>
-            <p>Try another location or category, or increase the search radius.</p>
+          <div class="alert alert-warning">
+            <strong>API Request Denied</strong>
+            <p>There was an issue with the Google Places API request: ${data.error_message || "Unknown error"}</p>
+            <p>This is likely due to API key restrictions or quota limits.</p>
           </div>
         </div>
       `;
-      hideLoading();
-      return;
-    }
-    
-    // 🔍 STEP 2: Filter and sort based on search type
-    let filteredPlaces;
-    
-    if (isBudget) {
-      console.log("Applying budget scoring and sorting logic");
-      
-      // Add budget score to each place
-      filteredPlaces = rawPlaces
-        .filter(p => {
-          // Only include restaurants and food places
-          return p.types && p.types.some(type => 
-            ['restaurant', 'food', 'meal_takeaway', 'cafe', 'bakery'].includes(type.toLowerCase())
-          );
-        })
-        .map(p => {
-          // Score each place by budget-friendliness
-          const price = p.price_level;
-          
-          // Check for budget keywords in name (for places without explicit price)
-          const budgetKeywords = [
-            'snack', 'falafel', 'kebab', 'surinam', 'surinaams', 'takeaway', 
-            'afhaal', 'takeout', 'fast food', 'street food', 'warung',
-            'cafetaria', 'friet', 'frites', 'toko', 'wok'
-          ];
-          
-          const nameLower = (p.name || '').toLowerCase();
-          const hasBudgetKeyword = budgetKeywords.some(kw => nameLower.includes(kw));
-          
-          // Calculate budget score:
-          // Known $ = 3 points (best)
-          // Known $$ = 2 points (good)
-          // Contains budget keyword = 1 point (possible budget option)
-          // Everything else = 0 points (not budget-friendly)
-          let budgetScore = 0;
-          
-          if (price === 1) budgetScore = 3;
-          else if (price === 2) budgetScore = 2;
-          else if (hasBudgetKeyword) budgetScore = 1;
-          
-          // Add the score property for sorting
-          p._budget_score = budgetScore;
-          
-          // Log score for debugging
-          console.log(`Place: ${p.name}, Price Level: ${p.price_level}, Budget Score: ${budgetScore}`);
-          
-          return p;
-        });
-      
-      // Sort by budget score (high to low), then by rating
-      filteredPlaces.sort((a, b) => {
-        // First sort by budget score
-        if (b._budget_score !== a._budget_score) {
-          return b._budget_score - a._budget_score;
-        }
-        
-        // Then by rating
-        return (b.rating || 0) - (a.rating || 0);
-      });
-      
-      console.log(`After budget filtering and sorting: ${filteredPlaces.length} places organized by affordability`);
-    } else if (isDessert) {
-      // For dessert search, filter for dessert-related places
-      console.log("Applying dessert-specific filtering");
-      
-      const dessertKeywords = ['dessert', 'cake', 'ice cream', 'bakery', 'sweet', 'pastry'];
-      
-      // First check for places with dessert in the name or are dessert-specific
-      const nameBasedDesserts = rawPlaces.filter(place => {
-        // Check if it's a dessert-specific type
-        if (place.types && place.types.some(t => 
-          ['bakery', 'cafe', 'ice_cream_parlor', 'dessert'].includes(t.toLowerCase())
-        )) {
-          return true;
-        }
-        
-        // Check if name contains dessert keywords
-        const name = (place.name || '').toLowerCase();
-        return dessertKeywords.some(keyword => name.includes(keyword));
-      });
-      
-      console.log(`Found ${nameBasedDesserts.length} places with dessert keywords in names or types`);
-      
-      // If we have enough dessert places by name/type, use those
-      if (nameBasedDesserts.length >= 3) {
-        filteredPlaces = nameBasedDesserts;
-      } else {
-        // Otherwise use all places, prioritizing any dessert-related ones
-        filteredPlaces = rawPlaces;
-      }
-      
-      // Sort by rating
-      filteredPlaces.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     } else {
-      // Standard filtering for regular searches
-      filteredPlaces = rawPlaces;
-      
-      // For regular searches, let the backend API handle filtering
-      // Just sort by rating to be sure
-      filteredPlaces.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+      // No results
+      document.getElementById('places-container').innerHTML = `
+        <div class="col-12">
+          <div class="alert alert-info">No ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.</div>
+        </div>
+      `;
     }
-    
-    // Finally, update the UI with the places
-    renderPlaces(filteredPlaces);
     
     hideLoading();
   } catch (error) {
@@ -1208,65 +965,14 @@ function createPlaceCard(place, index) {
     fetchTripAdvisorData(place);
   }
   
-  // Format price level with better visual indicators
+  // Format price level
   let priceHtml = '';
   if (place.price_level) {
-    // Different colors based on price level
-    let priceClass = '';
-    let priceTooltip = '';
-    
-    if (place.price_level === 1) {
-      priceClass = 'bg-success'; // Green for cheapest
-      priceTooltip = 'Budget friendly';
-    } else if (place.price_level === 2) {
-      priceClass = 'bg-info'; // Blue for moderate
-      priceTooltip = 'Moderately priced';
-    } else if (place.price_level === 3) {
-      priceClass = 'bg-warning'; // Yellow for expensive
-      priceTooltip = 'Somewhat expensive';
-    } else if (place.price_level === 4) {
-      priceClass = 'bg-danger'; // Red for very expensive
-      priceTooltip = 'Expensive';
-    }
-    
-    // Build the price level badge with appropriate styling
-    priceHtml = `<div class="price-level mb-2">`;
-    priceHtml += `<span class="badge ${priceClass} p-2" title="${priceTooltip}">`;
-    
-    // Add dollar signs
+    priceHtml = '<div class="price-level">';
     for (let i = 0; i < place.price_level; i++) {
       priceHtml += '$';
     }
-    
-    // Fill in remaining dollar signs in gray
-    for (let i = place.price_level; i < 4; i++) {
-      priceHtml += '<span class="text-muted">$</span>';
-    }
-    
-    priceHtml += '</span>';
-    
-    // Add textual description for clarity
-    if (currentFilter === 'budget' || currentKeyword === 'cheap') {
-      priceHtml += `<small class="ms-2 text-muted">${priceTooltip}</small>`;
-    }
-    
     priceHtml += '</div>';
-  } else {
-    // For places without price level
-    const budgetKeywords = [
-      'snack', 'falafel', 'kebab', 'surinam', 'surinaams', 'takeaway', 
-      'afhaal', 'takeout', 'fast food', 'street food', 'warung',
-      'cafetaria', 'friet', 'frites', 'toko', 'wok'
-    ];
-    
-    const nameLower = (place.name || '').toLowerCase();
-    const isLikelyBudget = budgetKeywords.some(kw => nameLower.includes(kw));
-    
-    if (isLikelyBudget && (currentFilter === 'budget' || currentKeyword === 'cheap')) {
-      priceHtml = '<div class="price-level mb-2"><span class="badge bg-success p-2" title="Likely budget-friendly">Likely Budget</span></div>';
-    } else {
-      priceHtml = '<div class="price-level mb-2"><span class="badge bg-secondary p-2" title="Price not specified">Price unknown</span></div>';
-    }
   }
   
   // Create card content
@@ -1281,33 +987,6 @@ function createPlaceCard(place, index) {
     <div class="place-number-badge">${placeNumber}</div>
   `;
   
-  // Add special category badge for budget or desserts
-  let categoryBadge = '';
-  
-  if (currentFilter === 'budget' || currentKeyword === 'cheap') {
-    if (place.price_level === 1) {
-      categoryBadge = `<span class="badge bg-success position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-dollar-sign"></i> Budget</span>`;
-    } else if (place.price_level === 2) {
-      categoryBadge = `<span class="badge bg-info position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-dollar-sign"></i><i class="fas fa-dollar-sign"></i> Affordable</span>`;
-    } else {
-      // Check if it might be budget-friendly based on name
-      const budgetKeywords = [
-        'snack', 'falafel', 'kebab', 'surinam', 'surinaams', 'takeaway', 
-        'afhaal', 'takeout', 'fast food', 'street food', 'warung',
-        'cafetaria', 'friet', 'frites', 'toko', 'wok'
-      ];
-      
-      const nameLower = (place.name || '').toLowerCase();
-      const isLikelyBudget = budgetKeywords.some(kw => nameLower.includes(kw));
-      
-      if (isLikelyBudget) {
-        categoryBadge = `<span class="badge bg-success position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-utensils"></i> Likely Budget</span>`;
-      }
-    }
-  } else if (currentKeyword === 'dessert') {
-    categoryBadge = `<span class="badge bg-warning text-dark position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-ice-cream"></i> Dessert</span>`;
-  }
-  
   col.innerHTML = `
     <div class="card place-card h-100">
       <div class="position-relative">
@@ -1315,7 +994,6 @@ function createPlaceCard(place, index) {
         <div class="position-absolute top-0 start-0 mt-2 ms-2 bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-weight: bold;">
           ${placeNumber}
         </div>
-        ${categoryBadge}
       </div>
       <div class="card-body">
         <h5 class="card-title">${placeNumber}. ${place.name}</h5>
