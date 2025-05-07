@@ -3023,6 +3023,12 @@ function debounce(func, delay) {
 
 // Update the hover marker on the map
 function updateHoverMarker(location) {
+  // Ensure the location is valid and in the correct format
+  if (!location || typeof location.lat !== 'number' || typeof location.lng !== 'number') {
+    console.warn("Invalid location format for hover marker:", location);
+    return;
+  }
+  
   // Only update if the location has changed significantly
   if (lastHoverLocation && 
       Math.abs(location.lat - lastHoverLocation.lat) < 0.0001 && 
@@ -3037,9 +3043,12 @@ function updateHoverMarker(location) {
     hoverMarker.setMap(null);
   }
   
+  // Create a proper LatLng object for the marker
+  const position = new google.maps.LatLng(location.lat, location.lng);
+  
   // Create a new marker at the hover location
   hoverMarker = new google.maps.Marker({
-    position: location,
+    position: position,
     map: map,
     icon: {
       path: google.maps.SymbolPath.CIRCLE,
@@ -3130,8 +3139,11 @@ function searchNearbyOnHover(location) {
     const placesService = new google.maps.places.PlacesService(map);
     
     // Build search parameters with dessert mode support
+    // Ensure proper formatting of location
+    const locationObj = new google.maps.LatLng(location.lat, location.lng);
+    
     const searchParams = {
-      location: location,
+      location: locationObj,
       radius: 300,
       type: currentPlaceType,
       rankBy: google.maps.places.RankBy.PROMINENCE

@@ -412,8 +412,13 @@ app.get('/api/nearby', async (req, res) => {
     
     // Only override parameters for specific cases
     if (keyword === 'cheap') {
-      // For cheap eats search, we want to keep the radius parameter
+      // For cheap eats search, we explicitly want to use radius parameter
       console.log('Performing cheap eats search with radius parameter');
+      // No change to parameters for cheap eats search
+    } else if (keyword && ['italian', 'asian', 'mexican', 'indian', 'french', 'mediterranean'].includes(keyword.toLowerCase())) {
+      // For cuisine searches, keep the radius parameter and send both type=restaurant and the cuisine keyword
+      console.log(`Performing ${keyword} cuisine search with radius parameter`);
+      // No change to parameters needed - radius and keyword are already included
     } else if (type === 'restaurant' && !keyword) {
       // For regular restaurant searches with no keyword, use rankby=distance 
       // When using rankby=distance, radius parameter is ignored and must not be included
@@ -556,6 +561,20 @@ app.get('/api/nearby', async (req, res) => {
         });
         
         console.log(`Distance filtering applied: ${data.results.length} of ${originalCount} places are within ${requestedRadius}m radius`);
+      }
+      
+      // Special handling for cheap eats - filter by price_level 1 or 2 ($, $$)
+      if (keyword === 'cheap') {
+        console.log('Applying price level filtering for cheap eats search');
+        const originalCount = data.results.length;
+        
+        data.results = data.results.filter(place => {
+          // If price_level is 1 or 2 ($ or $$), keep it
+          // If price_level is missing, include it anyway in case it's a good budget option
+          return place.price_level === undefined || place.price_level <= 2;
+        });
+        
+        console.log(`Price level filtering applied: ${data.results.length} of ${originalCount} places remain after cheap filter`);
       }
       
       // Extra filtering for dessert places if the keyword is dessert
