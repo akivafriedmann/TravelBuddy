@@ -1,217 +1,27 @@
 // Global variables
 let map;
 let markers = [];
-let currentInfoWindow = null;
-let currentLocation = null;
+let currentLocation = { lat: 52.3676, lng: 4.9041 }; // Default Amsterdam
 let placeModal;
 let currentPlaceType = 'restaurant';
+let currentFilter = ''; // Current filter (e.g., 'budget', 'dessert')
+let currentKeyword = ''; // Current keyword being searched
 let hoverMarker = null;
 let hoverInfoWindow = null;
 let hoverTimeout = null;
 let lastHoverLocation = null;
-let clickedLocation = null;
-let clickedLocationMarker = null;
+let clickedLocation = null; // Stores the location when user clicks on the map
+let clickedLocationMarker = null; // Marker to show where user clicked
 let searchRadius = 1500; // Default search radius in meters
-let isApiErrorShown = false;
-let weatherData = null;
-let isDarkMode = false; // Dark mode toggle state
-let currentKeyword = ''; // Keyword for searching (e.g., 'dessert', 'asian', etc.)
-let currentFilter = ''; // Filter mode (e.g., 'budget' for price level filtering)
-
-// Dark mode map style
-const darkMapStyle = [
-  { elementType: 'geometry', stylers: [{ color: '#212121' }] },
-  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
-  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#757575' }] },
-  { featureType: 'administrative.country', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
-  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#bdbdbd' }] },
-  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#181818' }] },
-  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-  { featureType: 'poi.park', elementType: 'labels.text.stroke', stylers: [{ color: '#1b1b1b' }] },
-  { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#2c2c2c' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
-  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#373737' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3c3c3c' }] },
-  { featureType: 'road.highway.controlled_access', elementType: 'geometry', stylers: [{ color: '#4e4e4e' }] },
-  { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-  { featureType: 'transit', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000000' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3d3d3d' }] }
-];
-
-// Comprehensive list of dessert-related keywords for filtering
-const dessertKeywords = [
-  'dessert', 'sweet', 'cake', 'pastry', 'cookie', 'ice cream', 'icecream', 'gelato',
-  'chocolate', 'bakery', 'patisserie', 'cupcake', 'muffin', 'candy', 'confection',
-  'donut', 'doughnut', 'froyo', 'frozen yogurt', 'yoghurt', 'custard', 'pie',
-  'waffle', 'crepe', 'pancake', 'churro', 'tiramisu', 'cheesecake', 'pudding',
-  'fudge', 'truffle', 'milkshake', 'sundae', 'sorbet', 'macaron', 'sweets', 'treat',
-  'sugar', 'caramel', 'honey', 'cinnamon', 'vanilla', 'frosting', 'glaze'
-];
-
-/**
- * Shared utility for filtering places based on radius, rating, and unwanted types
- * @param {Array} places - The array of place objects to filter
- * @param {Object} origin - The origin location with lat and lng properties
- * @param {Object} options - Optional configuration for filtering
- * @returns {Array} - Filtered and sorted places
- */
-function filterAndSortPlaces(places, origin, options = {}) {
-  const {
-    radius = 1500,
-    minRating = 4.0,
-    minReviews = 20,
-    unwantedTypes = [
-      "gas_station",
-      "car_repair",
-      "car_dealer",
-      "convenience_store",
-      "grocery_or_supermarket",
-      "liquor_store",
-      "market",
-      "store"
-    ]
-  } = options;
-
-  const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
-    const R = 6371000;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2)**2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  };
-
-  const filtered = places.filter(p => {
-    if (!p.geometry || !p.geometry.location) return false;
-    
-    // Get location coordinates, handling both function and property access
-    const pLat = typeof p.geometry.location.lat === 'function' ? 
-                p.geometry.location.lat() : p.geometry.location.lat;
-    const pLng = typeof p.geometry.location.lng === 'function' ? 
-                p.geometry.location.lng() : p.geometry.location.lng;
-    
-    const dist = getDistanceInMeters(origin.lat, origin.lng, pLat, pLng);
-    if (dist > radius) return false;
-    if (p.types?.some(t => unwantedTypes.includes(t))) return false;
-    if (p.rating && p.rating < minRating) return false;
-    return true;
-  });
-
-  filtered.sort((a, b) => {
-    const aSig = a.user_ratings_total >= minReviews;
-    const bSig = b.user_ratings_total >= minReviews;
-    if (aSig && bSig) return b.rating - a.rating;
-    if (aSig) return -1;
-    if (bSig) return 1;
-    return (b.user_ratings_total || 0) - (a.user_ratings_total || 0);
-  });
-
-  return filtered;
-}
-
-// Global variables are defined at the top of the file
+let isApiErrorShown = false; // Flag to track if API error is already displayed
 
 // Initialize the map
-
-// Helper function to determine if a place is a dessert place with improved scoring system
-function isDessertPlace(place) {
-  if (!place) return false;
-  
-  const keywords = [
-    'dessert', 'cake', 'tiramisu', 'patisserie', 'ice cream',
-    'gelato', 'sweet', 'bakery', 'chocolate', 'donut', 'crêpe',
-    'pancake', 'crepe', 'waffle', 'pastry', 'cookie', 'muffin',
-    'froyo', 'yogurt', 'custard', 'pie', 'tart'
-  ];
-  
-  const name = (place.name || '').toLowerCase();
-  const types = (place.types || []).map(t => t.toLowerCase()).join(',');
-  const address = ((place.vicinity || '') + ' ' + (place.formatted_address || '')).toLowerCase();
-
-  // Boost name relevance more than types/address
-  let score = 0;
-  keywords.forEach(keyword => {
-    if (name.includes(keyword)) score += 3;
-    if (types.includes(keyword)) score += 1;
-    if (address.includes(keyword)) score += 1;
-  });
-  
-  // Additional point for cafe/bakery type places which often serve desserts
-  const dessertTypes = ['bakery', 'cafe', 'ice_cream_parlor'];
-  if (place.types && place.types.some(type => dessertTypes.includes(type))) {
-    score += 2;
-  }
-  
-  // Log for debugging
-  if (score > 0) {
-    console.log(`Dessert score for ${place.name}: ${score}`);
-  }
-
-  return score >= 3;  // Threshold for qualifying as a dessert place
-}
-
-// Function to toggle dark mode
-function toggleDarkMode(enabled) {
-  isDarkMode = enabled;
-  
-  if (enabled) {
-    // Apply dark mode to body
-    document.body.classList.add('dark-mode');
-    
-    // Apply dark mode to map if initialized
-    if (map) {
-      map.setOptions({ styles: darkMapStyle });
-    }
-  } else {
-    // Remove dark mode from body
-    document.body.classList.remove('dark-mode');
-    
-    // Reset map styles if initialized
-    if (map) {
-      map.setOptions({ 
-        styles: [
-          {
-            featureType: "poi",
-            elementType: "labels",
-            stylers: [{ visibility: "on" }]
-          }
-        ] 
-      });
-    }
-  }
-}
-
 function initMap() {
   // Make sure the map element exists
   const mapElement = document.getElementById('map');
   if (!mapElement) {
     console.error("Map element not found in the DOM");
     return;
-  }
-  
-  // Note: Dessert mode is now handled through the dessert category button instead of a separate toggle
-  
-  // Set up the dark mode toggle
-  const darkModeCheckbox = document.getElementById('dark-mode-toggle');
-  if (darkModeCheckbox) {
-    // Initialize with stored preference if any
-    isDarkMode = localStorage.getItem('darkMode') === 'true';
-    darkModeCheckbox.checked = isDarkMode;
-    toggleDarkMode(isDarkMode);
-    
-    console.log(`Dark mode is ${isDarkMode ? 'enabled' : 'disabled'} on initialization`);
-    
-    darkModeCheckbox.addEventListener('change', function() {
-      isDarkMode = this.checked;
-      localStorage.setItem('darkMode', isDarkMode);
-      console.log(`Dark mode ${isDarkMode ? 'enabled' : 'disabled'}`);
-      toggleDarkMode(isDarkMode);
-    });
-  } else {
-    console.warn("Dark mode checkbox not found with ID 'dark-mode-toggle'");
   }
 
   // Set Amsterdam as default location if not already set
@@ -555,23 +365,34 @@ function initMap() {
       categoryButtons.forEach(btn => btn.classList.remove('active'));
       button.classList.add('active');
       
-      // Update current place type 
+      // Update current place type, filter, and keyword
       currentPlaceType = button.dataset.type;
       
-      // Check for filter mode - this allows filtering by price level without using "cheap" as a keyword
-      if (button.dataset.filter === 'cheap') {
-        // Special case for budget options - mark as a filter and NOT a keyword search
-        currentFilter = 'budget';
-        currentKeyword = '';
-        console.log(`Selected category: ${currentPlaceType} with budget filter applied (no keyword search)`);
-        loadNearbyPlaces(currentLocation, '', searchRadius);
-      } else {
-        // Regular keyword handling for categories like "dessert", "asian", etc.
-        currentFilter = '';
-        currentKeyword = button.dataset.keyword || '';
-        console.log(`Selected category: ${currentPlaceType}${currentKeyword ? ', keyword: ' + currentKeyword : ''}`);
-        loadNearbyPlaces(currentLocation, currentKeyword, searchRadius);
+      // Reset previous filter and keyword
+      currentFilter = '';
+      currentKeyword = '';
+      
+      // Check if there's a specific filter
+      if (button.dataset.filter) {
+        console.log(`Setting filter to ${button.dataset.filter}`);
+        currentFilter = button.dataset.filter;
+        
+        // If it's the budget filter, use "cheap" as the keyword
+        if (currentFilter === 'cheap' || currentFilter === 'budget') {
+          currentKeyword = 'cheap';
+        }
       }
+      
+      // Check if there's a keyword (for special categories like "asian" or "dessert")
+      if (button.dataset.keyword) {
+        console.log(`Setting keyword to ${button.dataset.keyword}`);
+        currentKeyword = button.dataset.keyword;
+      }
+      
+      console.log(`Filter button clicked: type=${currentPlaceType}, filter=${currentFilter}, keyword=${currentKeyword}`);
+      
+      // Pass the keyword to loadNearbyPlaces
+      loadNearbyPlaces(currentLocation, currentKeyword);
     });
   });
   
@@ -689,59 +510,18 @@ function useMyLocation() {
   };
   
   try {
-    // Add a debug popup to make it very clear we're requesting location
-    const notification = document.createElement('div');
-    notification.className = 'alert alert-info alert-dismissible fade show';
-    notification.setAttribute('role', 'alert');
-    notification.innerHTML = `
-      <i class="fas fa-info-circle"></i> 
-      Requesting your location... Please allow location access in your browser when prompted.
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-    
-    try {
-      // Add notification to the page
-      const container = document.querySelector('.container');
-      if (container) {
-        container.insertBefore(notification, container.firstChild);
-      }
-    } catch (e) {
-      console.error("Error showing notification:", e);
-    }
-    
-    // Track when the request was started
-    console.log("Requesting user location at: " + new Date().toISOString());
-    
     navigator.geolocation.getCurrentPosition(
       position => {
-        console.log("Successfully obtained user location at: " + new Date().toISOString());
-        
         // Success - we have the location
         currentLocation = {
           lat: position.coords.latitude,
           lng: position.coords.longitude
         };
         
-        console.log("Location coordinates:", currentLocation);
+        console.log("Successfully obtained user location:", currentLocation);
         
-        // Update map center with animation and zoom
-        map.panTo(currentLocation);
-        map.setZoom(14); // Zoom in a bit
-        
-        // Add a marker at the current location
-        new google.maps.Marker({
-          position: currentLocation,
-          map: map,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: "#4285F4",
-            fillOpacity: 0.8,
-            strokeColor: "white",
-            strokeWeight: 2,
-          },
-          title: "Your Location"
-        });
+        // Update map center
+        map.setCenter(currentLocation);
         
         // Load nearby places
         loadNearbyPlaces(currentLocation);
@@ -846,8 +626,21 @@ async function searchLocation() {
   const inputValue = document.getElementById('location-input').value.trim();
   console.log("Searching with input:", inputValue);
   
-  // Skip searchForSpecificPlace and directly use geocoding for cities/locations
-  // This ensures we get restaurants in the actual location, not elsewhere
+  // If we have a keyword, first try to search for a specific place
+  if (inputValue) {
+    console.log("Searching for specific place:", inputValue);
+    try {
+      const searchResult = await searchForSpecificPlace(inputValue);
+      if (searchResult) {
+        hideLoading();
+        return; // Successfully found and displayed a specific place
+      }
+    } catch (error) {
+      console.error("Error in searchForSpecificPlace:", error);
+      // If error, continue with normal location search
+    }
+    // If no specific place found, continue with normal location search
+  }
   
   // If we have a clicked location, use that instead of geocoding
   if (clickedLocation) {
@@ -884,103 +677,64 @@ async function searchLocation() {
   }
   
   try {
-    // Use our server's geocoding endpoint instead of direct Google Maps API
-    console.log("Geocoding using server endpoint for:", locationInput);
+    // Use geocoding to convert address to coordinates
+    const geocoder = new google.maps.Geocoder();
     
-    // Call our backend geocoding endpoint
-    const response = await fetch(`/api/geocoding?address=${encodeURIComponent(locationInput)}`);
+    // Create geocoding options
+    const geocodingOptions = { 
+      address: locationInput
+    };
     
-    if (!response.ok) {
-      throw new Error(`Geocoding API error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log("Geocoding API response:", data);
-    
-    // Handle different API response statuses
-    if (data.status === 'ZERO_RESULTS') {
-      hideLoading();
-      alert(`No results found for "${locationInput}". Please try a different search term or click directly on the map.`);
-      return;
-    }
-    
-    if (data.status === 'OVER_QUERY_LIMIT') {
-      hideLoading();
-      alert('The geocoding service is temporarily unavailable due to too many requests. Please try again later.');
-      return;
-    }
-    
-    if (data.status === 'REQUEST_DENIED') {
-      hideLoading();
-      alert('The geocoding service cannot process your request right now. Please try again later.');
-      return;
-    }
-    
-    if (data.status === 'INVALID_REQUEST') {
-      hideLoading();
-      alert('Invalid location search. Please enter a city, address, or place name.');
-      return;
-    }
-    
-    if (data.status === 'UNKNOWN_ERROR') {
-      hideLoading();
-      alert('An unknown error occurred with the geocoding service. Please try again.');
-      return;
-    }
-    
-    // Check for valid results
-    if (data.status === 'OK' && data.results && data.results.length > 0) {
-      const result = data.results[0];
-      const location = result.geometry.location;
-      
-      // Store current location
-      currentLocation = {
-        lat: location.lat,
-        lng: location.lng
-      };
-      
-      console.log("Found location:", currentLocation);
-      
-      // Update map center
-      map.setCenter(currentLocation);
-      
-      // Add marker for the search location (replacing any clicked location marker)
-      if (clickedLocationMarker) {
-        clickedLocationMarker.setMap(null);
-      }
-      
-      clickedLocationMarker = new google.maps.Marker({
-        position: currentLocation,
-        map: map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: "#FF5722",
-          fillOpacity: 0.8,
-          strokeColor: "white",
-          strokeWeight: 2,
-        },
-        title: "Search Location"
-      });
-      
-      // Determine if this is a specific locality/neighborhood by checking the result types
-      const isSpecificArea = result.types && result.types.some(type => 
-        ['sublocality', 'neighborhood', 'postal_code'].includes(type)
-      );
-      
-      // Use a smaller radius for more specific area searches to keep results relevant
-      if (isSpecificArea) {
-        // Smaller radius for specific areas like neighborhoods (700m)
-        loadNearbyPlaces(currentLocation, '', 700);
+    geocoder.geocode(geocodingOptions, (results, status) => {
+      if (status === google.maps.GeocoderStatus.OK && results[0]) {
+        const result = results[0];
+        const location = result.geometry.location;
+        
+        currentLocation = {
+          lat: location.lat(),
+          lng: location.lng()
+        };
+        
+        // Update map center
+        map.setCenter(currentLocation);
+        
+        // Add marker for the search location (replacing any clicked location marker)
+        if (clickedLocationMarker) {
+          clickedLocationMarker.setMap(null);
+        }
+        
+        clickedLocationMarker = new google.maps.Marker({
+          position: currentLocation,
+          map: map,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: "#FF5722",
+            fillOpacity: 0.8,
+            strokeColor: "white",
+            strokeWeight: 2,
+          },
+          title: "Search Location"
+        });
+        
+        // Determine if this is a specific locality/neighborhood by checking the result types
+        const isSpecificArea = results[0].types.some(type => 
+          ['sublocality', 'neighborhood', 'postal_code'].includes(type)
+        );
+        
+        // Use a smaller radius for more specific area searches to keep results relevant
+        if (isSpecificArea) {
+          // Smaller radius for specific areas like neighborhoods (700m)
+          loadNearbyPlaces(currentLocation, '', 700);
+        } else {
+          // Use default radius for broader areas like cities
+          loadNearbyPlaces(currentLocation);
+        }
       } else {
-        // Use default radius for broader areas like cities
-        loadNearbyPlaces(currentLocation);
+        hideLoading();
+        alert('Location not found. Please try another search term or click directly on the map.');
       }
-    } else {
-      hideLoading();
-      console.error('Unexpected geocoding response:', data);
-      alert('Location search failed. Please try another search term or click directly on the map.');
-    }
+    });
   } catch (error) {
     console.error('Geocoding error:', error);
     hideLoading();
@@ -999,80 +753,66 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
   clearMarkers();
   
   try {
-    // Check if the "Open Now" checkbox is checked
     const openNowChecked = document.getElementById('open-now-checkbox').checked;
+    const isBudget = keyword === 'cheap' || currentFilter === 'budget';
+    const isDessert = keyword === 'dessert';
     
-    // Special handling for various special filters
     let rawPlaces = [];
     
-    // Special case for budget filter - don't send "cheap" as a keyword
-    if (currentFilter === 'budget') {
-      console.log('Using budget filter - NOT searching for keyword "cheap"');
+    // Update the sort indicator based on place type and search
+    const sortIndicator = document.querySelector('.sort-indicator small');
+    if (sortIndicator) {
+      const minReviews = currentPlaceType === 'lodging' ? 8 : 
+                        (currentPlaceType === 'restaurant' ? 20 : 10);
       
-      // Build API URL with only restaurant type - no keyword
-      let apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}&radius=5000`; // Use larger radius (5km) to get more budget options
+      let sortText = `
+        <i class="fas fa-info-circle"></i> 
+        Places are sorted by rating, prioritizing those with at least ${minReviews} reviews
+      `;
       
-      // Add the opennow parameter if checked
-      if (openNowChecked) {
-        apiUrl += '&opennow=true';
+      // Special text for budget mode
+      if (isBudget) {
+        sortText = `
+          <i class="fas fa-info-circle"></i> 
+          <i class="fas fa-dollar-sign"></i> Budget-friendly options prioritized ($ before $$)
+        `;
+      } else if (isDessert) {
+        sortText = `
+          <i class="fas fa-info-circle"></i> 
+          <i class="fas fa-ice-cream"></i> Showing places with good desserts
+        `;
       }
       
-      console.log('Fetching nearby places with URL for budget filter:', apiUrl);
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-      
-      console.log("Nearby places API response for budget filter:", data);
-      
-      if (data.status === 'OK' && data.results && data.results.length > 0) {
-        // Store the results in rawPlaces
-        rawPlaces = data.results;
-      } else {
-        // Handle API errors
-        if (data.status === 'ZERO_RESULTS' || !data.results || data.results.length === 0) {
-          document.getElementById('places-container').innerHTML = `
-            <div class="col-12">
-              <div class="alert alert-info">
-                <strong>No budget places found</strong>
-                <p>No budget-friendly ${formatPlaceType(currentPlaceType)} found in this area.</p>
-                <p>Try another location or increase the search radius.</p>
-              </div>
-            </div>
-          `;
-          hideLoading();
-          return;
-        } else if (data.status === 'REQUEST_DENIED') {
-          console.error("API request denied:", data.error_message || "No error details available");
-          document.getElementById('places-container').innerHTML = `
-            <div class="col-12">
-              <div class="alert alert-warning">
-                <strong>API Request Denied</strong>
-                <p>There was an issue with the API request: ${data.error_message || "Unknown error"}</p>
-                <p>This is likely due to API key restrictions or quota limits.</p>
-              </div>
-            </div>
-          `;
-          hideLoading();
-          return;
-        } else {
-          document.getElementById('places-container').innerHTML = `
-            <div class="col-12">
-              <div class="alert alert-warning">
-                <strong>API Error</strong>
-                <p>There was an issue with the API request: ${data.status}</p>
-              </div>
-            </div>
-          `;
-          hideLoading();
-          return;
-        }
-      }
+      sortIndicator.innerHTML = sortText;
     }
-    // Special handling for dessert search with multiple strategies
-    else if (keyword === 'dessert') {
-      console.log('Using enhanced dessert search algorithm');
+    
+    // 🔍 STEP 1: Get places - different approach for budget vs. regular search
+    if (isBudget) {
+      console.log("Using direct Google Places API for budget search with 5km radius");
+      
+      // Use Google Maps Places API directly for better budget filtering
       const service = new google.maps.places.PlacesService(map);
       
-      // Multiple search strategies for dessert places
+      // Make the direct API request with larger radius for budget search
+      rawPlaces = await new Promise(resolve => {
+        service.nearbySearch({
+          location: location,
+          radius: 5000, // 5km for budget search to find more options
+          type: currentPlaceType || 'restaurant',
+          openNow: openNowChecked
+        }, (results, status) => {
+          resolve(status === google.maps.places.PlacesServiceStatus.OK ? results : []);
+        });
+      });
+      
+      console.log(`Found ${rawPlaces?.length || 0} places for budget search`);
+    } else if (isDessert) {
+      console.log("Using enhanced dessert search algorithm with multiple search strategies");
+      
+      // For dessert mode, use direct API calls with multiple search strategies
+      const service = new google.maps.places.PlacesService(map);
+      
+      // Multiple search strategies for finding dessert places
       const searches = [
         { type: 'ice_cream_parlor' },
         { type: 'bakery' },
@@ -1084,16 +824,13 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       // Use Map to avoid duplicates
       const seen = new Map();
       
-      // Execute all searches
+      // Execute all search strategies
       for (let s of searches) {
         console.log(`Executing dessert search: type=${s.type}${s.keyword ? ', keyword=' + s.keyword : ''}`);
         
         const results = await new Promise(resolve => {
-          // Ensure location is properly formatted for Google Maps
-          const locationObj = new google.maps.LatLng(location.lat, location.lng);
-          
           service.nearbySearch({
-            location: locationObj,
+            location: location,
             radius: radius,
             type: s.type,
             keyword: s.keyword || '',
@@ -1103,32 +840,26 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
           });
         });
         
-        console.log(`Found ${results.length} places for search type=${s.type}${s.keyword ? ', keyword=' + s.keyword : ''}`);
+        if (results) {
+          console.log(`Found ${results.length} places for dessert search type=${s.type}${s.keyword ? ', keyword=' + s.keyword : ''}`);
+          results.forEach(place => seen.set(place.place_id, place));
+        }
         
-        // Add results to seen Map
-        results.forEach(place => seen.set(place.place_id, place));
-        
-        // Break if we have enough places
-        if (seen.size >= 50) break;
+        // Break early if we have enough places
+        if (seen.size >= 30) break;
       }
       
       // Convert Map values to array
       rawPlaces = Array.from(seen.values());
-      console.log(`Found ${rawPlaces.length} potential dessert places from combined searches`);
+      console.log(`Found ${rawPlaces.length} total potential dessert places`);
     } else {
-      // Standard search for non-dessert categories
-      // For cheap eats search, use a larger radius to get more results
-      let searchRadius = radius;
-      if (keyword === 'cheap') {
-        // Use a larger radius for cheap eats to get more options
-        searchRadius = 5000; // 5km radius for cheap eats search
-        console.log(`Using expanded radius (${searchRadius}m) for cheap eats search`);
-      }
+      // Standard searching through our API
+      console.log("Using standard API search");
       
-      // Build API URL with required parameters
-      let apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}&radius=${searchRadius}`;
+      // Build API URL with optional keyword parameter
+      let apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}&radius=${radius}`;
       
-      // Add keyword if provided (for special categories like "cheap eats")
+      // Add keyword if provided (for special categories)
       if (keyword) {
         apiUrl += `&keyword=${encodeURIComponent(keyword)}`;
       }
@@ -1136,72 +867,9 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       // Add the opennow parameter if checked
       if (openNowChecked) {
         apiUrl += '&opennow=true';
-        console.log('Filtering for places open now');
-      }
-    
-    // Define the Haversine formula for distance calculation
-    const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
-      const R = 6371000; // Earth radius in meters
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return R * c;
-    };
-    
-    // Update the sort indicator based on place type
-    const sortIndicator = document.querySelector('.sort-indicator small');
-    if (sortIndicator) {
-      // Get minimum reviews based on place type
-      const MIN_REVIEWS = {
-        restaurant: 20,
-        lodging: 8,
-        night_club: 10,
-        supermarket: 5,
-        default: 10
-      };
-      const minReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
-      
-      let sortText = `
-        <i class="fas fa-info-circle"></i> 
-        Places are sorted by rating, prioritizing those with at least ${minReviews} reviews
-      `;
-      
-      // Build indicators for various filters
-      const indicators = [];
-      
-      // Add "Open Now" indicator
-      if (openNowChecked) {
-        indicators.push('open now');
       }
       
-      // Add special filter indicators
-      if (currentFilter === 'budget') {
-        sortText = `
-          <i class="fas fa-info-circle"></i> 
-          <i class="fas fa-dollar-sign"></i> Showing budget-friendly options ($ and $$), sorted by price level
-        `;
-      } else if (keyword === 'dessert') {
-        indicators.push('<i class="fas fa-ice-cream"></i> dessert places only');
-      } else if (keyword && keyword !== 'cheap') {
-        indicators.push(`<i class="fas fa-utensils"></i> ${keyword} places only`);
-      }
-      
-      // Apply indicators to sort text if any are active and we're not in budget mode
-      if (indicators.length > 0 && currentFilter !== 'budget') {
-        sortText = `
-          <i class="fas fa-info-circle"></i> 
-          Showing ${indicators.join(', ')}, sorted by rating (min ${minReviews} reviews)
-        `;
-      }
-      
-      sortIndicator.innerHTML = sortText;
-    }
-    
-      // Call our backend API to get nearby places for non-dessert categories
+      // Call our backend API to get nearby places
       console.log('Fetching nearby places with URL:', apiUrl);
       const response = await fetch(apiUrl);
       const data = await response.json();
@@ -1209,21 +877,7 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       console.log("Nearby places API response:", data);
       
       if (data.status === 'OK' && data.results && data.results.length > 0) {
-        // Store the results in rawPlaces
         rawPlaces = data.results;
-      } else if (data.status === 'ZERO_RESULTS' || !data.results || data.results.length === 0) {
-        const container = document.getElementById('places-container');
-        container.innerHTML = `
-          <div class="col-12">
-            <div class="alert alert-info">
-              <strong>No places found</strong>
-              <p>No ${formatPlaceType(currentPlaceType)}${keyword ? ` with ${keyword}` : ''} found in this area.</p>
-              <p>Try another location or category, or increase the search radius.</p>
-            </div>
-          </div>
-        `;
-        hideLoading();
-        return;
       } else if (data.status === 'REQUEST_DENIED') {
         // API key issue
         console.error("Google Places API request denied:", data.error_message || "No error details available");
@@ -1239,14 +893,10 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
         hideLoading();
         return;
       } else {
-        // Other API error
-        const container = document.getElementById('places-container');
-        container.innerHTML = `
+        // No results
+        document.getElementById('places-container').innerHTML = `
           <div class="col-12">
-            <div class="alert alert-warning">
-              <strong>API Error</strong>
-              <p>There was an issue with the Google Places API request: ${data.status}</p>
-            </div>
+            <div class="alert alert-info">No ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.</div>
           </div>
         `;
         hideLoading();
@@ -1254,10 +904,9 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       }
     }
     
-    // By this point, we have places in rawPlaces, either from dessert search or standard API
+    // If no results after first step, show message
     if (!rawPlaces || rawPlaces.length === 0) {
-      const container = document.getElementById('places-container');
-      container.innerHTML = `
+      document.getElementById('places-container').innerHTML = `
         <div class="col-12">
           <div class="alert alert-info">
             <strong>No places found</strong>
@@ -1270,277 +919,109 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       return;
     }
     
-    // Clear the container and prepare to show results
-    const container = document.getElementById('places-container');
-    container.innerHTML = '';
-    
-    // Log the places we found
-    console.log(`Starting with ${rawPlaces.length} places before filtering`);
-    
-    // Define unwanted business types
-    const UNWANTED_TYPES = [
-      "gas_station", 
-      "convenience_store", 
-      "car_repair", 
-      "car_wash",
-      "car_dealer"
-    ];
-    
-    // Minimum rating to show (different minimum ratings based on place type and search type)
-    let MIN_RATING;
-    
-    // Special case for budget filter - use a lower threshold to show more options
-    if (currentFilter === 'budget' || keyword === 'cheap') {
-      MIN_RATING = 3.3; // Very low threshold for budget places to show many more options
-      console.log("Using lower rating threshold for budget places search: 3.3");
-    } else if (currentPlaceType === 'restaurant') {
-      MIN_RATING = 4.0;
-    } else if (currentPlaceType === 'night_club') {
-      MIN_RATING = 3.7; // Lower threshold for nightclubs as requested
-    } else if (currentPlaceType === 'supermarket') {
-      MIN_RATING = 3.5; // Lower threshold for supermarkets
-    } else {
-      MIN_RATING = 3.8; // Default more lenient threshold for other place types
-    }
-    
-    // Define minimum reviews for statistical significance - much lower for budget to show more options
-    const MIN_REVIEWS = {
-      restaurant: (currentFilter === 'budget' || keyword === 'cheap') ? 3 : 20, // Very low for budget options
-      lodging: 8,
-      night_club: 10,
-      supermarket: 5,
-      default: 10
-    };
-    const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
-    
-    console.log(`Filtering with minimum rating of ${MIN_RATING} and within ${radius}m for ${currentPlaceType}s`);
-
-    // For budget filter, we need special handling to focus on price level
+    // 🔍 STEP 2: Filter and sort based on search type
     let filteredPlaces;
     
-    if (currentFilter === 'budget') {
-      console.log("Using smart budget filtering - prioritizing affordable places");
+    if (isBudget) {
+      console.log("Applying budget scoring and sorting logic");
       
-      // Get the budget places ($ and $$)
-      const definiteBudgetPlaces = rawPlaces.filter(place => {
-        return place.price_level === 1 || place.price_level === 2;
-      });
-      
-      console.log(`Found ${definiteBudgetPlaces.length} places with explicit $ or $$ price level`);
-      
-      // Get places that don't have a specified price level but are likely budget-friendly
-      // These include snackbars, takeaways, street food, etc.
-      const budgetKeywords = [
-        'snack', 'falafel', 'kebab', 'surinam', 'surinaams', 'takeaway', 
-        'afhaal', 'takeout', 'fast food', 'street food', 'foodtruck', 
-        'warung', 'cafetaria', 'friet', 'frites', 'toko', 'wok', 'burrito', 
-        'budget', 'cheap', 'goedkoop', 'betaalbaar'
-      ];
-      
-      const likelyBudgetPlaces = rawPlaces.filter(place => {
-        // Skip places that already have a price level
-        if (place.price_level) return false;
-        
-        // Check name for budget keywords
-        const nameLower = (place.name || '').toLowerCase();
-        return budgetKeywords.some(keyword => nameLower.includes(keyword));
-      });
-      
-      console.log(`Found ${likelyBudgetPlaces.length} places with budget keywords in name but no explicit price level`);
-      
-      // Combine definite and likely budget places
-      const allBudgetPlaces = [...definiteBudgetPlaces, ...likelyBudgetPlaces];
-      
-      // If we have enough budget places, use just those
-      if (allBudgetPlaces.length >= 5) {
-        console.log(`Using ${allBudgetPlaces.length} budget-friendly places`);
-        
-        // Sort by price level first ($ before $$), then by rating
-        allBudgetPlaces.sort((a, b) => {
-          // First by known price level ($ before $$)
-          if (a.price_level === 1 && b.price_level === 2) return -1;
-          if (a.price_level === 2 && b.price_level === 1) return 1;
+      // Add budget score to each place
+      filteredPlaces = rawPlaces
+        .filter(p => {
+          // Only include restaurants and food places
+          return p.types && p.types.some(type => 
+            ['restaurant', 'food', 'meal_takeaway', 'cafe', 'bakery'].includes(type.toLowerCase())
+          );
+        })
+        .map(p => {
+          // Score each place by budget-friendliness
+          const price = p.price_level;
           
-          // Then by rating
-          return (b.rating || 0) - (a.rating || 0);
+          // Check for budget keywords in name (for places without explicit price)
+          const budgetKeywords = [
+            'snack', 'falafel', 'kebab', 'surinam', 'surinaams', 'takeaway', 
+            'afhaal', 'takeout', 'fast food', 'street food', 'warung',
+            'cafetaria', 'friet', 'frites', 'toko', 'wok'
+          ];
+          
+          const nameLower = (p.name || '').toLowerCase();
+          const hasBudgetKeyword = budgetKeywords.some(kw => nameLower.includes(kw));
+          
+          // Calculate budget score:
+          // Known $ = 3 points (best)
+          // Known $$ = 2 points (good)
+          // Contains budget keyword = 1 point (possible budget option)
+          // Everything else = 0 points (not budget-friendly)
+          let budgetScore = 0;
+          
+          if (price === 1) budgetScore = 3;
+          else if (price === 2) budgetScore = 2;
+          else if (hasBudgetKeyword) budgetScore = 1;
+          
+          // Add the score property for sorting
+          p._budget_score = budgetScore;
+          
+          // Log score for debugging
+          console.log(`Place: ${p.name}, Price Level: ${p.price_level}, Budget Score: ${budgetScore}`);
+          
+          return p;
         });
-        
-        filteredPlaces = allBudgetPlaces;
-      } 
-      // If we don't have at least 5 explicit budget places, include all places
-      // but prioritize the budget ones at the top
-      else {
-        console.log("Not enough explicit budget places, including all but prioritizing affordable options");
-        
-        // Copy all places
-        filteredPlaces = [...rawPlaces];
-        
-        // Sort to show definite budget places first, then likely budget places, then others
-        filteredPlaces.sort((a, b) => {
-          const aIsDefiniteBudget = a.price_level === 1 || a.price_level === 2;
-          const bIsDefiniteBudget = b.price_level === 1 || b.price_level === 2;
-          
-          // First show definite budget places
-          if (aIsDefiniteBudget && !bIsDefiniteBudget) return -1;
-          if (!aIsDefiniteBudget && bIsDefiniteBudget) return 1;
-          
-          // Check for likely budget places (by keywords)
-          const aNameLower = (a.name || '').toLowerCase();
-          const bNameLower = (b.name || '').toLowerCase();
-          
-          const aIsLikelyBudget = budgetKeywords.some(keyword => aNameLower.includes(keyword));
-          const bIsLikelyBudget = budgetKeywords.some(keyword => bNameLower.includes(keyword));
-          
-          if (aIsLikelyBudget && !bIsLikelyBudget) return -1;
-          if (!aIsLikelyBudget && bIsLikelyBudget) return 1;
-          
-          // If both are budget places, sort by price level
-          if (aIsDefiniteBudget && bIsDefiniteBudget) {
-            if (a.price_level !== b.price_level) {
-              return a.price_level - b.price_level; // $ before $$
-            }
-          }
-          
-          // Finally sort by rating
-          return (b.rating || 0) - (a.rating || 0);
-        });
-      }
       
-      console.log(`Smart budget filtering applied: ${filteredPlaces.length} places with affordable options prioritized`);
-    } else {
-      // Regular filtering for non-budget searches
-      filteredPlaces = filterAndSortPlaces(rawPlaces, location, {
-        radius: searchRadius || radius,
-        minRating: MIN_RATING,
-        minReviews: currentMinReviews,
-        unwantedTypes: UNWANTED_TYPES,
-        isCheapSearch: keyword === 'cheap' // Add flag for cheap eats search
-      });
-    }
-    
-    // Apply additional analysis for dessert places if needed
-    let finalPlaces = filteredPlaces;
-    
-    if (keyword === 'dessert') {
-      // For dessert mode, we need to check reviews for mentions of desserts
-      console.log("Applying additional dessert review analysis");
-      
-      const service = new google.maps.places.PlacesService(map);
-      const dessertKeywords = ['dessert', 'cake', 'tiramisu', 'pastry', 'sweet', 
-                             'delicious dessert', 'amazing dessert', 'gelato', 
-                             'ice cream', 'chocolate', 'custard', 'pie'];
-      
-      // Pre-filter places to only include food-related establishments
-      const foodTypes = ['restaurant', 'cafe', 'bakery', 'food', 'bar', 'meal_takeaway', 
-                        'meal_delivery', 'ice_cream_parlor', 'dessert'];
-                        
-      // First filter places by types to include only food-related places
-      const foodPlaces = filteredPlaces.filter(place => {
-        if (!place.types || place.types.length === 0) return false;
-        return place.types.some(type => foodTypes.includes(type.toLowerCase()));
+      // Sort by budget score (high to low), then by rating
+      filteredPlaces.sort((a, b) => {
+        // First sort by budget score
+        if (b._budget_score !== a._budget_score) {
+          return b._budget_score - a._budget_score;
+        }
+        
+        // Then by rating
+        return (b.rating || 0) - (a.rating || 0);
       });
       
-      console.log(`Found ${foodPlaces.length} food-related places out of ${filteredPlaces.length} total`);
+      console.log(`After budget filtering and sorting: ${filteredPlaces.length} places organized by affordability`);
+    } else if (isDessert) {
+      // For dessert search, filter for dessert-related places
+      console.log("Applying dessert-specific filtering");
       
-      // Check for dessert places based on name first
-      const nameBasedDesserts = foodPlaces.filter(place => {
+      const dessertKeywords = ['dessert', 'cake', 'ice cream', 'bakery', 'sweet', 'pastry'];
+      
+      // First check for places with dessert in the name or are dessert-specific
+      const nameBasedDesserts = rawPlaces.filter(place => {
+        // Check if it's a dessert-specific type
+        if (place.types && place.types.some(t => 
+          ['bakery', 'cafe', 'ice_cream_parlor', 'dessert'].includes(t.toLowerCase())
+        )) {
+          return true;
+        }
+        
+        // Check if name contains dessert keywords
         const name = (place.name || '').toLowerCase();
         return dessertKeywords.some(keyword => name.includes(keyword));
       });
       
-      console.log(`Found ${nameBasedDesserts.length} places with dessert keywords in names`);
+      console.log(`Found ${nameBasedDesserts.length} places with dessert keywords in names or types`);
       
-      // If we have places with dessert in their names, prioritize those
-      if (nameBasedDesserts.length > 0) {
-        finalPlaces = nameBasedDesserts;
-        console.log("Using name-based dessert places");
+      // If we have enough dessert places by name/type, use those
+      if (nameBasedDesserts.length >= 3) {
+        filteredPlaces = nameBasedDesserts;
       } else {
-        // Otherwise, check reviews for dessert mentions
-        const goodDesserts = [];
-        
-        // Only check the top 20 to save API calls
-        const topCandidates = foodPlaces.slice(0, 20);
-        console.log(`Checking reviews for ${topCandidates.length} food place candidates`);
-        
-        // Process each place to check reviews for dessert mentions
-        for (let place of topCandidates) {
-          try {
-            const details = await new Promise(resolve => {
-              service.getDetails({
-                placeId: place.place_id,
-                fields: ['reviews', 'types']
-              }, (details, status) => {
-                resolve(status === google.maps.places.PlacesServiceStatus.OK ? details : null);
-              });
-            });
-            
-            if (!details || !details.reviews) {
-              console.log(`No reviews available for: ${place.name}`);
-              continue;
-            }
-            
-            // Check the most recent 5 reviews
-            const reviews = details.reviews.slice(0, 5);
-            
-            // Count reviews with dessert mentions
-            const count = reviews.filter(review => {
-              const text = (review.text || '').toLowerCase();
-              return dessertKeywords.some(keyword => text.includes(keyword));
-            }).length;
-            
-            console.log(`Place "${place.name}" has ${count} reviews mentioning desserts`);
-            
-            // Add to good desserts if at least 2 reviews mention desserts
-            if (count >= 2) {
-              goodDesserts.push(place);
-            }
-          } catch (error) {
-            console.error(`Error getting details for place ${place.name}:`, error);
-          }
-        }
-        
-        // Use the places that have good dessert mentions in reviews
-        finalPlaces = goodDesserts.length > 0 ? goodDesserts : foodPlaces;
+        // Otherwise use all places, prioritizing any dessert-related ones
+        filteredPlaces = rawPlaces;
       }
-      console.log(`After dessert review analysis: ${finalPlaces.length} places remain`);
-    }
       
-    // Log filtering information
-    console.log(`After filtering: ${finalPlaces.length} of ${rawPlaces.length} places remaining`);
-    
-    // Places are already sorted by our utility function
-    console.log(`Showing ${finalPlaces.length} places sorted by rating and review count`);
-    
-    if (finalPlaces.length === 0) {
-      // Show a message if no places meet the criteria
-      let messageText = `No places found matching your criteria`;
-      if (keyword === 'dessert') {
-        messageText = `No dessert places found matching your criteria`;
-      } else if (keyword) {
-        messageText = `No ${keyword} places found matching your criteria`;
-      }
-        
-      container.innerHTML = `
-        <div class="col-12">
-          <div class="alert alert-info">
-            <strong>${messageText}</strong>
-            <p>No ${formatPlaceType(currentPlaceType)}${keyword === 'dessert' ? ' serving desserts' : keyword ? ` with ${keyword}` : ''} with a rating of ${MIN_RATING}+ within ${radius}m found in this area.</p>
-            <p>Try another location or category, or adjust the search radius.</p>
-          </div>
-        </div>
-      `;
+      // Sort by rating
+      filteredPlaces.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     } else {
-      // Display filtered and sorted places
-      finalPlaces.forEach((place, index) => {
-        // Create a card for each place (the TripAdvisor fetch happens inside createPlaceCard,
-        // no need to call fetchTripAdvisorData again)
-        const card = createPlaceCard(place, index);
-        container.appendChild(card);
-        
-        // Add a marker for this place
-        addMarker(place, index);
-      });
+      // Standard filtering for regular searches
+      filteredPlaces = rawPlaces;
+      
+      // For regular searches, let the backend API handle filtering
+      // Just sort by rating to be sure
+      filteredPlaces.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
+    
+    // Finally, update the UI with the places
+    renderPlaces(filteredPlaces);
     
     hideLoading();
   } catch (error) {
@@ -1564,23 +1045,13 @@ function renderPlaces(places) {
   const MIN_REVIEWS = {
     restaurant: 20,
     lodging: 8,
-    night_club: 10,
-    supermarket: 5,
     default: 10
   };
-  const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
+  const currentMinReviews = currentPlaceType === 'lodging' ? MIN_REVIEWS.lodging : 
+                          (currentPlaceType === 'restaurant' ? MIN_REVIEWS.restaurant : MIN_REVIEWS.default);
   
-  // Minimum rating to show (different minimum ratings based on place type)
-  let MIN_RATING;
-  if (currentPlaceType === 'restaurant') {
-    MIN_RATING = 4.0;
-  } else if (currentPlaceType === 'night_club') {
-    MIN_RATING = 3.7; // Lower threshold for nightclubs as requested
-  } else if (currentPlaceType === 'supermarket') {
-    MIN_RATING = 3.5; // Lower threshold for supermarkets
-  } else {
-    MIN_RATING = 3.8; // Default more lenient threshold for other place types
-  }
+  // Minimum rating to show (only for restaurants)
+  const MIN_RATING = 4.1;
   
   // Define unwanted business types
   const unwantedTypes = [
@@ -1588,132 +1059,70 @@ function renderPlaces(places) {
     "convenience_store", 
     "car_repair", 
     "car_wash",
-    "car_dealer",
-    "ice_cream_parlor",
-    "bakery",
-    "cafe",
-    "grocery_or_supermarket",
-    "food",
-    "store",
-    "market",
-    "liquor_store"
+    "car_dealer"
   ];
   
-  // Make a copy of the places to filter
-  let filteredPlaces = [...places];
-  
-  // Log the number of places before filtering
-  console.log(`Before client filtering: ${filteredPlaces.length} places`);
-  
-  // For cheap eats search, bypass filtering completely
-  if (currentKeyword === 'cheap') {
-    console.log("CHEAP EATS SEARCH: Skipping client-side filtering");
-    filteredPlaces = [...places];
-  } else {
-    // For other searches, apply standard filtering
-    // Filter places by minimum rating and exclude unwanted types
-    filteredPlaces = filteredPlaces.filter(place => {
-      // Skip places with no ratings or too few reviews
-      if (!place.rating || place.user_ratings_total < currentMinReviews) {
-        return false;
-      }
-      
-      // Filter by minimum rating
-      if (place.rating < MIN_RATING) {
-        return false;
-      }
-      
-      // Filter out unwanted types (like gas stations when searching for restaurants)
-      if (place.types && place.types.some(type => unwantedTypes.includes(type))) {
-        // But if we specifically searched for that type, include it
-        if (currentPlaceType === type) {
-          return true;
-        }
-        return false;
-      }
-      
+  // Filter out Shell stations
+  const filteredPlaces = places.filter(place => {
+    // Skip this filter if not restaurant type
+    if (currentPlaceType !== 'restaurant') {
       return true;
-    });
-  }
-  
-  console.log(`After client filtering: ${filteredPlaces.length} places`);
+    }
+    
+    // Check if this is a gas station or similar
+    if (place.types) {
+      for (const type of unwantedTypes) {
+        if (place.types.includes(type)) {
+          return false;
+        }
+      }
+    }
+    
+    // For restaurants only, filter by minimum rating
+    if (currentPlaceType === 'restaurant' && place.rating && place.rating < MIN_RATING) {
+      return false;
+    }
+    
+    return true;
+  });
   
   // If no results after filtering, show a message
   if (filteredPlaces.length === 0) {
-    let message = `No high-rated ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.`;
-    if (currentKeyword === 'dessert') {
-      message = `No dessert places found in this area. Try another location or category.`;
-    } else if (currentKeyword) {
-      message = `No ${currentKeyword} places found in this area. Try another location or category.`;
-    }
     container.innerHTML = `
       <div class="col-12">
-        <div class="alert alert-info">${message}</div>
+        <div class="alert alert-info">No high-rated ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.</div>
       </div>
     `;
     return;
   }
   
-  // Update sort indicator with keyword indicator if active
-  const sortIndicator = document.getElementById('sort-indicator');
-  if (sortIndicator) {
-    let indicatorText = `Showing ${filteredPlaces.length} places sorted by Google rating`;
-    if (currentKeyword === 'dessert') {
-      indicatorText = `<span class="badge bg-warning text-dark me-2"><i class="fas fa-ice-cream"></i> Dessert</span> Showing ${filteredPlaces.length} dessert places sorted by rating`;
-    } else if (currentKeyword === 'cheap') {
-      indicatorText = `<span class="badge bg-success me-2"><i class="fas fa-dollar-sign"></i> Budget Options</span> Showing ${filteredPlaces.length} affordable places ($ or $$) sorted by price level`;
-    } else if (currentKeyword) {
-      indicatorText = `<span class="badge bg-info text-white me-2"><i class="fas fa-utensils"></i> ${currentKeyword}</span> Showing ${filteredPlaces.length} ${currentKeyword} places sorted by rating`;
-    }
-    sortIndicator.innerHTML = indicatorText;
-  }
-  
-  // Choose sort method based on keyword
-  let sortedPlaces;
-  
-  if (currentKeyword === 'cheap') {
-    // For cheap eats, sort by price level first, then by rating
-    sortedPlaces = [...filteredPlaces].sort((a, b) => {
-      // First sort by price level ($ before $$)
-      if (a.price_level !== b.price_level) {
-        // Handle undefined price levels by giving them a high value
-        const priceA = a.price_level === undefined ? 999 : a.price_level;
-        const priceB = b.price_level === undefined ? 999 : b.price_level;
-        return priceA - priceB;
-      }
-      
-      // Then by rating (high to low)
+  // Sort places by rating but only consider places with at least currentMinReviews
+  const sortedPlaces = [...filteredPlaces].sort((a, b) => {
+    const aSignificant = a.user_ratings_total >= currentMinReviews;
+    const bSignificant = b.user_ratings_total >= currentMinReviews;
+    
+    // If both places have significant number of reviews, sort by rating
+    if (aSignificant && bSignificant) {
       return b.rating - a.rating;
-    });
-  } else {
-    // For other searches, use the standard rating-based sorting
-    sortedPlaces = [...filteredPlaces].sort((a, b) => {
-      const aSignificant = a.user_ratings_total >= currentMinReviews;
-      const bSignificant = b.user_ratings_total >= currentMinReviews;
-      
-      // If both places have significant number of reviews, sort by rating
-      if (aSignificant && bSignificant) {
-        return b.rating - a.rating;
-      }
-      // If only one has significant reviews, prioritize that one
-      else if (aSignificant) {
-        return -1;
-      }
-      else if (bSignificant) {
-        return 1;
-      }
-      // If neither has significant reviews, sort by number of reviews
-      else if (a.user_ratings_total && b.user_ratings_total) {
-        return b.user_ratings_total - a.user_ratings_total;
-      }
-      // Fallback to rating if available
-      else if (a.rating && b.rating) {
-        return b.rating - a.rating;
-      }
-      // Keep original order if no sorting criteria apply
-      return 0;
-    });
-  }
+    }
+    // If only one has significant reviews, prioritize that one
+    else if (aSignificant) {
+      return -1;
+    }
+    else if (bSignificant) {
+      return 1;
+    }
+    // If neither has significant reviews, sort by number of reviews
+    else if (a.user_ratings_total && b.user_ratings_total) {
+      return b.user_ratings_total - a.user_ratings_total;
+    }
+    // Fallback to rating if available
+    else if (a.rating && b.rating) {
+      return b.rating - a.rating;
+    }
+    // Keep original order if no sorting criteria apply
+    return 0;
+  });
   
   // Reset markers before adding new ones
   clearMarkers();
@@ -1766,11 +1175,10 @@ function createPlaceCard(place, index) {
       const minReviews = {
         restaurant: 20,
         lodging: 8,
-        night_club: 10,
-        supermarket: 5,
         default: 10
       };
-      const currentMin = minReviews[currentPlaceType] || minReviews.default;
+      const currentMin = currentPlaceType === 'lodging' ? minReviews.lodging : 
+                        (currentPlaceType === 'restaurant' ? minReviews.restaurant : minReviews.default);
       
       if (place.user_ratings_total > 500) {
         ratingHtml += ` <span class="badge bg-danger ms-2"><i class="fas fa-fire"></i> ${place.user_ratings_total} reviews</span>`;
@@ -1799,11 +1207,11 @@ function createPlaceCard(place, index) {
     
     ratingHtml += '</div>'; // End star-rating div
     
-    // Note: TripAdvisor data will be fetched once in the main function
-    // We don't call fetchTripAdvisorData here to avoid duplicate requests
+    // Trigger TripAdvisor data fetch
+    fetchTripAdvisorData(place);
   }
   
-  // Format price level - more prominent display
+  // Format price level with better visual indicators
   let priceHtml = '';
   if (place.price_level) {
     // Different colors based on price level
@@ -1841,27 +1249,34 @@ function createPlaceCard(place, index) {
     priceHtml += '</span>';
     
     // Add textual description for clarity
-    if (currentKeyword === 'cheap') {
+    if (currentFilter === 'budget' || currentKeyword === 'cheap') {
       priceHtml += `<small class="ms-2 text-muted">${priceTooltip}</small>`;
     }
     
     priceHtml += '</div>';
   } else {
-    priceHtml = '<div class="price-level mb-2"><span class="badge bg-secondary p-2" title="Price not specified">Price unknown</span></div>';
+    // For places without price level
+    const budgetKeywords = [
+      'snack', 'falafel', 'kebab', 'surinam', 'surinaams', 'takeaway', 
+      'afhaal', 'takeout', 'fast food', 'street food', 'warung',
+      'cafetaria', 'friet', 'frites', 'toko', 'wok'
+    ];
+    
+    const nameLower = (place.name || '').toLowerCase();
+    const isLikelyBudget = budgetKeywords.some(kw => nameLower.includes(kw));
+    
+    if (isLikelyBudget && (currentFilter === 'budget' || currentKeyword === 'cheap')) {
+      priceHtml = '<div class="price-level mb-2"><span class="badge bg-success p-2" title="Likely budget-friendly">Likely Budget</span></div>';
+    } else {
+      priceHtml = '<div class="price-level mb-2"><span class="badge bg-secondary p-2" title="Price not specified">Price unknown</span></div>';
+    }
   }
   
   // Create card content
   let photoHtml = '<div class="bg-light text-center py-5">No Image Available</div>';
   if (place.photos && place.photos.length > 0) {
-    // Check if we have a photo_reference or if we have a reference property
-    const photoRef = place.photos[0].photo_reference;
-    if (photoRef) {
-      const photoUrl = `/api/photo?photoreference=${photoRef}&maxwidth=400`;
-      photoHtml = `<img src="${photoUrl}" class="card-img-top place-image" alt="${place.name}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x300?text=Image+Not+Available'">`;
-    } else if (place.photos[0].url) {
-      // Some API responses include a direct URL instead
-      photoHtml = `<img src="${place.photos[0].url}" class="card-img-top place-image" alt="${place.name}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x300?text=Image+Not+Available'">`;
-    }
+    const photoUrl = `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=400`;
+    photoHtml = `<img src="${photoUrl}" class="card-img-top place-image" alt="${place.name}">`;
   }
   
   // Create a numbered badge for the place
@@ -1869,12 +1284,10 @@ function createPlaceCard(place, index) {
     <div class="place-number-badge">${placeNumber}</div>
   `;
   
-  // Add special category badge if applicable
+  // Add special category badge for budget or desserts
   let categoryBadge = '';
-  if (currentKeyword === 'dessert' && isDessertPlace(place)) {
-    categoryBadge = `<span class="badge bg-warning text-dark position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-ice-cream"></i> Dessert</span>`;
-  } else if (currentKeyword === 'cheap' || currentFilter === 'budget') {
-    // Special badge for budget options based on price level
+  
+  if (currentFilter === 'budget' || currentKeyword === 'cheap') {
     if (place.price_level === 1) {
       categoryBadge = `<span class="badge bg-success position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-dollar-sign"></i> Budget</span>`;
     } else if (place.price_level === 2) {
@@ -1883,21 +1296,21 @@ function createPlaceCard(place, index) {
       // Check if it might be budget-friendly based on name
       const budgetKeywords = [
         'snack', 'falafel', 'kebab', 'surinam', 'surinaams', 'takeaway', 
-        'afhaal', 'takeout', 'fast food', 'street food', 'foodtruck', 
-        'warung', 'cafetaria', 'friet', 'frites', 'toko', 'wok'
+        'afhaal', 'takeout', 'fast food', 'street food', 'warung',
+        'cafetaria', 'friet', 'frites', 'toko', 'wok'
       ];
       
-      const nameLower = place.name.toLowerCase();
-      const isLikelyBudget = budgetKeywords.some(keyword => nameLower.includes(keyword));
+      const nameLower = (place.name || '').toLowerCase();
+      const isLikelyBudget = budgetKeywords.some(kw => nameLower.includes(kw));
       
       if (isLikelyBudget) {
         categoryBadge = `<span class="badge bg-success position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-utensils"></i> Likely Budget</span>`;
       }
     }
-  } else if (currentKeyword && currentKeyword !== 'cheap') {
-    categoryBadge = `<span class="badge bg-info text-white position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-utensils"></i> ${currentKeyword}</span>`;
+  } else if (currentKeyword === 'dessert') {
+    categoryBadge = `<span class="badge bg-warning text-dark position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-ice-cream"></i> Dessert</span>`;
   }
-
+  
   col.innerHTML = `
     <div class="card place-card h-100">
       <div class="position-relative">
@@ -2191,11 +1604,10 @@ async function fetchTripAdvisorData(place) {
 function addMarker(place, index) {
   if (!place.geometry || !place.geometry.location) return;
   
-  // Ensure proper LatLng format for marker position
-  const position = new google.maps.LatLng(
-    place.geometry.location.lat,
-    place.geometry.location.lng
-  );
+  const position = {
+    lat: place.geometry.location.lat,
+    lng: place.geometry.location.lng
+  };
   
   // Create a custom marker with a number
   const markerNumber = index + 1;
@@ -2286,99 +1698,46 @@ async function showPlaceDetails(placeId) {
     if (data.status === 'OK' && data.result) {
       const place = data.result;
       
-      // Prepare custom photo gallery HTML (simpler than Bootstrap carousel)
+      // Prepare photo carousel HTML
       let photoHtml = '';
       if (place.photos && place.photos.length > 0) {
-        // Store photos data for later use
-        window.currentPlacePhotos = place.photos;
-        window.currentPhotoIndex = 0;
-        
-        // Create a simpler custom photo gallery
+        // Use Bootstrap carousel for better arrow navigation
         photoHtml = `
-          <div id="custom-photo-gallery" class="position-relative">
-            <div id="photo-display" class="main-photo-container">
-              <img id="main-photo" src="${place.photos[0].url || `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=800`}" 
-                   class="w-100 rounded" alt="Photo of ${place.name}">
+          <div id="place-photos" class="carousel slide" data-bs-ride="false">
+            <div class="carousel-inner">
+              ${place.photos.map((photo, index) => `
+                <div class="carousel-item ${index === 0 ? 'active' : ''}">
+                  <img src="/api/photo?photoreference=${photo.photo_reference}&maxwidth=800" 
+                    class="d-block w-100" alt="Photo ${index + 1}">
+                </div>
+              `).join('')}
             </div>
-            
             ${place.photos.length > 1 ? `
-              <div class="d-flex justify-content-between position-absolute top-50 start-0 end-0 px-2" style="transform: translateY(-50%);">
-                <button type="button" id="prev-photo" class="btn btn-dark btn-sm rounded-circle opacity-75" onclick="prevPhoto()">
-                  <i class="fas fa-chevron-left"></i>
-                </button>
-                <button type="button" id="next-photo" class="btn btn-dark btn-sm rounded-circle opacity-75" onclick="nextPhoto()">
-                  <i class="fas fa-chevron-right"></i>
-                </button>
-              </div>
-              <div id="photo-counter" class="position-absolute bottom-0 end-0 bg-dark bg-opacity-50 text-white px-2 py-1 rounded-top-left m-2">
-                1 / ${place.photos.length}
-              </div>
+              <button class="carousel-control-prev" type="button" data-bs-target="#place-photos" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+              </button>
+              <button class="carousel-control-next" type="button" data-bs-target="#place-photos" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+              </button>
+              <div class="carousel-indicator-custom" id="photo-counter">1 / ${place.photos.length}</div>
             ` : ''}
           </div>
-          
           ${place.photos.length > 1 ? `
-            <div class="thumbnail-container mt-2 d-flex flex-wrap justify-content-start">
+            <div class="thumbnail-container mt-2 d-flex">
               ${place.photos.map((photo, index) => `
-                <img src="${photo.url || `/api/photo?photoreference=${photo.photo_reference}&maxwidth=120`}" 
-                    class="thumbnail mx-1 mb-1 ${index === 0 ? 'active' : ''}" 
-                    onclick="showPhoto(${index})"
-                    alt="Thumbnail ${index + 1}" style="width: 60px; height: 45px; object-fit: cover; cursor: pointer; 
-                    border: 2px solid ${index === 0 ? '#007bff' : 'transparent'}; 
-                    opacity: ${index === 0 ? '1' : '0.7'};
-                    transition: all 0.2s ease;">
+                <img src="/api/photo?photoreference=${photo.photo_reference}&maxwidth=120" 
+                    class="thumbnail mx-1 ${index === 0 ? 'active' : ''}" 
+                    data-bs-target="#place-photos" data-bs-slide-to="${index}"
+                    alt="Thumbnail ${index + 1}" style="width: 60px; height: 45px; object-fit: cover; cursor: pointer;">
               `).join('')}
             </div>
           ` : ''}
         `;
         
-        // Add window functions to handle photo navigation
-        window.prevPhoto = function() {
-          const photos = window.currentPlacePhotos || [];
-          if (!photos || photos.length <= 1) return;
-          
-          let index = window.currentPhotoIndex - 1;
-          if (index < 0) index = photos.length - 1;
-          showPhoto(index);
-        };
-        
-        window.nextPhoto = function() {
-          const photos = window.currentPlacePhotos || [];
-          if (!photos || photos.length <= 1) return;
-          
-          let index = window.currentPhotoIndex + 1;
-          if (index >= photos.length) index = 0;
-          showPhoto(index);
-        };
-        
-        window.showPhoto = function(index) {
-          const photos = window.currentPlacePhotos || [];
-          if (!photos || index < 0 || index >= photos.length) return;
-          
-          const photo = photos[index];
-          const mainPhotoEl = document.getElementById('main-photo');
-          const counterEl = document.getElementById('photo-counter');
-          const thumbnails = document.querySelectorAll('.thumbnail');
-          
-          if (mainPhotoEl) {
-            mainPhotoEl.src = photo.url || `/api/photo?photoreference=${photo.photo_reference}&maxwidth=800`;
-          }
-          
-          if (counterEl) {
-            counterEl.textContent = `${index + 1} / ${photos.length}`;
-          }
-          
-          thumbnails.forEach((thumb, idx) => {
-            if (idx === index) {
-              thumb.style.border = '2px solid #007bff';
-              thumb.style.opacity = '1';
-            } else {
-              thumb.style.border = '2px solid transparent';
-              thumb.style.opacity = '0.7';
-            }
-          });
-          
-          window.currentPhotoIndex = index;
-        };
+        // Store photos data for later use
+        window.currentPlacePhotos = place.photos;
       }
       
       // TripAdvisor data is already fetched at the beginning of this function
@@ -2651,7 +2010,7 @@ async function showPlaceDetails(placeId) {
             <div class="reviews-slide ${index === 0 ? 'active' : ''}">
               <div class="review">
                 <div class="review-author">
-                  <img src="${review.profile_photo_url}" alt="${review.author_name}">
+                  <img src="${review.profile_photo_url || 'https://via.placeholder.com/40'}" alt="${review.author_name}">
                   <div>
                     <strong>${review.author_name}</strong>
                     <div class="text-muted small">${formattedDate}</div>
@@ -2766,8 +2125,10 @@ async function showPlaceDetails(placeId) {
         ${nearbyRecommendationsHtml}
       `;
       
-      // Our new photo gallery doesn't need initialization - it's all handled with 
-      // the functions we created directly within the photo HTML section
+      // Initialize photo carousel if there are multiple photos
+      if (place.photos && place.photos.length > 1) {
+        initPhotoCarousel();
+      }
       
       // Initialize reviews carousel if there are multiple reviews
       if (place.reviews && place.reviews.length > 1) {
@@ -2823,75 +2184,34 @@ async function loadNearbyRecommendations(place) {
       return;
     }
     
-    // First filter out the current place
+    // Remove the current place from recommendations
     let nearbyRestaurants = data.results.filter(nearbyPlace => 
       nearbyPlace.place_id !== place.place_id
     );
     
-    // Define minimum ratings and review thresholds based on place type
-    const MIN_RATING = currentPlaceType === 'restaurant' ? 4.0 : 
-                      (currentPlaceType === 'night_club' ? 3.7 : 
-                      (currentPlaceType === 'supermarket' ? 3.5 : 3.8));
-    
-    const MIN_REVIEWS = {
-      restaurant: 20,
-      lodging: 8,
-      night_club: 10,
-      supermarket: 5,
-      default: 10
-    };
-    
-    const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
-    
     // Define unwanted business types
-    const UNWANTED_TYPES = [
+    const unwantedTypes = [
       "gas_station", 
-      "car_repair", 
-      "car_dealer", 
       "convenience_store", 
-      "grocery_or_supermarket", 
-      "liquor_store", 
-      "market", 
-      "store"
+      "car_repair", 
+      "car_wash",
+      "car_dealer"
     ];
     
-    // Define the Haversine formula for accurate distance calculation
-    const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
-      const R = 6371000; // Earth radius in meters
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    };
-    
-    // Apply enhanced filtering logic
+    // Filter out unwanted businesses
     nearbyRestaurants = nearbyRestaurants.filter(restaurant => {
-      // Filter by geometry existence
-      if (!restaurant.geometry || !restaurant.geometry.location) return false;
-      
-      // Get location coordinates, handling both function and property access
-      const pLat = typeof restaurant.geometry.location.lat === 'function' ? 
-                  restaurant.geometry.location.lat() : restaurant.geometry.location.lat;
-      const pLng = typeof restaurant.geometry.location.lng === 'function' ? 
-                  restaurant.geometry.location.lng() : restaurant.geometry.location.lng;
-      
-      // Calculate distance using Haversine formula
-      const dist = getDistanceInMeters(
-        location.lat, 
-        location.lng, 
-        pLat, 
-        pLng
-      );
-      
-      // Exclude places that are too far away
-      if (dist > radius) return false;
-      
-      // Filter unwanted business types
-      if (restaurant.types && restaurant.types.some(type => UNWANTED_TYPES.includes(type))) {
+      // Keep only places with ratings or significant number of reviews
+      if (!restaurant.rating && !restaurant.user_ratings_total) {
         return false;
+      }
+      
+      // Check if this is an unwanted business type
+      if (restaurant.types) {
+        for (const type of unwantedTypes) {
+          if (restaurant.types.includes(type)) {
+            return false;
+          }
+        }
       }
       
       // Filter by minimum rating
@@ -2905,14 +2225,31 @@ async function loadNearbyRecommendations(place) {
     if (nearbyRestaurants.length === 0) {
       container.innerHTML = `
         <div class="alert alert-info">
-          <i class="fas fa-info-circle"></i> No high-quality restaurants found nearby within ${radius}m.
-          <p class="small mt-1">Try adjusting your search or exploring a different area.</p>
+          No high-quality restaurants found nearby within ${radius}m.
         </div>
       `;
       return;
     }
     
-    // Apply the improved sorting logic
+    // Minimum required reviews for statistical significance
+    // Different minimum reviews based on place type
+    const MIN_REVIEWS = {
+      restaurant: 20,
+      lodging: 8,
+      default: 10
+    };
+    
+    // Get the appropriate minimum review count based on place type
+    const getMinReviews = (placeType) => {
+      if (placeType === 'lodging') return MIN_REVIEWS.lodging;
+      if (placeType === 'restaurant') return MIN_REVIEWS.restaurant;
+      return MIN_REVIEWS.default;
+    };
+    
+    // Determine the minimum reviews required for the current place type
+    const currentMinReviews = getMinReviews(currentPlaceType);
+    
+    // Sort places by rating but only consider places with sufficient reviews
     nearbyRestaurants.sort((a, b) => {
       const aSignificant = a.user_ratings_total >= currentMinReviews;
       const bSignificant = b.user_ratings_total >= currentMinReviews;
@@ -2958,7 +2295,7 @@ async function loadNearbyRecommendations(place) {
         // Prepare photo HTML
         let photoHtml = '<div class="bg-light text-center py-2">No Image</div>';
         if (recommendation.photos && recommendation.photos.length > 0) {
-          const photoUrl = recommendation.photos[0].url || `/api/photo?photoreference=${recommendation.photos[0].photo_reference}&maxwidth=200`;
+          const photoUrl = `/api/photo?photoreference=${recommendation.photos[0].photo_reference}&maxwidth=200`;
           photoHtml = `<img src="${photoUrl}" class="card-img-top recommendation-image" alt="${recommendation.name}">`;
         }
         
@@ -3167,25 +2504,10 @@ async function searchForSpecificPlace(placeName) {
       // Format photos
       let photoHtml = '';
       if (placeDetails.photos && placeDetails.photos.length > 0) {
-        // Try to use the Google Photos API or direct URL if available
-        let photoUrl;
-        try {
-          photoUrl = placeDetails.photos[0].getUrl({ maxWidth: 800, maxHeight: 400 });
-        } catch(e) {
-          // If getUrl fails, check if we have a photo_reference
-          if (placeDetails.photos[0].photo_reference) {
-            photoUrl = `/api/photo?photoreference=${placeDetails.photos[0].photo_reference}&maxwidth=800`;
-          } else {
-            // Last resort fallback
-            photoUrl = '';
-          }
-        }
-        
         photoHtml = `
           <div class="position-relative">
-            <img src="${photoUrl}" 
-                 class="card-img-top" alt="${placeDetails.name}" 
-                 style="height: 200px; object-fit: cover;">
+            <img src="${placeDetails.photos[0].getUrl({ maxWidth: 800, maxHeight: 400 })}" 
+                 class="card-img-top" alt="${placeDetails.name}" style="height: 200px; object-fit: cover;">
             <div class="position-absolute bottom-0 end-0 p-2">
               <button class="btn btn-sm btn-light" onclick="showPlaceDetails('${placeDetails.place_id}')">
                 <i class="fas fa-images"></i> More Photos
@@ -3306,12 +2628,6 @@ function debounce(func, delay) {
 
 // Update the hover marker on the map
 function updateHoverMarker(location) {
-  // Ensure the location is valid and in the correct format
-  if (!location || typeof location.lat !== 'number' || typeof location.lng !== 'number') {
-    console.warn("Invalid location format for hover marker:", location);
-    return;
-  }
-  
   // Only update if the location has changed significantly
   if (lastHoverLocation && 
       Math.abs(location.lat - lastHoverLocation.lat) < 0.0001 && 
@@ -3326,12 +2642,9 @@ function updateHoverMarker(location) {
     hoverMarker.setMap(null);
   }
   
-  // Create a proper LatLng object for the marker
-  const position = new google.maps.LatLng(location.lat, location.lng);
-  
   // Create a new marker at the hover location
   hoverMarker = new google.maps.Marker({
-    position: position,
+    position: location,
     map: map,
     icon: {
       path: google.maps.SymbolPath.CIRCLE,
@@ -3348,7 +2661,7 @@ function updateHoverMarker(location) {
 
 // Search for nearby places when hovering over an area
 function searchNearbyOnHover(location) {
-  // Don't search if a place modal is open
+  // Don't search if we're already showing a place info window or modal
   if (document.getElementById('place-modal').classList.contains('show')) {
     return;
   }
@@ -3360,170 +2673,96 @@ function searchNearbyOnHover(location) {
   
   // Set a timeout to avoid too many API calls
   hoverTimeout = setTimeout(() => {
-    // Initialize or reuse info window
+    // Create a new info window if needed
     if (!hoverInfoWindow) {
       hoverInfoWindow = new google.maps.InfoWindow({
-        disableAutoPan: true,
-        maxWidth: 320,
+        disableAutoPan: true, // Prevent the map from auto-panning when opening the hover info window
+        maxWidth: 320, // Make the window larger 
         content: '<div class="p-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Finding nearby places...</div>'
       });
       
-      // Add event listeners
+      // Add a click listener to the map to close the hover info window
       google.maps.event.addListener(map, 'click', function() {
-        hoverInfoWindow.close();
+        if (hoverInfoWindow) {
+          hoverInfoWindow.close();
+        }
       });
       
+      // Add a close listener
       google.maps.event.addListener(hoverInfoWindow, 'closeclick', function() {
-        if (hoverTimeout) clearTimeout(hoverTimeout);
+        if (hoverTimeout) {
+          clearTimeout(hoverTimeout);
+        }
       });
     } else {
+      // Close any existing hover info window before showing a new one
       hoverInfoWindow.close();
     }
     
-    // Show loading indicator
+    // Show loading indicator in the info window
     hoverInfoWindow.setContent('<div class="p-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Finding nearby places...</div>');
     hoverInfoWindow.setPosition(location);
     hoverInfoWindow.open(map);
     
-    // Define our filtering constants based on place type
-    let MIN_RATING;
-    if (currentPlaceType === 'restaurant') {
-      MIN_RATING = 4.0;
-    } else if (currentPlaceType === 'night_club') {
-      MIN_RATING = 3.7;
-    } else if (currentPlaceType === 'supermarket') {
-      MIN_RATING = 3.5;
-    } else {
-      MIN_RATING = 3.8;
-    }
-    
-    // Minimum required reviews for statistical significance
-    const MIN_REVIEWS = {
-      restaurant: 20,
-      lodging: 8,
-      night_club: 10,
-      supermarket: 5,
-      default: 10
-    };
-    const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
-    
-    const UNWANTED_TYPES = [
-      "gas_station", 
-      "car_repair", 
-      "car_dealer", 
-      "convenience_store", 
-      "grocery_or_supermarket", 
-      "liquor_store", 
-      "market", 
-      "store"
-    ];
-    
-    // Search for nearby places
+    // Search for nearby places using Places API
     const placesService = new google.maps.places.PlacesService(map);
-    
-    // Build search parameters with dessert mode support
-    // Ensure proper formatting of location
-    const locationObj = new google.maps.LatLng(location.lat, location.lng);
-    
-    const searchParams = {
-      location: locationObj,
-      radius: 300,
+    placesService.nearbySearch({
+      location: location,
+      radius: 200, // Increased radius for better search results
       type: currentPlaceType,
-      rankBy: google.maps.places.RankBy.PROMINENCE
-    };
-    
-    // Add current keyword if one is set
-    if (currentKeyword) {
-      searchParams.keyword = currentKeyword;
-    }
-    
-    placesService.nearbySearch(searchParams, function(results, status) {
-      // Handle error or no results
-      if (status !== google.maps.places.PlacesServiceStatus.OK || !results || results.length === 0) {
-        hoverInfoWindow.setContent(`<div class="p-2">No ${formatPlaceType(currentPlaceType)}s found here</div>`);
-        return;
-      }
-      
-      // Use our shared utility function for consistent filtering
-      const filteredPlaces = filterAndSortPlaces(results, location, {
-        radius: searchRadius,
-        minRating: MIN_RATING,
-        minReviews: currentMinReviews,
-        unwantedTypes: UNWANTED_TYPES
-      });
-      
-      // Apply keyword-specific filtering when a keyword is set
-      let placesToShow = filteredPlaces;
-      if (currentKeyword === 'dessert') {
-        // Filter places to only include dessert places when dessert keyword is active
-        placesToShow = filteredPlaces.filter(place => isDessertPlace(place));
-        console.log(`Found ${placesToShow.length} dessert places out of ${filteredPlaces.length} filtered places`);
-      }
-      
-      // Take top 5 places for display
-      const topPlaces = placesToShow.slice(0, 5);
-      
-      // Handle no results after filtering
-      if (topPlaces.length === 0) {
-        let noResultsMessage = `No high-rated ${formatPlaceType(currentPlaceType)}s nearby`;
-        if (currentKeyword === 'dessert') {
-          noResultsMessage = `No dessert places nearby`;
-        } else if (currentKeyword) {
-          noResultsMessage = `No ${currentKeyword} places nearby`;
-        }
-        hoverInfoWindow.setContent(`<div class="p-2">${noResultsMessage}</div>`);
-        return;
-      }
-      
-      // Build content HTML
-      let contentHtml = `
-        <div class="p-2" style="max-width: 300px;">
-          <h6 class="mb-2">
-            Nearby ${currentKeyword === 'dessert' ? 'Dessert ' : currentKeyword ? `${currentKeyword.charAt(0).toUpperCase() + currentKeyword.slice(1)} ` : ''}${formatPlaceType(currentPlaceType)}s
-            ${currentKeyword === 'dessert' ? '<i class="fas fa-ice-cream text-warning ms-1"></i>' : ''}
-          </h6>
-          <ul class="list-group list-group-flush ps-0">
-      `;
-      
-      // Add each place to the content
-      topPlaces.forEach(function(place) {
-        const ratingHtml = place.rating ? 
-          `<span class="text-warning">${'★'.repeat(Math.round(place.rating))}</span>` : 
-          '<span class="text-muted">No rating</span>';
+      rankBy: google.maps.places.RankBy.PROMINENCE // Prioritize more prominent places
+    }, (results, status) => {
+      if (status === google.maps.places.PlacesServiceStatus.OK && results.length > 0) {
+        // Sort by rating (highest first)
+        results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         
-        // Get place photo if available
-        let photoHtml = '';
-        if (place.photos && place.photos.length > 0 && place.photos[0].photo_reference) {
-          const photoUrl = `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=100`;
-          photoHtml = `<img src="${photoUrl}" class="float-start me-2 rounded" style="width: 40px; height: 40px; object-fit: cover;" alt="${place.name}">`;
-        }
+        // Take only the top 5 places
+        const topPlaces = results.slice(0, 5);
         
-        // Add clickable list item
-        contentHtml += `
-          <li class="list-group-item p-2 mb-1 border-0" style="cursor: pointer" 
-              onclick="showPlaceDetails('${place.place_id}'); if(hoverInfoWindow) hoverInfoWindow.close();">
-            <div class="d-flex align-items-center">
-              ${photoHtml}
-              <div>
-                <strong>${place.name}</strong><br>
-                ${ratingHtml} ${place.user_ratings_total ? `<small>(${place.user_ratings_total})</small>` : ''}
+        // Create the content for the info window with clickable places
+        let content = '<div class="p-2" style="max-width: 300px;">';
+        content += `<h6 class="mb-2">Nearby ${formatPlaceType(currentPlaceType)}s</h6>`;
+        content += '<ul class="list-group list-group-flush ps-0">';
+        
+        topPlaces.forEach(place => {
+          const rating = place.rating ? 
+            `<span class="text-warning">${'★'.repeat(Math.round(place.rating))}</span>` : 
+            '<span class="text-muted">No rating</span>';
+          
+          // Create a place icon if available
+          let placeIcon = '';
+          if (place.photos && place.photos.length > 0) {
+            const photoUrl = `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=100`;
+            placeIcon = `<img src="${photoUrl}" class="float-start me-2 rounded" style="width: 40px; height: 40px; object-fit: cover;" alt="${place.name}">`;
+          }
+          
+          // Make each list item a clickable button
+          content += `
+            <li class="list-group-item p-2 mb-1 border-0" style="cursor: pointer" 
+                onclick="showPlaceDetails('${place.place_id}'); if(hoverInfoWindow) hoverInfoWindow.close();">
+              <div class="d-flex align-items-center">
+                ${placeIcon}
+                <div>
+                  <strong>${place.name}</strong><br>
+                  ${rating} ${place.user_ratings_total ? `<small>(${place.user_ratings_total})</small>` : ''}
+                </div>
               </div>
-            </div>
-          </li>
-        `;
-      });
-      
-      // Finish content HTML
-      contentHtml += `
-          </ul>
-          <div class="text-center"><small class="text-muted">Click to view details</small></div>
-        </div>
-      `;
-      
-      // Update the info window with the content
-      hoverInfoWindow.setContent(contentHtml);
+            </li>
+          `;
+        });
+        
+        content += '</ul>';
+        content += '<div class="text-center"><small class="text-muted">Click on a place to view details</small></div>';
+        content += '</div>';
+        
+        // Update the info window
+        hoverInfoWindow.setContent(content);
+      } else {
+        // No places found or error
+        hoverInfoWindow.setContent(`<div class="p-2">No ${formatPlaceType(currentPlaceType)}s found in this area</div>`);
+      }
     });
-  }, 500);
+  }, 500); // Wait 500ms before searching
 }
 
 // Show loading indicator
@@ -3536,122 +2775,50 @@ function hideLoading() {
   document.getElementById('loading-indicator').classList.add('d-none');
 }
 
-/**
- * Fetch weather data for a specific location
- * @param {Object} location - Location coordinates {lat, lng}
- */
-async function fetchWeatherData(location) {
-  try {
-    const weatherUrl = `/api/weather?lat=${location.lat}&lng=${location.lng}`;
-    console.log("Fetching weather data from:", weatherUrl);
+// Initialize photo carousel
+function initPhotoCarousel() {
+  // We're now using Bootstrap's built-in carousel functionality
+  const carousel = document.getElementById('place-photos');
+  const counter = document.getElementById('photo-counter');
+  const thumbnails = document.querySelectorAll('.thumbnail');
+  const photos = window.currentPlacePhotos || [];
+  
+  if (!photos || photos.length <= 1 || !carousel) return;
+  
+  // Initialize Bootstrap carousel
+  const carouselInstance = new bootstrap.Carousel(carousel, {
+    interval: false, // Don't auto-rotate
+    wrap: true       // Allow wrapping
+  });
+  
+  // Update counter when carousel slides
+  carousel.addEventListener('slid.bs.carousel', (event) => {
+    const activeIndex = [...carousel.querySelectorAll('.carousel-item')].findIndex(
+      item => item.classList.contains('active')
+    );
     
-    const response = await fetch(weatherUrl);
-    
-    if (!response.ok) {
-      throw new Error(`Weather API returned ${response.status}: ${response.statusText}`);
+    // Update counter
+    if (counter) {
+      counter.textContent = `${activeIndex + 1} / ${photos.length}`;
     }
     
-    const data = await response.json();
-    
-    if (data.status === 'OK' && data.result) {
-      weatherData = data.result;
-      displayWeatherData(weatherData);
-    } else {
-      console.error("Weather API error:", data.message || "Unknown error");
-      // Hide weather container if there's an error
-      document.getElementById('weather-container').style.display = 'none';
-    }
-  } catch (error) {
-    console.error("Error fetching weather data:", error);
-    document.getElementById('weather-container').style.display = 'none';
-  }
+    // Update thumbnails
+    thumbnails.forEach((thumb, idx) => {
+      if (idx === activeIndex) {
+        thumb.classList.add('active');
+      } else {
+        thumb.classList.remove('active');
+      }
+    });
+  });
+  
+  // Thumbnail clicks
+  thumbnails.forEach((thumb, idx) => {
+    thumb.addEventListener('click', () => {
+      carouselInstance.to(idx);
+    });
+  });
 }
-
-/**
- * Display weather data in the UI
- * @param {Object} data - Weather data
- */
-function displayWeatherData(data) {
-  const container = document.getElementById('weather-container');
-  
-  if (!data || !data.current) {
-    container.style.display = 'none';
-    return;
-  }
-  
-  // Get current weather data
-  const current = data.current;
-  const forecast = data.forecast || [];
-  
-  // Update location name
-  const locationElement = document.getElementById('weather-location');
-  let locationName = 'Current Location';
-  if (current.location && current.location.name) {
-    locationName = current.location.name;
-    if (current.location.country) {
-      locationName += `, ${current.location.country}`;
-    }
-  }
-  locationElement.textContent = locationName;
-  
-  // Update weather description
-  const descriptionElement = document.getElementById('weather-description');
-  descriptionElement.textContent = current.weather?.description || '';
-  
-  // Update temperature
-  const tempElement = document.getElementById('weather-temp');
-  tempElement.textContent = `${current.temperature?.current || 0}°C`;
-  
-  // Update feels like
-  const feelsLikeElement = document.getElementById('weather-feels-like');
-  feelsLikeElement.textContent = `Feels like ${current.temperature?.feels_like || 0}°C`;
-  
-  // Update weather icon
-  const iconElement = document.getElementById('weather-icon');
-  if (current.weather && current.weather.icon) {
-    iconElement.innerHTML = `<img src="${current.weather.icon_url || `https://openweathermap.org/img/wn/${current.weather.icon}@2x.png`}" alt="${current.weather.description}">`;
-  }
-  
-  // Update weather details
-  document.getElementById('weather-wind').textContent = `${current.wind?.speed || 0} m/s`;
-  document.getElementById('weather-humidity').textContent = `${current.humidity || 0}%`;
-  
-  // Update sun times (sunrise and sunset)
-  const sunriseTime = new Date(current.sunrise).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  const sunsetTime = new Date(current.sunset).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  document.getElementById('weather-sun-times').textContent = `${sunriseTime} / ${sunsetTime}`;
-  
-  // Update forecast
-  const forecastContainer = document.getElementById('weather-forecast');
-  forecastContainer.innerHTML = '';
-  
-  // Only display up to 6 forecast items
-  const displayCount = Math.min(forecast.length, 6);
-  
-  for (let i = 0; i < displayCount; i++) {
-    const item = forecast[i];
-    const time = new Date(item.datetime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    
-    const forecastItem = document.createElement('div');
-    forecastItem.className = 'forecast-item';
-    forecastItem.innerHTML = `
-      <div class="forecast-time">${time}</div>
-      <img src="${item.weather?.icon_url || `https://openweathermap.org/img/wn/${item.weather?.icon}@2x.png`}" alt="${item.weather?.description}">
-      <div class="forecast-temp">${item.temperature?.value || 0}°C</div>
-    `;
-    
-    forecastContainer.appendChild(forecastItem);
-  }
-  
-  // Show the weather container with important flag
-  container.style.display = 'block';
-  container.style.visibility = 'visible';
-  container.style.opacity = '1';
-  console.log("Weather container should now be visible:", container);
-}
-
-// We no longer need the Bootstrap initPhotoCarousel function
-// since we've implemented a simpler, custom photo gallery with direct event handlers.
 
 // Initialize reviews carousel
 function initReviewsCarousel() {
