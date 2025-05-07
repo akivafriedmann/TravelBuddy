@@ -1,0 +1,173 @@
+To broaden your dessert results beyond just ice-cream and waffles, switch from a single nearbySearch + strict post-filter to a multi-query textSearch approach, merging several “dessert”–related searches and deduplicating. Here’s a drop-in you can replace your dessert branch with in app.js:
+
+js
+Copy
+Edit
+async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
+  showLoading();
+  clearMarkers();
+
+  try {
+    // Common params
+    const openNowChecked = document.getElementById('open-now-checkbox').checked;
+    const dessertMode = document.getElementById('dessert-checkbox').checked;
+
+    // If dessertMode, do multi‐query textSearch
+    let places = [];
+    if (dessertMode) {
+      const queries = [
+        'dessert restaurant',
+        'patisserie',
+        'bakery',
+        'chocolate shop',
+        'ice cream',
+        'cake shop'
+      ];
+      const seen = new Map();
+      const service = new google.maps.places.PlacesService(map);
+
+      // Helper to promisify textSearch
+      const textSearch = opts => new Promise((res, rej) =>
+        service.textSearch(opts, (r, s) => s === google.maps.places.PlacesServiceStatus.OK ? res(r) : rej(s))
+      );
+
+      for (let q of queries) {
+        try {
+          const results = await textSearch({
+            query: q,
+            location,
+            radius,
+            openNow: openNowChecked
+          });
+          for (let p of results) {
+            if (!seen.has(p.place_id)) {
+              seen.set(p.place_id, p);
+            }
+          }
+        } catch (e) {
+          console.warn('TextSearch error for', q, e);
+        }
+        if (seen.size >= 20) break; // enough
+      }
+      places = Array.from(seen.values());
+    } else {
+      // Normal nearby search
+      const service = new google.maps.places.PlacesService(map);
+      const nearby = opts => new Promise((res, rej) =>
+        service.nearbySearch(opts, (r, s) => s === google.maps.places.PlacesServiceStatus.OK ? res(r) : rej(s))
+      );
+      places = await nearby({
+        location,
+        radius,
+        type: keyword || currentPlaceType,
+        openNow: openNowChecked
+      });
+    }
+
+    // Now apply rating + distance + unwanted‐type filtering
+    const filtered = filterAndSortPlaces(
+      places,
+      location,
+      {
+        radius,
+        minRating: dessertMode ? 3.5 : (currentPlaceType === 'restaurant' ? 4.0 : 3.8),
+        minReviews: currentPlaceType === 'lodging' ? 8 : (currentPlaceType === 'restaurant' ? 20 : 10),
+        unwantedTypes: ["gas_station","car_repair","convenience_store","supermarket"]
+      }
+    );
+
+    // Render
+    const container = document.getElementById('places-container');
+    container.innerHTML = '';
+    if (!filtered.length) {
+      container.innerHTML = `<div class="alert alert-info">No matches found in this area.</div>`;
+    } else {
+      filtered.forEach((place, i) => {
+        const card = createPlaceCard(place, i);
+        container.appendChild(card);
+        addMarker(place, i);
+      });
+    }
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById('places-container').innerHTML =
+      `<div class="alert alert-danger">Error loading places.</div>`;
+  } finally {
+    hideLoading();
+  }
+}
+What changed:
+
+Multi-query textSearch for diverse dessert types: “patisserie”, “bakery”, “chocolate shop”, etc.
+
+Deduplication using a Map.
+
+Adaptive rating threshold (slightly lower for dessert mode).
+
+Still uses your shared filterAndSortPlaces() to apply distance, rating, and unwanted-type filters.
+
+Copy this into your app.js in place of the old if (dessertMode)… block and it should surface a much richer selection of dessert-friendly spots. Let me know how it behaves!
+
+
+
+
+
+
+
+You said:
+will this not give me all restauratns
+
+
+ChatGPT said:
+No — in dessertMode you’re never hitting the generic nearbySearch({ type: 'restaurant' }) path. Instead you:
+
+Loop over a hard-coded list of dessert-centric text queries ('patisserie', 'bakery', 'chocolate shop', etc.).
+
+Collect only those results, dedupe them, and only then pass them through your shared filterAndSortPlaces().
+
+So you’re only ever showing places that matched one of those dessert queries, not “all restaurants.”
+
+To see it clearly:
+
+js
+Copy
+Edit
+if (dessertMode) {
+  // ❌ Not a generic restaurant search
+  // ✅ Only runs textSearch for dessert-related queries
+  for (let q of ['patisserie','bakery','chocolate shop','cake shop','dessert restaurant']) {
+    const results = await service.textSearch({ query: q, … });
+    // collect those, no restaurants outside those queries
+  }
+  places = Array.from(dedupedDessertPlaces);
+} else {
+  // This branch is only for non-dessert categories
+  places = await service.nearbySearch({ type: currentPlaceType, … });
+}
+If you still see too many non-desserts, you can:
+
+Narrow each text query (e.g. remove 'dessert restaurant' if that’s too broad).
+
+Tighten the post-filter threshold in filterAndSortPlaces() (raise minRating or exclude more unwanted types).
+
+But the key point is: in dessert mode, only those dessert-focused textSearches run — you’re not accidentally loading “all restaurants.”
+
+
+
+
+
+
+
+
+
+
+Search
+
+Deep research
+
+Create image
+
+
+
+ChatGPT ca

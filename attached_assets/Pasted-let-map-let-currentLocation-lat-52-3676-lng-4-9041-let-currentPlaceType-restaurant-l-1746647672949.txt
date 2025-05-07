@@ -1,0 +1,99 @@
+let map;
+let currentLocation = { lat: 52.3676, lng: 4.9041 };
+let currentPlaceType = 'restaurant';
+let searchRadius = 1500;
+
+function initMap() {
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: currentLocation,
+    zoom: 13
+  });
+  setupCategoryButtons();
+  document.getElementById('search-button').addEventListener('click', () => {
+    geocodeAndSearch();
+  });
+  document.getElementById('use-location-button').addEventListener('click', () => {
+    navigator.geolocation.getCurrentPosition(pos => {
+      currentLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      loadNearbyPlaces(currentLocation, '', searchRadius);
+    });
+  });
+  document.getElementById('radius-slider').addEventListener('input', e => {
+    searchRadius = +e.target.value;
+    document.getElementById('radius-value').textContent = searchRadius;
+  });
+}
+
+function setupCategoryButtons() {
+  document.querySelectorAll('.category-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPlaceType = btn.dataset.type;
+      const keyword = btn.dataset.keyword || '';
+      loadNearbyPlaces(currentLocation, keyword, searchRadius);
+    });
+  });
+}
+
+async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
+  showLoading(); clearMarkers();
+  try {
+    const openNow = document.getElementById('open-now-checkbox').checked;
+    const service = new google.maps.places.PlacesService(map);
+    let places = [];
+    if (keyword === 'dessert') {
+      // Multi-query dessert search
+      const queries = ['patisserie','bakery','chocolate shop','cake shop','ice cream parlor','crêperie'];
+      const seen = new Map();
+      for (let q of queries) {
+        const results = await new Promise((res, rej) =>
+          service.textSearch({ query: q, location, radius, openNow }, (r, s) =>
+            s === google.maps.places.PlacesServiceStatus.OK ? res(r) : res([])
+          )
+        );
+        results.forEach(p => seen.set(p.place_id, p));
+        if (seen.size >= 20) break;
+      }
+      places = Array.from(seen.values());
+    } else {
+      // Generic nearby search
+      places = await new Promise((res, rej) =>
+        service.nearbySearch({ location, radius, type: keyword || currentPlaceType, openNow }, (r, s) =>
+          s === google.maps.places.PlacesServiceStatus.OK ? res(r) : res([])
+        )
+      );
+    }
+    // Filter & sort
+    const filtered = filterAndSortPlaces(places, location, {
+      radius,
+      minRating: keyword === 'dessert' ? 3.5 : 4.0,
+      minReviews: currentPlaceType === 'restaurant' ? 20 : 10,
+      unwantedTypes: ['gas_station','convenience_store','supermarket']
+    });
+    renderPlaces(filtered);
+  } catch (e) {
+    console.error(e);
+  } finally {
+    hideLoading();
+  }
+}
+
+function renderPlaces(places) {
+  const container = document.getElementById('places-container');
+  container.innerHTML = '';
+  if (!places.length) {
+    container.innerHTML = '<div class="alert alert-info">No matching places found.</div>';
+    return;
+  }
+  places.forEach((place, i) => {
+    const card = createPlaceCard(place, i);
+    container.appendChild(card);
+    addMarker(place, i);
+  });
+}
+
+// ... include filterAndSortPlaces, createPlaceCard, addMarker, clearMarkers, showLoading, hideLoading ...
+
+// Initialize map on load
+window.initMap = initMap;
