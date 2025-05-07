@@ -1178,15 +1178,20 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
         indicators.push('open now');
       }
       
-      // Add keyword indicator for dessert or other specialties
-      if (keyword === 'dessert') {
+      // Add special filter indicators
+      if (currentFilter === 'budget') {
+        sortText = `
+          <i class="fas fa-info-circle"></i> 
+          <i class="fas fa-dollar-sign"></i> Showing budget-friendly options ($ and $$), sorted by price level
+        `;
+      } else if (keyword === 'dessert') {
         indicators.push('<i class="fas fa-ice-cream"></i> dessert places only');
       } else if (keyword && keyword !== 'cheap') {
         indicators.push(`<i class="fas fa-utensils"></i> ${keyword} places only`);
       }
       
-      // Apply indicators to sort text if any are active
-      if (indicators.length > 0) {
+      // Apply indicators to sort text if any are active and we're not in budget mode
+      if (indicators.length > 0 && currentFilter !== 'budget') {
         sortText = `
           <i class="fas fa-info-circle"></i> 
           Showing ${indicators.join(', ')}, sorted by rating (min ${minReviews} reviews)
@@ -1310,14 +1315,108 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
     
     console.log(`Filtering with minimum rating of ${MIN_RATING} and within ${radius}m for ${currentPlaceType}s`);
 
-    // Use our shared utility function to filter and sort places
-    const filteredPlaces = filterAndSortPlaces(rawPlaces, location, {
-      radius: searchRadius || radius, // Use expanded radius for cheap eats
-      minRating: MIN_RATING,
-      minReviews: currentMinReviews,
-      unwantedTypes: UNWANTED_TYPES,
-      isCheapSearch: keyword === 'cheap' // Add flag for cheap eats search
-    });
+    // For budget filter, we need special handling to focus on price level
+    let filteredPlaces;
+    
+    if (currentFilter === 'budget') {
+      console.log("Using smart budget filtering - prioritizing affordable places");
+      
+      // Get the budget places ($ and $$)
+      const definiteBudgetPlaces = rawPlaces.filter(place => {
+        return place.price_level === 1 || place.price_level === 2;
+      });
+      
+      console.log(`Found ${definiteBudgetPlaces.length} places with explicit $ or $$ price level`);
+      
+      // Get places that don't have a specified price level but are likely budget-friendly
+      // These include snackbars, takeaways, street food, etc.
+      const budgetKeywords = [
+        'snack', 'falafel', 'kebab', 'surinam', 'surinaams', 'takeaway', 
+        'afhaal', 'takeout', 'fast food', 'street food', 'foodtruck', 
+        'warung', 'cafetaria', 'friet', 'frites', 'toko', 'wok', 'burrito', 
+        'budget', 'cheap', 'goedkoop', 'betaalbaar'
+      ];
+      
+      const likelyBudgetPlaces = rawPlaces.filter(place => {
+        // Skip places that already have a price level
+        if (place.price_level) return false;
+        
+        // Check name for budget keywords
+        const nameLower = (place.name || '').toLowerCase();
+        return budgetKeywords.some(keyword => nameLower.includes(keyword));
+      });
+      
+      console.log(`Found ${likelyBudgetPlaces.length} places with budget keywords in name but no explicit price level`);
+      
+      // Combine definite and likely budget places
+      const allBudgetPlaces = [...definiteBudgetPlaces, ...likelyBudgetPlaces];
+      
+      // If we have enough budget places, use just those
+      if (allBudgetPlaces.length >= 5) {
+        console.log(`Using ${allBudgetPlaces.length} budget-friendly places`);
+        
+        // Sort by price level first ($ before $$), then by rating
+        allBudgetPlaces.sort((a, b) => {
+          // First by known price level ($ before $$)
+          if (a.price_level === 1 && b.price_level === 2) return -1;
+          if (a.price_level === 2 && b.price_level === 1) return 1;
+          
+          // Then by rating
+          return (b.rating || 0) - (a.rating || 0);
+        });
+        
+        filteredPlaces = allBudgetPlaces;
+      } 
+      // If we don't have at least 5 explicit budget places, include all places
+      // but prioritize the budget ones at the top
+      else {
+        console.log("Not enough explicit budget places, including all but prioritizing affordable options");
+        
+        // Copy all places
+        filteredPlaces = [...rawPlaces];
+        
+        // Sort to show definite budget places first, then likely budget places, then others
+        filteredPlaces.sort((a, b) => {
+          const aIsDefiniteBudget = a.price_level === 1 || a.price_level === 2;
+          const bIsDefiniteBudget = b.price_level === 1 || b.price_level === 2;
+          
+          // First show definite budget places
+          if (aIsDefiniteBudget && !bIsDefiniteBudget) return -1;
+          if (!aIsDefiniteBudget && bIsDefiniteBudget) return 1;
+          
+          // Check for likely budget places (by keywords)
+          const aNameLower = (a.name || '').toLowerCase();
+          const bNameLower = (b.name || '').toLowerCase();
+          
+          const aIsLikelyBudget = budgetKeywords.some(keyword => aNameLower.includes(keyword));
+          const bIsLikelyBudget = budgetKeywords.some(keyword => bNameLower.includes(keyword));
+          
+          if (aIsLikelyBudget && !bIsLikelyBudget) return -1;
+          if (!aIsLikelyBudget && bIsLikelyBudget) return 1;
+          
+          // If both are budget places, sort by price level
+          if (aIsDefiniteBudget && bIsDefiniteBudget) {
+            if (a.price_level !== b.price_level) {
+              return a.price_level - b.price_level; // $ before $$
+            }
+          }
+          
+          // Finally sort by rating
+          return (b.rating || 0) - (a.rating || 0);
+        });
+      }
+      
+      console.log(`Smart budget filtering applied: ${filteredPlaces.length} places with affordable options prioritized`);
+    } else {
+      // Regular filtering for non-budget searches
+      filteredPlaces = filterAndSortPlaces(rawPlaces, location, {
+        radius: searchRadius || radius,
+        minRating: MIN_RATING,
+        minReviews: currentMinReviews,
+        unwantedTypes: UNWANTED_TYPES,
+        isCheapSearch: keyword === 'cheap' // Add flag for cheap eats search
+      });
+    }
     
     // Apply additional analysis for dessert places if needed
     let finalPlaces = filteredPlaces;
@@ -1774,12 +1873,26 @@ function createPlaceCard(place, index) {
   let categoryBadge = '';
   if (currentKeyword === 'dessert' && isDessertPlace(place)) {
     categoryBadge = `<span class="badge bg-warning text-dark position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-ice-cream"></i> Dessert</span>`;
-  } else if (currentKeyword === 'cheap') {
-    // Special badge for cheap eats based on price level
+  } else if (currentKeyword === 'cheap' || currentFilter === 'budget') {
+    // Special badge for budget options based on price level
     if (place.price_level === 1) {
       categoryBadge = `<span class="badge bg-success position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-dollar-sign"></i> Budget</span>`;
     } else if (place.price_level === 2) {
       categoryBadge = `<span class="badge bg-info position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-dollar-sign"></i><i class="fas fa-dollar-sign"></i> Affordable</span>`;
+    } else {
+      // Check if it might be budget-friendly based on name
+      const budgetKeywords = [
+        'snack', 'falafel', 'kebab', 'surinam', 'surinaams', 'takeaway', 
+        'afhaal', 'takeout', 'fast food', 'street food', 'foodtruck', 
+        'warung', 'cafetaria', 'friet', 'frites', 'toko', 'wok'
+      ];
+      
+      const nameLower = place.name.toLowerCase();
+      const isLikelyBudget = budgetKeywords.some(keyword => nameLower.includes(keyword));
+      
+      if (isLikelyBudget) {
+        categoryBadge = `<span class="badge bg-success position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-utensils"></i> Likely Budget</span>`;
+      }
     }
   } else if (currentKeyword && currentKeyword !== 'cheap') {
     categoryBadge = `<span class="badge bg-info text-white position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-utensils"></i> ${currentKeyword}</span>`;
