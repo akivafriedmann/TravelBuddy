@@ -26,6 +26,10 @@
             <i class="fas fa-location-arrow"></i> Use My Location
           </button>
           <div class="form-check form-switch d-inline-block ms-3">
+            <input class="form-check-input" type="checkbox" id="dessert-mode-toggle">
+            <label class="form-check-label" for="dessert-mode-toggle">Dessert Mode</label>
+          </div>
+          <div class="form-check form-switch d-inline-block ms-3">
             <input class="form-check-input" type="checkbox" id="dark-mode-toggle">
             <label class="form-check-label" for="dark-mode-toggle">Dark Mode</label>
           </div>
@@ -134,26 +138,36 @@
           <button class="btn btn-outline-danger category-btn" data-type="restaurant" data-keyword="italian">
             <i class="fas fa-pizza-slice"></i> Italian
           </button>
-          <button class="btn btn-outline-warning category-btn" data-type="restaurant" data-keyword="dessert">
-            <i class="fas fa-ice-cream"></i> Desserts
-          </button>
           <button class="btn btn-outline-success category-btn" data-type="tourist_attraction">
             <i class="fas fa-landmark"></i> Attractions
           </button>
           <button class="btn btn-outline-warning category-btn" data-type="lodging">
             <i class="fas fa-bed"></i> Hotels
           </button>
-          <button class="btn btn-outline-primary category-btn" data-type="night_club">
+          <button class="btn btn-outline-purple category-btn" data-type="restaurant" data-keyword="dessert">
+            <i class="fas fa-ice-cream"></i> Desserts
+          </button>
+          <button class="btn btn-outline-dark category-btn" data-type="night_club">
             <i class="fas fa-music"></i> Nightclubs
           </button>
-          <button class="btn btn-outline-primary category-btn" data-type="supermarket">
+          <button class="btn btn-outline-success category-btn" data-type="supermarket">
             <i class="fas fa-shopping-cart"></i> Supermarkets
           </button>
         </div>
       </div>
     </div>
     
-    <!-- Category sorting indicator -->
+    <style>
+      .btn-outline-purple {
+        color: #8e44ad;
+        border-color: #8e44ad;
+      }
+      .btn-outline-purple:hover, .btn-outline-purple.active {
+        color: white;
+        background-color: #8e44ad;
+        border-color: #8e44ad;
+      }
+    </style>
     
     <div class="row mb-2">
       <div class="col-12 text-end">
