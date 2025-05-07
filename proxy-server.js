@@ -494,6 +494,23 @@ app.get('/api/nearby', async (req, res) => {
       return res.json(data);
     }
     
+    // Helper function to calculate the actual distance between two points in meters
+    function getDistanceInMeters(lat1, lng1, lat2, lng2) {
+      // Using Haversine formula to calculate the distance between two coordinates
+      const R = 6371000; // Earth's radius in meters
+      const φ1 = lat1 * Math.PI/180;
+      const φ2 = lat2 * Math.PI/180;
+      const Δφ = (lat2 - lat1) * Math.PI/180;
+      const Δλ = (lng2 - lng1) * Math.PI/180;
+
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+      return R * c; // Distance in meters
+    }
+    
     // Process the response to filter results and include direct photo URLs
     if (data.results) {
       // Show detailed debug information about results
@@ -502,6 +519,29 @@ app.get('/api/nearby', async (req, res) => {
       // Log the names of places found
       const placeNames = data.results.map(p => `${p.name} (${p.rating || 'No rating'})`).join(', ');
       console.log(`Places found: ${placeNames}`);
+      
+      // Apply distance filtering if a radius was specified
+      if (radius && !isNaN(parseInt(radius))) {
+        const requestedRadius = parseInt(radius);
+        const originalCount = data.results.length;
+        
+        // When using rankby=distance, we still need to filter by the actual distance
+        // since Google ignores the radius parameter when rankby=distance is used
+        data.results = data.results.filter(place => {
+          if (!place.geometry || !place.geometry.location) return false;
+          
+          const placeLat = place.geometry.location.lat;
+          const placeLng = place.geometry.location.lng;
+          const distance = getDistanceInMeters(parseFloat(lat), parseFloat(lng), placeLat, placeLng);
+          
+          // Add the calculated distance to the place object (useful for debugging)
+          place.distance_meters = Math.round(distance);
+          
+          return distance <= requestedRadius;
+        });
+        
+        console.log(`Distance filtering applied: ${data.results.length} of ${originalCount} places are within ${requestedRadius}m radius`);
+      }
       
       // Extra filtering for dessert places if the keyword is dessert
       if (keyword === 'dessert') {
