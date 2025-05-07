@@ -15,7 +15,7 @@ let searchRadius = 1500; // Default search radius in meters
 let isApiErrorShown = false;
 let weatherData = null;
 let isDarkMode = false; // Dark mode toggle state
-let isDessertMode = false; // Dessert mode toggle state
+let currentKeyword = ''; // Keyword for searching (e.g., 'dessert', 'asian', etc.)
 
 // Dark mode map style
 const darkMapStyle = [
@@ -191,31 +191,7 @@ function initMap() {
     return;
   }
   
-  // Set up the dessert mode toggle
-  const dessertCheckbox = document.getElementById('dessert-mode-toggle');
-  if (dessertCheckbox) {
-    // Initialize with stored preference if any
-    isDessertMode = localStorage.getItem('dessertMode') === 'true';
-    dessertCheckbox.checked = isDessertMode;
-    
-    // Log the initial state
-    console.log(`Dessert mode is ${isDessertMode ? 'enabled' : 'disabled'} on initialization`);
-    
-    dessertCheckbox.addEventListener('change', function() {
-      isDessertMode = this.checked;
-      localStorage.setItem('dessertMode', isDessertMode);
-      
-      console.log(`Dessert mode ${isDessertMode ? 'enabled' : 'disabled'} - Will filter dessert places`);
-      
-      // Reload places if we have a current location
-      if (currentLocation) {
-        // Pass 'dessert' as a keyword if dessert mode is enabled
-        loadNearbyPlaces(currentLocation, isDessertMode ? 'dessert' : '', searchRadius);
-      }
-    });
-  } else {
-    console.warn("Dessert mode checkbox not found with ID 'dessert-mode-toggle'");
-  }
+  // Note: Dessert mode is now handled through the dessert category button instead of a separate toggle
   
   // Set up the dark mode toggle
   const darkModeCheckbox = document.getElementById('dark-mode-toggle');
@@ -578,14 +554,16 @@ function initMap() {
       categoryButtons.forEach(btn => btn.classList.remove('active'));
       button.classList.add('active');
       
-      // Update current place type and search again
+      // Update current place type 
       currentPlaceType = button.dataset.type;
       
-      // Check if there's a keyword (for special categories like "cheap eats")
-      const keyword = button.dataset.keyword || '';
+      // Update current keyword (for special categories like "dessert")
+      currentKeyword = button.dataset.keyword || '';
+      
+      console.log(`Selected category: ${currentPlaceType}${currentKeyword ? ', keyword: ' + currentKeyword : ''}`);
       
       // Pass both type and keyword to loadNearbyPlaces
-      loadNearbyPlaces(currentLocation, keyword);
+      loadNearbyPlaces(currentLocation, currentKeyword, searchRadius);
     });
   });
   
@@ -1069,9 +1047,11 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
         indicators.push('open now');
       }
       
-      // Add "Dessert Mode" indicator
-      if (isDessertMode) {
+      // Add keyword indicator for dessert or other specialties
+      if (keyword === 'dessert') {
         indicators.push('<i class="fas fa-ice-cream"></i> dessert places only');
+      } else if (keyword && keyword !== 'cheap') {
+        indicators.push(`<i class="fas fa-utensils"></i> ${keyword} places only`);
       }
       
       // Apply indicators to sort text if any are active
@@ -1140,9 +1120,9 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
         unwantedTypes: UNWANTED_TYPES
       });
       
-      // Additional dessert mode filtering if enabled
+      // Apply additional dessert filtering if that keyword is active
       let finalPlaces = filteredPlaces;
-      if (isDessertMode) {
+      if (keyword === 'dessert') {
         // Log information about dessert filtering
         console.log("Applying additional dessert filtering");
         finalPlaces = filteredPlaces.filter(place => isDessertPlace(place));
@@ -1159,15 +1139,18 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       
       if (finalPlaces.length === 0) {
         // Show a message if no places meet the criteria
-        const messageText = isDessertMode ? 
-          `No dessert places found matching your criteria` : 
-          `No places found matching your criteria`;
+        let messageText = `No places found matching your criteria`;
+        if (keyword === 'dessert') {
+          messageText = `No dessert places found matching your criteria`;
+        } else if (keyword) {
+          messageText = `No ${keyword} places found matching your criteria`;
+        }
           
         container.innerHTML = `
           <div class="col-12">
             <div class="alert alert-info">
               <strong>${messageText}</strong>
-              <p>No ${formatPlaceType(currentPlaceType)}${isDessertMode ? ' serving desserts' : ''} with a rating of ${MIN_RATING}+ within ${radius}m found in this area.</p>
+              <p>No ${formatPlaceType(currentPlaceType)}${keyword === 'dessert' ? ' serving desserts' : keyword ? ` with ${keyword}` : ''} with a rating of ${MIN_RATING}+ within ${radius}m found in this area.</p>
               <p>Try another location or category, or adjust the search radius.</p>
             </div>
           </div>
@@ -1284,8 +1267,10 @@ function renderPlaces(places) {
   // If no results after filtering, show a message
   if (filteredPlaces.length === 0) {
     let message = `No high-rated ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.`;
-    if (isDessertMode) {
-      message = `No dessert places found in this area. Try another location or disable dessert mode.`;
+    if (currentKeyword === 'dessert') {
+      message = `No dessert places found in this area. Try another location or category.`;
+    } else if (currentKeyword) {
+      message = `No ${currentKeyword} places found in this area. Try another location or category.`;
     }
     container.innerHTML = `
       <div class="col-12">
@@ -1295,12 +1280,14 @@ function renderPlaces(places) {
     return;
   }
   
-  // Update sort indicator with dessert mode indicator if active
+  // Update sort indicator with keyword indicator if active
   const sortIndicator = document.getElementById('sort-indicator');
   if (sortIndicator) {
     let indicatorText = `Showing ${filteredPlaces.length} places sorted by Google rating`;
-    if (isDessertMode) {
-      indicatorText = `<span class="badge bg-warning text-dark me-2"><i class="fas fa-ice-cream"></i> Dessert Mode</span> Showing ${filteredPlaces.length} dessert places sorted by rating`;
+    if (currentKeyword === 'dessert') {
+      indicatorText = `<span class="badge bg-warning text-dark me-2"><i class="fas fa-ice-cream"></i> Dessert</span> Showing ${filteredPlaces.length} dessert places sorted by rating`;
+    } else if (currentKeyword) {
+      indicatorText = `<span class="badge bg-info text-white me-2"><i class="fas fa-utensils"></i> ${currentKeyword}</span> Showing ${filteredPlaces.length} ${currentKeyword} places sorted by rating`;
     }
     sortIndicator.innerHTML = indicatorText;
   }
@@ -1450,10 +1437,12 @@ function createPlaceCard(place, index) {
     <div class="place-number-badge">${placeNumber}</div>
   `;
   
-  // Add dessert badge if place is a dessert place and dessert mode is on
-  let dessertBadge = '';
-  if (isDessertMode && isDessertPlace(place)) {
-    dessertBadge = `<span class="badge bg-warning text-dark position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-ice-cream"></i> Dessert</span>`;
+  // Add special category badge if applicable
+  let categoryBadge = '';
+  if (currentKeyword === 'dessert' && isDessertPlace(place)) {
+    categoryBadge = `<span class="badge bg-warning text-dark position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-ice-cream"></i> Dessert</span>`;
+  } else if (currentKeyword && currentKeyword !== 'cheap') {
+    categoryBadge = `<span class="badge bg-info text-white position-absolute top-0 end-0 mt-2 me-2"><i class="fas fa-utensils"></i> ${currentKeyword}</span>`;
   }
 
   col.innerHTML = `
@@ -1463,7 +1452,7 @@ function createPlaceCard(place, index) {
         <div class="position-absolute top-0 start-0 mt-2 ms-2 bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-weight: bold;">
           ${placeNumber}
         </div>
-        ${dessertBadge}
+        ${categoryBadge}
       </div>
       <div class="card-body">
         <h5 class="card-title">${placeNumber}. ${place.name}</h5>
@@ -2977,9 +2966,9 @@ function searchNearbyOnHover(location) {
       rankBy: google.maps.places.RankBy.PROMINENCE
     };
     
-    // Add keyword if in dessert mode
-    if (isDessertMode) {
-      searchParams.keyword = 'dessert';
+    // Add current keyword if one is set
+    if (currentKeyword) {
+      searchParams.keyword = currentKeyword;
     }
     
     placesService.nearbySearch(searchParams, function(results, status) {
@@ -2997,10 +2986,10 @@ function searchNearbyOnHover(location) {
         unwantedTypes: UNWANTED_TYPES
       });
       
-      // Apply dessert-specific filtering when in dessert mode
+      // Apply keyword-specific filtering when a keyword is set
       let placesToShow = filteredPlaces;
-      if (isDessertMode) {
-        // Filter places to only include dessert places when in dessert mode
+      if (currentKeyword === 'dessert') {
+        // Filter places to only include dessert places when dessert keyword is active
         placesToShow = filteredPlaces.filter(place => isDessertPlace(place));
         console.log(`Found ${placesToShow.length} dessert places out of ${filteredPlaces.length} filtered places`);
       }
@@ -3011,8 +3000,10 @@ function searchNearbyOnHover(location) {
       // Handle no results after filtering
       if (topPlaces.length === 0) {
         let noResultsMessage = `No high-rated ${formatPlaceType(currentPlaceType)}s nearby`;
-        if (isDessertMode) {
+        if (currentKeyword === 'dessert') {
           noResultsMessage = `No dessert places nearby`;
+        } else if (currentKeyword) {
+          noResultsMessage = `No ${currentKeyword} places nearby`;
         }
         hoverInfoWindow.setContent(`<div class="p-2">${noResultsMessage}</div>`);
         return;
@@ -3022,8 +3013,8 @@ function searchNearbyOnHover(location) {
       let contentHtml = `
         <div class="p-2" style="max-width: 300px;">
           <h6 class="mb-2">
-            Nearby ${isDessertMode ? 'Dessert ' : ''}${formatPlaceType(currentPlaceType)}s
-            ${isDessertMode ? '<i class="fas fa-ice-cream text-warning ms-1"></i>' : ''}
+            Nearby ${currentKeyword === 'dessert' ? 'Dessert ' : currentKeyword ? `${currentKeyword.charAt(0).toUpperCase() + currentKeyword.slice(1)} ` : ''}${formatPlaceType(currentPlaceType)}s
+            ${currentKeyword === 'dessert' ? '<i class="fas fa-ice-cream text-warning ms-1"></i>' : ''}
           </h6>
           <ul class="list-group list-group-flush ps-0">
       `;
