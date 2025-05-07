@@ -1,0 +1,80 @@
+Here's a complete JavaScript example you can integrate into your Replit frontend (assuming you're using HTML + JS for your travel app UI) to fetch and display only dessert-friendly restaurants, with a toggle filter:
+
+✅ 1. HTML for the Toggle and Results
+html
+Copy
+Edit
+<label>
+  <input type="checkbox" id="dessertFilter" checked />
+  Show only dessert-friendly restaurants
+</label>
+
+<div id="results"></div>
+✅ 2. JavaScript with Google Places API Fetch + Filter
+Replace YOUR_API_KEY and use this with your location logic:
+
+javascript
+Copy
+Edit
+document.getElementById('dessertFilter').addEventListener('change', fetchPlaces);
+
+// Call it once on load
+fetchPlaces();
+
+async function fetchPlaces() {
+  const dessertFilter = document.getElementById('dessertFilter').checked;
+  const location = '52.3676,4.9041'; // Example: Amsterdam center
+  const radius = 3000;
+  const keyword = 'dessert'; // Main keyword to narrow to dessert-serving restaurants
+
+  const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location}&radius=${radius}&type=restaurant&keyword=${keyword}&key=YOUR_API_KEY`;
+
+  const proxy = 'https://corsproxy.io/?'; // Needed if running in browser (due to CORS)
+
+  try {
+    const response = await fetch(proxy + encodeURIComponent(url));
+    const data = await response.json();
+
+    const dessertKeywords = ['dessert', 'cake', 'ice cream', 'gelato', 'tiramisu', 'patisserie', 'sweet'];
+
+    let filtered = data.results;
+
+    if (dessertFilter) {
+      filtered = filtered.filter(place => {
+        const name = place.name.toLowerCase();
+        const vicinity = place.vicinity?.toLowerCase() || '';
+        return dessertKeywords.some(keyword =>
+          name.includes(keyword) || vicinity.includes(keyword)
+        );
+      });
+    }
+
+    displayResults(filtered);
+  } catch (err) {
+    console.error('Error fetching places:', err);
+    document.getElementById('results').innerHTML = `<p>Error fetching data.</p>`;
+  }
+}
+
+function displayResults(places) {
+  const container = document.getElementById('results');
+  if (!places.length) {
+    container.innerHTML = '<p>No matching places found.</p>';
+    return;
+  }
+
+  container.innerHTML = places.map(place => `
+    <div style="margin:10px 0; border-bottom:1px solid #ccc; padding-bottom:10px;">
+      <strong>${place.name}</strong><br/>
+      ${place.vicinity}<br/>
+      Rating: ${place.rating || 'N/A'}
+    </div>
+  `).join('');
+}
+🔧 Notes:
+You may need a proxy (like corsproxy.io) when testing in Replit's frontend due to CORS restrictions.
+
+This uses the nearbysearch endpoint which is limited to 60 results (and may paginate).
+
+For high-precision filtering (like reviews), consider adding a Place Details fetch per item, but be aware of quota costs.
+

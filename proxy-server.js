@@ -503,6 +503,33 @@ app.get('/api/nearby', async (req, res) => {
       const placeNames = data.results.map(p => `${p.name} (${p.rating || 'No rating'})`).join(', ');
       console.log(`Places found: ${placeNames}`);
       
+      // Extra filtering for dessert places if the keyword is dessert
+      if (keyword === 'dessert') {
+        const dessertKeywords = ['dessert', 'cake', 'ice cream', 'gelato', 'pastry', 'bakery', 'patisserie', 'sweet', 'chocolate', 'coffee', 'café', 'cafe'];
+        console.log('Applying additional dessert filtering');
+        
+        const originalCount = data.results.length;
+        if (originalCount > 0) {
+          // Filter places that are more likely to be dessert places based on name or types
+          data.results = data.results.filter(place => {
+            const name = place.name.toLowerCase();
+            const types = place.types || [];
+            
+            // Check if name contains dessert-related keywords
+            const nameMatch = dessertKeywords.some(kw => name.includes(kw));
+            
+            // Check if place types include bakery, cafe, etc.
+            const typeMatch = types.some(t => 
+              ['bakery', 'cafe', 'meal_takeaway', 'restaurant', 'food'].includes(t)
+            );
+            
+            return nameMatch || typeMatch;
+          });
+        }
+        
+        console.log(`After dessert filtering: ${data.results.length} of ${originalCount} places remain`);
+      }
+      
       // Filter out hotels from restaurant or bar searches
       if (type === "restaurant" || type === "bar") {
         const originalCount = data.results.length;
