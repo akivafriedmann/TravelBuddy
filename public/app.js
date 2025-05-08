@@ -954,17 +954,17 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
   // Clear existing markers
   clearMarkers();
   
+  // Check if the "Open Now" checkbox is checked
+  const openNowChecked = document.getElementById('open-now-checkbox').checked;
+  
+  // Check if this is a dessert search by keyword
+  const isDessertSearch = keyword === 'dessert';
+  
+  // Collection to store unique places when performing multi-query search
+  let placesMap = new Map();
+  let places = [];
+  
   try {
-    // Check if the "Open Now" checkbox is checked
-    const openNowChecked = document.getElementById('open-now-checkbox').checked;
-    
-    // Check if this is a dessert search by keyword
-    const isDessertSearch = keyword === 'dessert';
-    
-    // Collection to store unique places when performing multi-query search
-    let placesMap = new Map();
-    let places = [];
-    
     if (isDessertSearch) {
       console.log("Performing specialized dessert multi-query search");
       // Multi-query approach for dessert places
@@ -1033,175 +1033,175 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
         apiUrl += '&opennow=true';
         console.log('Filtering for places open now');
       }
-    
-    // Define the Haversine formula for distance calculation
-    const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
-      const R = 6371000; // Earth radius in meters
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return R * c;
-    };
-    
-    // Update the sort indicator based on place type
-    const sortIndicator = document.querySelector('.sort-indicator small');
-    if (sortIndicator) {
-      // Get minimum reviews based on place type
-      const MIN_REVIEWS = {
-        restaurant: 20,
-        lodging: 8,
-        night_club: 10,
-        supermarket: 5,
-        default: 10
+      
+      // Define the Haversine formula for distance calculation
+      const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
+        const R = 6371000; // Earth radius in meters
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
       };
-      const minReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
       
-      let sortText = `
-        <i class="fas fa-info-circle"></i> 
-        Places are sorted by rating, prioritizing those with at least ${minReviews} reviews
-      `;
-      
-      // Build indicators for various filters
-      const indicators = [];
-      
-      // Add "Open Now" indicator
-      if (openNowChecked) {
-        indicators.push('open now');
-      }
-      
-      // Show dessert indicator if keyword is dessert
-      if (keyword === 'dessert') {
-        indicators.push('<i class="fas fa-ice-cream"></i> dessert places only');
-      }
-      
-      // Apply indicators to sort text if any are active
-      if (indicators.length > 0) {
-        sortText = `
+      // Update the sort indicator based on place type
+      const sortIndicator = document.querySelector('.sort-indicator small');
+      if (sortIndicator) {
+        // Get minimum reviews based on place type
+        const MIN_REVIEWS = {
+          restaurant: 20,
+          lodging: 8,
+          night_club: 10,
+          supermarket: 5,
+          default: 10
+        };
+        const minReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
+        
+        let sortText = `
           <i class="fas fa-info-circle"></i> 
-          Showing ${indicators.join(', ')}, sorted by rating (min ${minReviews} reviews)
+          Places are sorted by rating, prioritizing those with at least ${minReviews} reviews
         `;
+        
+        // Build indicators for various filters
+        const indicators = [];
+        
+        // Add "Open Now" indicator
+        if (openNowChecked) {
+          indicators.push('open now');
+        }
+        
+        // Show dessert indicator if keyword is dessert
+        if (keyword === 'dessert') {
+          indicators.push('<i class="fas fa-ice-cream"></i> dessert places only');
+        }
+        
+        // Apply indicators to sort text if any are active
+        if (indicators.length > 0) {
+          sortText = `
+            <i class="fas fa-info-circle"></i> 
+            Showing ${indicators.join(', ')}, sorted by rating (min ${minReviews} reviews)
+          `;
+        }
+        
+        sortIndicator.innerHTML = sortText;
       }
       
-      sortIndicator.innerHTML = sortText;
-    }
-    
-    // Call our backend API to get nearby places
-    console.log('Fetching nearby places with URL:', apiUrl);
-    const response = await fetch(apiUrl);
-    const data = await response.json();
-    
-    console.log("Nearby places API response:", data);
-    
-    if (data.status === 'OK' && data.results && data.results.length > 0) {
-      const container = document.getElementById('places-container');
-      container.innerHTML = '';
+      // Call our backend API to get nearby places
+      console.log('Fetching nearby places with URL:', apiUrl);
+      const response = await fetch(apiUrl);
+      const data = await response.json();
       
-      // Log the places we found
-      console.log(`Starting with ${data.results.length} places before filtering`);
+      console.log("Nearby places API response:", data);
       
-      // Define unwanted business types
-      const UNWANTED_TYPES = [
-        "gas_station", 
-        "convenience_store", 
-        "car_repair", 
-        "car_wash",
-        "car_dealer"
-      ];
-      
-      // Minimum rating to show (different minimum ratings based on place type)
-      let MIN_RATING;
-      if (currentPlaceType === 'restaurant') {
-        MIN_RATING = 4.0;
-      } else if (currentPlaceType === 'night_club') {
-        MIN_RATING = 3.7; // Lower threshold for nightclubs as requested
-      } else if (currentPlaceType === 'supermarket') {
-        MIN_RATING = 3.5; // Lower threshold for supermarkets
-      } else {
-        MIN_RATING = 3.8; // Default more lenient threshold for other place types
-      }
-      
-      // Define minimum reviews for statistical significance
-      const MIN_REVIEWS = {
-        restaurant: 20,
-        lodging: 8,
-        night_club: 10,
-        supermarket: 5,
-        default: 10
-      };
-      const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
-      
-      console.log(`Filtering with minimum rating of ${MIN_RATING} and within ${radius}m for ${currentPlaceType}s`);
-
-      // Use our shared utility function to filter and sort places
-      const filteredPlaces = filterAndSortPlaces(data.results, location, {
-        radius: radius,
-        minRating: MIN_RATING,
-        minReviews: currentMinReviews,
-        unwantedTypes: UNWANTED_TYPES
-      });
-      
-      // No additional dessert filtering - keyword parameter already handles this
-      let finalPlaces = filteredPlaces;
-      
-      // Log filtering information
-      console.log(`After filtering: ${finalPlaces.length} of ${data.results.length} places remaining`);
-      
-      // Places are already sorted by our utility function
-      console.log(`Showing ${finalPlaces.length} places sorted by rating and review count`);
-      
-      if (finalPlaces.length === 0) {
-        // Show a message if no places meet the criteria
-        const messageText = keyword === 'dessert' ? 
-          `No dessert places found matching your criteria` : 
-          `No places found matching your criteria`;
-          
-        container.innerHTML = `
+      if (data.status === 'OK' && data.results && data.results.length > 0) {
+        const container = document.getElementById('places-container');
+        container.innerHTML = '';
+        
+        // Log the places we found
+        console.log(`Starting with ${data.results.length} places before filtering`);
+        
+        // Define unwanted business types
+        const UNWANTED_TYPES = [
+          "gas_station", 
+          "convenience_store", 
+          "car_repair", 
+          "car_wash",
+          "car_dealer"
+        ];
+        
+        // Minimum rating to show (different minimum ratings based on place type)
+        let MIN_RATING;
+        if (currentPlaceType === 'restaurant') {
+          MIN_RATING = 4.0;
+        } else if (currentPlaceType === 'night_club') {
+          MIN_RATING = 3.7; // Lower threshold for nightclubs as requested
+        } else if (currentPlaceType === 'supermarket') {
+          MIN_RATING = 3.5; // Lower threshold for supermarkets
+        } else {
+          MIN_RATING = 3.8; // Default more lenient threshold for other place types
+        }
+        
+        // Define minimum reviews for statistical significance
+        const MIN_REVIEWS = {
+          restaurant: 20,
+          lodging: 8,
+          night_club: 10,
+          supermarket: 5,
+          default: 10
+        };
+        const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
+        
+        console.log(`Filtering with minimum rating of ${MIN_RATING} and within ${radius}m for ${currentPlaceType}s`);
+  
+        // Use our shared utility function to filter and sort places
+        const filteredPlaces = filterAndSortPlaces(data.results, location, {
+          radius: radius,
+          minRating: MIN_RATING,
+          minReviews: currentMinReviews,
+          unwantedTypes: UNWANTED_TYPES
+        });
+        
+        // No additional dessert filtering - keyword parameter already handles this
+        let finalPlaces = filteredPlaces;
+        
+        // Log filtering information
+        console.log(`After filtering: ${finalPlaces.length} of ${data.results.length} places remaining`);
+        
+        // Places are already sorted by our utility function
+        console.log(`Showing ${finalPlaces.length} places sorted by rating and review count`);
+        
+        if (finalPlaces.length === 0) {
+          // Show a message if no places meet the criteria
+          const messageText = keyword === 'dessert' ? 
+            `No dessert places found matching your criteria` : 
+            `No places found matching your criteria`;
+            
+          container.innerHTML = `
+            <div class="col-12">
+              <div class="alert alert-info">
+                <strong>${messageText}</strong>
+                <p>No ${formatPlaceType(currentPlaceType)}${keyword === 'dessert' ? ' serving desserts' : ''} with a rating of ${MIN_RATING}+ within ${radius}m found in this area.</p>
+                <p>Try another location or category, or adjust the search radius.</p>
+              </div>
+            </div>
+          `;
+        } else {
+          // Display filtered and sorted places
+          finalPlaces.forEach((place, index) => {
+            // Create a card for each place (the TripAdvisor fetch happens inside createPlaceCard,
+            // no need to call fetchTripAdvisorData again)
+            const card = createPlaceCard(place, index);
+            container.appendChild(card);
+            
+            // Add a marker for this place
+            addMarker(place, index);
+          });
+        }
+      } else if (data.status === 'REQUEST_DENIED') {
+        // API key issue
+        console.error("Google Places API request denied:", data.error_message || "No error details available");
+        document.getElementById('places-container').innerHTML = `
           <div class="col-12">
-            <div class="alert alert-info">
-              <strong>${messageText}</strong>
-              <p>No ${formatPlaceType(currentPlaceType)}${keyword === 'dessert' ? ' serving desserts' : ''} with a rating of ${MIN_RATING}+ within ${radius}m found in this area.</p>
-              <p>Try another location or category, or adjust the search radius.</p>
+            <div class="alert alert-warning">
+              <strong>API Request Denied</strong>
+              <p>There was an issue with the Google Places API request: ${data.error_message || "Unknown error"}</p>
+              <p>This is likely due to API key restrictions or quota limits.</p>
             </div>
           </div>
         `;
       } else {
-        // Display filtered and sorted places
-        finalPlaces.forEach((place, index) => {
-          // Create a card for each place (the TripAdvisor fetch happens inside createPlaceCard,
-          // no need to call fetchTripAdvisorData again)
-          const card = createPlaceCard(place, index);
-          container.appendChild(card);
-          
-          // Add a marker for this place
-          addMarker(place, index);
-        });
-      }
-    } else if (data.status === 'REQUEST_DENIED') {
-      // API key issue
-      console.error("Google Places API request denied:", data.error_message || "No error details available");
-      document.getElementById('places-container').innerHTML = `
-        <div class="col-12">
-          <div class="alert alert-warning">
-            <strong>API Request Denied</strong>
-            <p>There was an issue with the Google Places API request: ${data.error_message || "Unknown error"}</p>
-            <p>This is likely due to API key restrictions or quota limits.</p>
+        // No results
+        document.getElementById('places-container').innerHTML = `
+          <div class="col-12">
+            <div class="alert alert-info">No ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.</div>
           </div>
-        </div>
-      `;
-    } else {
-      // No results
-      document.getElementById('places-container').innerHTML = `
-        <div class="col-12">
-          <div class="alert alert-info">No ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.</div>
-        </div>
-      `;
-    }
-    
-    hideLoading();
+        `;
+      }
+      
+      hideLoading();
   } catch (error) {
     console.error('Error fetching nearby places:', error);
     document.getElementById('places-container').innerHTML = `
