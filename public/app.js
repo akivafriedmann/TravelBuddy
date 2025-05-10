@@ -946,25 +946,25 @@ async function searchLocation() {
 
 // Load nearby places from our API endpoint
 async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
-  showLoading();
-  
-  // Fetch weather data for this location
-  fetchWeatherData(location);
-  
-  // Clear existing markers
-  clearMarkers();
-  
-  // Check if the "Open Now" checkbox is checked
-  const openNowChecked = document.getElementById('open-now-checkbox').checked;
-  
-  // Check if this is a dessert search by keyword
-  const isDessertSearch = keyword === 'dessert';
-  
-  // Collection to store unique places when performing multi-query search
-  let placesMap = new Map();
-  let places = [];
-  
   try {
+    showLoading();
+    
+    // Fetch weather data for this location
+    fetchWeatherData(location);
+    
+    // Clear existing markers
+    clearMarkers();
+    
+    // Check if the "Open Now" checkbox is checked
+    const openNowChecked = document.getElementById('open-now-checkbox').checked;
+    
+    // Check if this is a dessert search by keyword
+    const isDessertSearch = keyword === 'dessert';
+    
+    // Collection to store unique places when performing multi-query search
+    let placesMap = new Map();
+    let places = [];
+    
     if (isDessertSearch) {
       console.log("Performing specialized dessert multi-query search");
       // Multi-query approach for dessert places
