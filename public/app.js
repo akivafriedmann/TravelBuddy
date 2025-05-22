@@ -946,15 +946,15 @@ async function searchLocation() {
 
 // Load nearby places from our API endpoint
 async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
+  showLoading();
+  
+  // Fetch weather data for this location
+  fetchWeatherData(location);
+  
+  // Clear existing markers
+  clearMarkers();
+  
   try {
-    showLoading();
-    
-    // Fetch weather data for this location
-    fetchWeatherData(location);
-    
-    // Clear existing markers
-    clearMarkers();
-    
     // Check if the "Open Now" checkbox is checked
     const openNowChecked = document.getElementById('open-now-checkbox').checked;
     
