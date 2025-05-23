@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Travel Map</title>
+  <style>
+    #map {
+      height: 500px;
+      width: 100%;
+    }
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Travel Map</h1>
+    <div id="map"></div>
+    <div id="places-container" class="mt-4"></div>
+  </div>
+
+  <script>
+    // Initialize the map
+    function initMap() {
+      // Default center (Amsterdam)
+      const defaultCenter = { lat: 52.3676, lng: 4.9041 };
+      
+      // Create the map
+      window.map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 14,
+        center: defaultCenter,
+        mapTypeControl: true,
+        fullscreenControl: true,
+        streetViewControl: true,
+        mapTypeId: "roadmap"
+      });
+      
+      // Add a marker at the center
+      new google.maps.Marker({
+        position: defaultCenter,
+        map: window.map,
+        title: "Amsterdam"
+      });
+      
+      console.log("Map initialized!");
+    }
+  </script>
+
+  <!-- Load Google Maps API with your key from server -->
+  <script src="/api/maps-loader"></script>
+</body>
+</html>

@@ -199,11 +199,29 @@ function toggleDarkMode(enabled) {
 
 // Initialize the map when the page loads
 function initMap() {
+  console.log("Initializing map...");
   // Default center location (Amsterdam)
   const defaultCenter = { lat: 52.3676, lng: 4.9041 };
   
+  // Find the map element and make sure it exists
+  const mapElement = document.getElementById("map");
+  if (!mapElement) {
+    console.error("Map element not found!");
+    return;
+  }
+  
+  // Make sure the map container has dimensions
+  const mapContainer = document.getElementById("map-container");
+  if (mapContainer) {
+    mapContainer.style.height = "500px";
+  }
+  
+  // Set explicit dimensions on the map element
+  mapElement.style.height = "100%";
+  mapElement.style.width = "100%";
+  
   // Create the map
-  window.map = new google.maps.Map(document.getElementById("map"), {
+  window.map = new google.maps.Map(mapElement, {
     zoom: 14,
     center: defaultCenter,
     mapTypeControl: true,
@@ -212,6 +230,8 @@ function initMap() {
     mapTypeId: "roadmap",
     gestureHandling: "greedy",
   });
+  
+  console.log("Map created successfully!");
   
   // Add click event to the map
   google.maps.event.addListener(window.map, "click", function(event) {
