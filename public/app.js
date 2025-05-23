@@ -210,25 +210,17 @@ function initMap() {
     return;
   }
   
-  // Make sure the map container has dimensions
-  const mapContainer = document.getElementById("map-container");
-  if (mapContainer) {
-    mapContainer.style.height = "500px";
-  }
-  
-  // Set explicit dimensions on the map element
-  mapElement.style.height = "100%";
-  mapElement.style.width = "100%";
-  
-  // Create the map
+  // Create the map with minimal configuration to ensure it works
   window.map = new google.maps.Map(mapElement, {
-    zoom: 14,
+    zoom: 12,
     center: defaultCenter,
-    mapTypeControl: true,
-    fullscreenControl: true,
-    streetViewControl: true,
-    mapTypeId: "roadmap",
-    gestureHandling: "greedy",
+  });
+  
+  // Add a marker at the center
+  new google.maps.Marker({
+    position: defaultCenter,
+    map: window.map,
+    title: "Amsterdam"
   });
   
   console.log("Map created successfully!");
