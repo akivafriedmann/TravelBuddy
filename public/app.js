@@ -1,55 +1,3 @@
-// Global variables
-let map;
-let markers = [];
-let currentInfoWindow = null;
-let currentLocation = null;
-let placeModal;
-let currentPlaceType = 'restaurant';
-let hoverMarker = null;
-let hoverInfoWindow = null;
-let hoverTimeout = null;
-let lastHoverLocation = null;
-let clickedLocation = null;
-let clickedLocationMarker = null;
-let searchRadius = 1500; // Default search radius in meters
-let isApiErrorShown = false;
-let weatherData = null;
-let isDarkMode = false; // Dark mode toggle state
-
-// Dark mode map style
-const darkMapStyle = [
-  { elementType: 'geometry', stylers: [{ color: '#212121' }] },
-  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#212121' }] },
-  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#757575' }] },
-  { featureType: 'administrative.country', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
-  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#bdbdbd' }] },
-  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#181818' }] },
-  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-  { featureType: 'poi.park', elementType: 'labels.text.stroke', stylers: [{ color: '#1b1b1b' }] },
-  { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#2c2c2c' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
-  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#373737' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3c3c3c' }] },
-  { featureType: 'road.highway.controlled_access', elementType: 'geometry', stylers: [{ color: '#4e4e4e' }] },
-  { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-  { featureType: 'transit', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#000000' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#3d3d3d' }] }
-];
-
-// Comprehensive list of dessert-related keywords for filtering
-const dessertKeywords = [
-  'dessert', 'sweet', 'cake', 'pastry', 'cookie', 'ice cream', 'icecream', 'gelato',
-  'chocolate', 'bakery', 'patisserie', 'cupcake', 'muffin', 'candy', 'confection',
-  'donut', 'doughnut', 'froyo', 'frozen yogurt', 'yoghurt', 'custard', 'pie',
-  'waffle', 'crepe', 'pancake', 'churro', 'tiramisu', 'cheesecake', 'pudding',
-  'fudge', 'truffle', 'milkshake', 'sundae', 'sorbet', 'macaron', 'sweets', 'treat',
-  'sugar', 'caramel', 'honey', 'cinnamon', 'vanilla', 'frosting', 'glaze'
-];
-
 /**
  * Shared utility for filtering places based on radius, rating, and unwanted types
  * @param {Array} places - The array of place objects to filter
@@ -62,884 +10,475 @@ function filterAndSortPlaces(places, origin, options = {}) {
     radius = 1500,
     minRating = 4.0,
     minReviews = 20,
-    unwantedTypes = [
-      "gas_station",
-      "car_repair",
-      "car_dealer",
-      "convenience_store",
-      "grocery_or_supermarket",
-      "liquor_store",
-      "market",
-      "store"
-    ]
+    unwantedTypes = []
   } = options;
 
-  const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
-    const R = 6371000;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2)**2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2)**2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  };
-
-  const filtered = places.filter(p => {
-    if (!p.geometry || !p.geometry.location) return false;
+  const filteredPlaces = places.filter(place => {
+    // Skip places without geometry
+    if (!place.geometry || !place.geometry.location) return false;
     
-    // Get location coordinates, handling both function and property access
-    const pLat = typeof p.geometry.location.lat === 'function' ? 
-                p.geometry.location.lat() : p.geometry.location.lat;
-    const pLng = typeof p.geometry.location.lng === 'function' ? 
-                p.geometry.location.lng() : p.geometry.location.lng;
-    
-    const dist = getDistanceInMeters(origin.lat, origin.lng, pLat, pLng);
-    if (dist > radius) return false;
-    if (p.types?.some(t => unwantedTypes.includes(t))) return false;
-    if (p.rating && p.rating < minRating) return false;
-    return true;
-  });
-
-  filtered.sort((a, b) => {
-    const aSig = a.user_ratings_total >= minReviews;
-    const bSig = b.user_ratings_total >= minReviews;
-    if (aSig && bSig) return b.rating - a.rating;
-    if (aSig) return -1;
-    if (bSig) return 1;
-    return (b.user_ratings_total || 0) - (a.user_ratings_total || 0);
-  });
-
-  return filtered;
-}
-
-// Global variables are defined at the top of the file
-
-// Initialize the map
-
-// This function has been removed as requested by the user
-
-// Function to toggle dark mode
-function toggleDarkMode(enabled) {
-  isDarkMode = enabled;
-  
-  if (enabled) {
-    // Apply dark mode to body
-    document.body.classList.add('dark-mode');
-    
-    // Apply dark mode to map if initialized
-    if (map) {
-      map.setOptions({ styles: darkMapStyle });
-    }
-  } else {
-    // Remove dark mode from body
-    document.body.classList.remove('dark-mode');
-    
-    // Reset map styles if initialized
-    if (map) {
-      map.setOptions({ 
-        styles: [
-          {
-            featureType: "poi",
-            elementType: "labels",
-            stylers: [{ visibility: "on" }]
-          }
-        ] 
-      });
-    }
-  }
-}
-
-function initMap() {
-  // Make sure the map element exists
-  const mapElement = document.getElementById('map');
-  if (!mapElement) {
-    console.error("Map element not found in the DOM");
-    return;
-  }
-  
-  // No need to set up special dessert button handling
-  // Category buttons are all handled by the setupCategoryButtons function in initMap
-  // The dessert category button uses data-type="restaurant" data-keyword="dessert"
-  
-  // Set up the dark mode toggle
-  const darkModeCheckbox = document.getElementById('dark-mode-toggle');
-  if (darkModeCheckbox) {
-    // Initialize with stored preference if any
-    isDarkMode = localStorage.getItem('darkMode') === 'true';
-    darkModeCheckbox.checked = isDarkMode;
-    toggleDarkMode(isDarkMode);
-    
-    console.log(`Dark mode is ${isDarkMode ? 'enabled' : 'disabled'} on initialization`);
-    
-    darkModeCheckbox.addEventListener('change', function() {
-      isDarkMode = this.checked;
-      localStorage.setItem('darkMode', isDarkMode);
-      console.log(`Dark mode ${isDarkMode ? 'enabled' : 'disabled'}`);
-      toggleDarkMode(isDarkMode);
-    });
-  } else {
-    console.warn("Dark mode checkbox not found with ID 'dark-mode-toggle'");
-  }
-
-  // Set Amsterdam as default location if not already set
-  if (!currentLocation) {
-    currentLocation = { lat: 52.3676, lng: 4.9041 }; // Amsterdam coordinates
-    console.log("Setting Amsterdam as center");
-  }
-  
-  console.log("Initializing map with center:", currentLocation);
-
-  // Create map with explicit styles to ensure visibility  
-  map = new google.maps.Map(mapElement, {
-    center: currentLocation,
-    zoom: 13,
-    // Remove mapId to allow styles to work properly
-    mapTypeControl: false,
-    fullscreenControl: false,
-    streetViewControl: false,
-    styles: [
-      {
-        featureType: "poi",
-        elementType: "labels",
-        stylers: [{ visibility: "on" }]
-      }
-    ]
-  });
-  
-  // Add mousemove event to trigger hover search for nearby places
-  let isMouseDown = false;
-  
-  // Track mouse state to prevent unwanted events
-  google.maps.event.addListener(map, 'mousedown', function() {
-    isMouseDown = true;
-  });
-  
-  google.maps.event.addListener(map, 'mouseup', function() {
-    isMouseDown = false;
-  });
-  
-  google.maps.event.addListener(map, 'dragstart', function() {
-    // Close any hover info window when dragging starts
-    if (hoverInfoWindow) {
-      hoverInfoWindow.close();
-    }
-  });
-  
-  // Track last hover position to reduce unnecessary searches
-  let lastHoverPosition = null;
-  const MIN_HOVER_DISTANCE = 50; // Minimum distance in pixels to trigger a new hover search
-  
-  google.maps.event.addListener(map, 'mousemove', debounce(function(event) {
-    // Only search when the user is hovering (not actively dragging or clicking)
-    if (!isMouseDown && (!map.getDraggable || map.getDraggable())) {
-      const hoverLocation = {
-        lat: event.latLng.lat(),
-        lng: event.latLng.lng()
-      };
-      
-      // Check if we should trigger a new search based on distance from last hover
-      let shouldSearch = true;
-      
-      // Simple distance check using lat/lng coordinates
-      if (lastHoverPosition) {
-        try {
-          // Get coordinates from the LatLng object
-          const lastLat = lastHoverPosition.lat();
-          const lastLng = lastHoverPosition.lng();
-          
-          // Calculate distance in meters between two lat/lng points
-          const earthRadius = 6371000; // meters
-          const dLat = (hoverLocation.lat - lastLat) * Math.PI / 180;
-          const dLng = (hoverLocation.lng - lastLng) * Math.PI / 180;
-          const a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lastLat * Math.PI / 180) * Math.cos(hoverLocation.lat * Math.PI / 180) *
-            Math.sin(dLng/2) * Math.sin(dLng/2);
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-          const distance = earthRadius * c; // distance in meters
-          
-          // Only search if we've moved at least 25 meters
-          shouldSearch = distance > 25;
-        } catch (e) {
-          // If anything goes wrong in the calculation, default to allowing the search
-          console.error("Error calculating hover distance:", e);
-          shouldSearch = true;
-          // Reset the last position to avoid future errors
-          lastHoverPosition = null;
+    // Check if this place has unwanted business types
+    if (unwantedTypes.length > 0 && place.types) {
+      for (const unwantedType of unwantedTypes) {
+        if (place.types.includes(unwantedType)) {
+          console.log(`Filtering out ${place.name} because it's a ${unwantedType}`);
+          return false;
         }
       }
-      
-      // Store the hover point for visual reference
-      updateHoverMarker(hoverLocation);
-      
-      // Only search in certain zoom levels and if we've moved enough
-      if (map.getZoom() >= 15 && shouldSearch) {
-        lastHoverPosition = event.latLng;
-        searchNearbyOnHover(hoverLocation);
-      }
-    }
-  }, 400)); // Increased debounce time
-  
-  // Add a marker for the current location
-  new google.maps.Marker({
-    position: currentLocation,
-    map: map,
-    icon: {
-      path: google.maps.SymbolPath.CIRCLE,
-      scale: 10,
-      fillColor: "#4285F4",
-      fillOpacity: 0.8,
-      strokeColor: "white",
-      strokeWeight: 2,
-    },
-    title: "Current Location"
-  });
-  
-  // Initialize modal
-  placeModal = new bootstrap.Modal(document.getElementById('place-modal'));
-  
-  // Initialize Places Service for the map with more fields
-  const placesService = new google.maps.places.PlacesService(map);
-  
-  // Initialize InfoWindow for place clicks
-  const infoWindow = new google.maps.InfoWindow();
-  
-  // Add click listener to the map for clicks anywhere on the map
-  map.addListener('click', (event) => {
-    // Close any hover info window
-    if (hoverInfoWindow) {
-      hoverInfoWindow.close();
     }
     
-    // Store the clicked location for search functionality
-    clickedLocation = {
+    // Skip places with insufficient reviews for statistical significance
+    if (place.user_ratings_total < minReviews) {
+      console.log(`Filtering out ${place.name} because it only has ${place.user_ratings_total} reviews (minimum: ${minReviews})`);
+      return false;
+    }
+    
+    // Skip places with lower ratings
+    if (place.rating < minRating) {
+      console.log(`Filtering out ${place.name} because its rating is only ${place.rating} (minimum: ${minRating})`);
+      return false;
+    }
+    
+    // Skip places too far away
+    const placeLocation = place.geometry.location;
+    const distance = getDistanceInMeters(
+      origin.lat, 
+      origin.lng, 
+      placeLocation.lat || placeLocation.latitude, 
+      placeLocation.lng || placeLocation.longitude
+    );
+    
+    if (distance > radius) {
+      console.log(`Filtering out ${place.name} because it's ${Math.round(distance)}m away (radius: ${radius}m)`);
+      return false;
+    }
+    
+    return true;
+  });
+  
+  // Sort by rating (highest first), with a small boost for those closer to the user
+  return filteredPlaces.sort((a, b) => {
+    const locationA = a.geometry.location;
+    const locationB = b.geometry.location;
+    
+    const distanceA = getDistanceInMeters(
+      origin.lat, 
+      origin.lng, 
+      locationA.lat || locationA.latitude, 
+      locationA.lng || locationA.longitude
+    );
+    
+    const distanceB = getDistanceInMeters(
+      origin.lat, 
+      origin.lng, 
+      locationB.lat || locationB.latitude, 
+      locationB.lng || locationB.longitude
+    );
+    
+    // Rating difference has more weight than distance
+    // This gives a slight advantage to closer places when ratings are very close
+    const ratingDiff = (b.rating - a.rating) * 10;
+    const distanceFactor = (distanceA - distanceB) / 100;
+    
+    return ratingDiff + distanceFactor;
+  });
+}
+
+function toggleDarkMode(enabled) {
+  const body = document.body;
+  
+  if (enabled) {
+    body.classList.add('dark-mode');
+    // Apply dark mode map style if map is initialized
+    if (window.map) {
+      window.map.setOptions({
+        styles: [
+          { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+          {
+            featureType: "administrative.locality",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#d59563" }],
+          },
+          {
+            featureType: "poi",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#d59563" }],
+          },
+          {
+            featureType: "poi.park",
+            elementType: "geometry",
+            stylers: [{ color: "#263c3f" }],
+          },
+          {
+            featureType: "poi.park",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#6b9a76" }],
+          },
+          {
+            featureType: "road",
+            elementType: "geometry",
+            stylers: [{ color: "#38414e" }],
+          },
+          {
+            featureType: "road",
+            elementType: "geometry.stroke",
+            stylers: [{ color: "#212a37" }],
+          },
+          {
+            featureType: "road",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#9ca5b3" }],
+          },
+          {
+            featureType: "road.highway",
+            elementType: "geometry",
+            stylers: [{ color: "#746855" }],
+          },
+          {
+            featureType: "road.highway",
+            elementType: "geometry.stroke",
+            stylers: [{ color: "#1f2835" }],
+          },
+          {
+            featureType: "road.highway",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#f3d19c" }],
+          },
+          {
+            featureType: "transit",
+            elementType: "geometry",
+            stylers: [{ color: "#2f3948" }],
+          },
+          {
+            featureType: "transit.station",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#d59563" }],
+          },
+          {
+            featureType: "water",
+            elementType: "geometry",
+            stylers: [{ color: "#17263c" }],
+          },
+          {
+            featureType: "water",
+            elementType: "labels.text.fill",
+            stylers: [{ color: "#515c6d" }],
+          },
+          {
+            featureType: "water",
+            elementType: "labels.text.stroke",
+            stylers: [{ color: "#17263c" }],
+          },
+        ]
+      });
+    }
+    
+    // Update weather widget appearance
+    const weatherWidget = document.getElementById('weather-widget');
+    if (weatherWidget) {
+      weatherWidget.classList.add('dark-mode');
+    }
+  } else {
+    body.classList.remove('dark-mode');
+    // Reset to default map style
+    if (window.map) {
+      window.map.setOptions({
+        styles: []
+      });
+    }
+    
+    // Update weather widget appearance
+    const weatherWidget = document.getElementById('weather-widget');
+    if (weatherWidget) {
+      weatherWidget.classList.remove('dark-mode');
+    }
+  }
+}
+
+// Initialize the map when the page loads
+function initMap() {
+  // Default center location (Amsterdam)
+  const defaultCenter = { lat: 52.3676, lng: 4.9041 };
+  
+  // Create the map
+  window.map = new google.maps.Map(document.getElementById("map"), {
+    zoom: 14,
+    center: defaultCenter,
+    mapTypeControl: true,
+    fullscreenControl: true,
+    streetViewControl: true,
+    mapTypeId: "roadmap",
+    gestureHandling: "greedy",
+  });
+  
+  // Add click event to the map
+  google.maps.event.addListener(window.map, "click", function(event) {
+    const clickedLocation = {
       lat: event.latLng.lat(),
       lng: event.latLng.lng()
     };
     
-    // Show marker at clicked location
-    if (clickedLocationMarker) {
-      clickedLocationMarker.setMap(null); // Remove existing marker
-    }
+    // Center the map on the clicked location
+    window.map.setCenter(clickedLocation);
     
-    // Create a new marker at the clicked location
-    clickedLocationMarker = new google.maps.Marker({
-      position: clickedLocation,
-      map: map,
-      icon: {
-        path: google.maps.SymbolPath.CIRCLE,
-        scale: 8,
-        fillColor: "#FF5722", // Different color from current location
-        fillOpacity: 0.8,
-        strokeColor: "white",
-        strokeWeight: 2,
-      },
-      title: "Clicked Location"
-    });
-    
-    // Update location input field with the coordinates or address
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({
-      location: clickedLocation
-    }, (results, status) => {
-      if (status === google.maps.GeocoderStatus.OK && results[0]) {
-        // Update input field with readable address
-        document.getElementById('location-input').value = results[0].formatted_address;
-      } else {
-        // If geocoding fails, use coordinates
-        document.getElementById('location-input').value = 
-          `${clickedLocation.lat.toFixed(6)}, ${clickedLocation.lng.toFixed(6)}`;
-      }
-    });
-    
-    // Check if a POI (point of interest) was clicked
-    if (event.placeId) {
-      // Prevent the default info window from showing and stop the event from propagating
-      event.stop();
-      
-      // Prevent map panning when clicking a place
-      map.setOptions({ draggable: false });
-      setTimeout(() => map.setOptions({ draggable: true }), 100);
-      
-      // Show loading in info window
-      infoWindow.setContent('<div class="p-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Loading...</div>');
-      infoWindow.setPosition(event.latLng);
-      infoWindow.open(map);
-      
-      // Get comprehensive details for the clicked place
-      placesService.getDetails({
-        placeId: event.placeId,
-        fields: [
-          'name', 'place_id', 'rating', 'user_ratings_total',
-          'formatted_address', 'photos', 'price_level', 'types',
-          'vicinity', 'geometry'
-        ]
-      }, (place, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && place) {
-          // Format rating stars for display in info window
-          let ratingStars = '';
-          if (place.rating) {
-            const fullStars = Math.floor(place.rating);
-            const hasHalfStar = place.rating % 1 >= 0.5;
-            
-            // Full stars
-            for (let i = 0; i < fullStars; i++) {
-              ratingStars += '<i class="fas fa-star text-warning"></i>';
-            }
-            
-            // Half star
-            if (hasHalfStar) {
-              ratingStars += '<i class="fas fa-star-half-alt text-warning"></i>';
-            }
-            
-            // Empty stars
-            const emptyStars = 5 - Math.ceil(place.rating);
-            for (let i = 0; i < emptyStars; i++) {
-              ratingStars += '<i class="far fa-star text-warning"></i>';
-            }
-          }
-          
-          // Create a view details button that calls our showPlaceDetails function
-          const viewDetailsButton = document.createElement('button');
-          viewDetailsButton.className = 'btn btn-primary btn-sm mt-2 w-100';
-          viewDetailsButton.textContent = 'View Full Details';
-          viewDetailsButton.onclick = () => {
-            showPlaceDetails(place.place_id);
-            infoWindow.close();
-          };
-          
-          // Format place type
-          let placeType = '';
-          if (place.types && place.types.length > 0) {
-            // Get the most relevant type
-            const relevantTypes = place.types.filter(type => 
-              type !== 'point_of_interest' && 
-              type !== 'establishment' && 
-              type !== 'food'
-            );
-            
-            if (relevantTypes.length > 0) {
-              placeType = formatPlaceType(relevantTypes[0]);
-            }
-          }
-          
-          // Format price level
-          let priceLevel = '';
-          if (place.price_level) {
-            for (let i = 0; i < place.price_level; i++) {
-              priceLevel += '$';
-            }
-          }
-          
-          // Create photo HTML if available
-          let photoHtml = '';
-          if (place.photos && place.photos.length > 0) {
-            const photoUrl = `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=300`;
-            photoHtml = `<img src="${photoUrl}" class="img-fluid mb-2 rounded" alt="${place.name}">`;
-          }
-          
-          // Create info window content
-          const content = document.createElement('div');
-          content.className = 'p-2';
-          content.style.maxWidth = '300px';
-          
-          // Add content with enhanced styling
-          content.innerHTML = `
-            ${photoHtml}
-            <h5 class="mb-1">${place.name}</h5>
-            ${placeType ? `<div class="badge bg-secondary mb-2">${placeType}</div>` : ''}
-            ${priceLevel ? `<div class="ms-2 badge bg-success">${priceLevel}</div>` : ''}
-            <div class="mb-2">
-              ${ratingStars} <strong>${place.rating || 'No rating'}</strong>
-              ${place.user_ratings_total ? 
-                `<span class="text-muted">(${place.user_ratings_total} reviews)</span>` : 
-                ''}
-            </div>
-            <small class="text-muted d-block mb-2">${place.vicinity || place.formatted_address || ''}</small>
-          `;
-          
-          content.appendChild(viewDetailsButton);
-          
-          // Update info window content
-          infoWindow.setContent(content);
-        } else {
-          infoWindow.setContent('<div class="p-2">Unable to load place details</div>');
-        }
-      });
+    // Load nearby places for this location
+    loadNearbyPlaces(clickedLocation);
+  });
+  
+  // Detect system dark mode preference
+  const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.getElementById('dark-mode-toggle').checked = prefersDarkMode;
+  toggleDarkMode(prefersDarkMode);
+  
+  // Listen for dark mode toggle changes
+  document.getElementById('dark-mode-toggle').addEventListener('change', function(e) {
+    toggleDarkMode(e.target.checked);
+  });
+  
+  // Get the user's current location
+  useMyLocation();
+  
+  // Set up event listeners for UI elements
+  document.getElementById("use-my-location").addEventListener("click", useMyLocation);
+  document.getElementById("search-button").addEventListener("click", searchLocation);
+  document.getElementById("search-input").addEventListener("keyup", function(event) {
+    if (event.key === "Enter") {
+      searchLocation();
     }
   });
   
-  // Set up event listeners
-  document.getElementById('search-button').addEventListener('click', searchLocation);
-  document.getElementById('location-input').addEventListener('keypress', e => {
-    if (e.key === 'Enter') searchLocation();
-  });
-  
-  // Set up use my location button
-  document.getElementById('use-location-button').addEventListener('click', useMyLocation);
-  
-  // Set up radius slider
-  const radiusSlider = document.getElementById('radius-slider');
-  const radiusValueElement = document.getElementById('radius-value');
-  
-  // Initialize the radius value display
-  radiusValueElement.textContent = (radiusSlider.value / 1000).toFixed(1);
-  
-  // Update search radius when the slider changes
-  radiusSlider.addEventListener('input', function() {
-    // Update the displayed value
-    const radiusInKm = (this.value / 1000).toFixed(1);
-    radiusValueElement.textContent = radiusInKm;
+  // Set up place type filter events
+  document.getElementById("place-type-select").addEventListener("change", function() {
+    const currentLocation = window.map.getCenter();
+    const location = {
+      lat: currentLocation.lat(),
+      lng: currentLocation.lng()
+    };
     
-    // Update the global search radius variable
-    searchRadius = parseInt(this.value);
-  });
-  
-  // Automatically search for nearby places once the map is ready
-  google.maps.event.addListenerOnce(map, 'idle', function() {
-    console.log("Map is ready, searching for nearby restaurants and attractions");
-    loadNearbyPlaces(currentLocation);
-  });
-  
-  // When slider changes are complete, trigger a new search if we have a location
-  radiusSlider.addEventListener('change', function() {
-    // Only search if we have a location
-    if (currentLocation) {
-      // Get the keyword from the active category button
-      const activeCategory = document.querySelector('.category-btn.active');
-      const keyword = activeCategory ? activeCategory.dataset.keyword || '' : '';
-      
-      // Load nearby places with the new radius
-      loadNearbyPlaces(currentLocation, keyword, searchRadius);
+    // Get the search input value
+    const searchInput = document.getElementById("search-input").value.trim();
+    
+    // If there's a search term, use it as a keyword
+    if (searchInput) {
+      loadNearbyPlaces(location, searchInput);
+    } else {
+      loadNearbyPlaces(location);
     }
   });
   
-  // Set up category buttons
-  const categoryButtons = document.querySelectorAll('.category-btn');
-  categoryButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      // Update active state
-      categoryButtons.forEach(btn => btn.classList.remove('active'));
-      button.classList.add('active');
-      
-      // Update current place type and search again
-      currentPlaceType = button.dataset.type;
-      
-      // Check if there's a keyword (for special categories like "cheap eats")
-      const keyword = button.dataset.keyword || '';
-      
-      // Pass both type and keyword to loadNearbyPlaces
-      loadNearbyPlaces(currentLocation, keyword);
-    });
+  // Set up the open now checkbox event
+  document.getElementById("open-now-checkbox").addEventListener("change", function() {
+    const currentLocation = window.map.getCenter();
+    const location = {
+      lat: currentLocation.lat(),
+      lng: currentLocation.lng()
+    };
+    
+    // Get the search input value
+    const searchInput = document.getElementById("search-input").value.trim();
+    
+    // If there's a search term, use it as a keyword
+    if (searchInput) {
+      loadNearbyPlaces(location, searchInput);
+    } else {
+      loadNearbyPlaces(location);
+    }
   });
   
-  // Try to get user's current location
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        currentLocation = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        };
-        
-        // Update map center
-        map.setCenter(currentLocation);
-        
-        // Log success
-        console.log("Successfully obtained user location on initial load:", currentLocation);
-        
-        // Load nearby places
-        loadNearbyPlaces(currentLocation);
-        
-        // Try to get address for location
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({
-          location: currentLocation
-        }, (results, status) => {
-          if (status === google.maps.GeocoderStatus.OK && results[0]) {
-            // Update input field with readable address
-            document.getElementById('location-input').value = results[0].formatted_address;
-          }
-        });
-      },
-      error => {
-        console.log('Geolocation error or permission denied on initial load:', error);
-        
-        // Show a notification asking user to enter location manually
-        const notification = document.createElement('div');
-        notification.className = 'alert alert-info alert-dismissible fade show';
-        notification.setAttribute('role', 'alert');
-        notification.innerHTML = `
-          <i class="fas fa-info-circle"></i> 
-          Please enter a location to search for places.
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-        
-        try {
-          // Add notification to the page
-          const container = document.querySelector('.container');
-          if (container) {
-            container.insertBefore(notification, container.firstChild);
-          }
-          
-          // Focus on input to encourage manual entry
-          document.getElementById('location-input').focus();
-        } catch (e) {
-          console.error("Error showing notification:", e);
-        }
-      },
-      {
-        timeout: 8000, // 8 second timeout
-        maximumAge: 0,
-        enableHighAccuracy: true
-      }
-    );
-  } else {
-    // Browser doesn't support geolocation
-    console.log('Geolocation not supported by this browser');
-    
-    // Show a notification asking user to enter location manually
-    const notification = document.createElement('div');
-    notification.className = 'alert alert-info alert-dismissible fade show';
-    notification.setAttribute('role', 'alert');
-    notification.innerHTML = `
-      <i class="fas fa-info-circle"></i> 
-      Your browser doesn't support location services. Please enter a location to search.
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-    
-    try {
-      // Add notification to the page
-      const container = document.querySelector('.container');
-      if (container) {
-        container.insertBefore(notification, container.firstChild);
-      }
-      
-      // Focus on input to encourage manual entry
-      document.getElementById('location-input').focus();
-    } catch (e) {
-      console.error("Error showing notification:", e);
-    }
-  }
+  // Set up event listeners for category buttons
+  document.getElementById("restaurants-button").addEventListener("click", function() {
+    document.getElementById("place-type-select").value = "restaurant";
+    const currentLocation = window.map.getCenter();
+    const location = {
+      lat: currentLocation.lat(),
+      lng: currentLocation.lng()
+    };
+    loadNearbyPlaces(location);
+  });
+  
+  document.getElementById("hotels-button").addEventListener("click", function() {
+    document.getElementById("place-type-select").value = "lodging";
+    const currentLocation = window.map.getCenter();
+    const location = {
+      lat: currentLocation.lat(),
+      lng: currentLocation.lng()
+    };
+    loadNearbyPlaces(location);
+  });
+  
+  document.getElementById("attractions-button").addEventListener("click", function() {
+    document.getElementById("place-type-select").value = "tourist_attraction";
+    const currentLocation = window.map.getCenter();
+    const location = {
+      lat: currentLocation.lat(),
+      lng: currentLocation.lng()
+    };
+    loadNearbyPlaces(location);
+  });
+  
+  document.getElementById("coffee-button").addEventListener("click", function() {
+    document.getElementById("place-type-select").value = "cafe";
+    const currentLocation = window.map.getCenter();
+    const location = {
+      lat: currentLocation.lat(),
+      lng: currentLocation.lng()
+    };
+    loadNearbyPlaces(location);
+  });
+  
+  document.getElementById("dessert-button").addEventListener("click", function() {
+    const currentLocation = window.map.getCenter();
+    const location = {
+      lat: currentLocation.lat(),
+      lng: currentLocation.lng()
+    };
+    // Pass 'dessert' as the keyword to trigger special dessert search behavior
+    loadNearbyPlaces(location, 'dessert');
+  });
+  
+  document.getElementById("nightlife-button").addEventListener("click", function() {
+    document.getElementById("place-type-select").value = "night_club";
+    const currentLocation = window.map.getCenter();
+    const location = {
+      lat: currentLocation.lat(),
+      lng: currentLocation.lng()
+    };
+    loadNearbyPlaces(location);
+  });
 }
 
-// Use my location
+// Use the user's current location
 function useMyLocation() {
-  if (!navigator.geolocation) {
-    console.error("Geolocation is not supported by this browser");
-    useDefaultLocation("Geolocation is not supported by your browser");
-    return;
-  }
-  
-  // Show loading indicator
-  showLoading();
-  
-  // Show status in button
-  const locationButton = document.getElementById('use-location-button');
-  const originalText = locationButton.innerHTML;
-  locationButton.disabled = true;
-  locationButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
-  
-  // Use Amsterdam as a fallback location if geolocation fails
-  const fallbackLocation = {
-    lat: 52.3676,
-    lng: 4.9041
-  };
-  
-  try {
-    // Add a debug popup to make it very clear we're requesting location
-    const notification = document.createElement('div');
-    notification.className = 'alert alert-info alert-dismissible fade show';
-    notification.setAttribute('role', 'alert');
-    notification.innerHTML = `
-      <i class="fas fa-info-circle"></i> 
-      Requesting your location... Please allow location access in your browser when prompted.
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-    
-    try {
-      // Add notification to the page
-      const container = document.querySelector('.container');
-      if (container) {
-        container.insertBefore(notification, container.firstChild);
-      }
-    } catch (e) {
-      console.error("Error showing notification:", e);
-    }
-    
-    // Track when the request was started
-    console.log("Requesting user location at: " + new Date().toISOString());
+  if (navigator.geolocation) {
+    // Show a loading indicator
+    showLoading();
     
     navigator.geolocation.getCurrentPosition(
-      position => {
-        console.log("Successfully obtained user location at: " + new Date().toISOString());
-        
-        // Success - we have the location
-        currentLocation = {
+      (position) => {
+        const userLocation = {
           lat: position.coords.latitude,
-          lng: position.coords.longitude
+          lng: position.coords.longitude,
         };
         
-        console.log("Location coordinates:", currentLocation);
+        // Center the map on the user's location
+        window.map.setCenter(userLocation);
         
-        // Update map center with animation and zoom
-        map.panTo(currentLocation);
-        map.setZoom(14); // Zoom in a bit
-        
-        // Add a marker at the current location
+        // Add a marker at the user's location
         new google.maps.Marker({
-          position: currentLocation,
-          map: map,
+          position: userLocation,
+          map: window.map,
           icon: {
             path: google.maps.SymbolPath.CIRCLE,
             scale: 10,
             fillColor: "#4285F4",
-            fillOpacity: 0.8,
-            strokeColor: "white",
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
             strokeWeight: 2,
           },
-          title: "Your Location"
+          title: "Your Location",
         });
         
         // Load nearby places
-        loadNearbyPlaces(currentLocation);
-        
-        // Restore button
-        locationButton.innerHTML = originalText;
-        locationButton.disabled = false;
-        
-        // Try to get address for location
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({
-          location: currentLocation
-        }, (results, status) => {
-          if (status === google.maps.GeocoderStatus.OK && results[0]) {
-            // Update input field with readable address
-            document.getElementById('location-input').value = results[0].formatted_address;
-          }
-        });
+        loadNearbyPlaces(userLocation);
       },
-      error => {
-        console.error("Geolocation error:", error);
-        let errorMessage = "Unknown error getting your location";
-        
-        // Determine specific error message
-        if (error.code) {
-          switch(error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage = "Location permission denied";
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage = "Location information is unavailable";
-              break;
-            case error.TIMEOUT:
-              errorMessage = "Location request timed out";
-              break;
-          }
-        }
-        
-        // Use default location with appropriate error message
-        useDefaultLocation(errorMessage);
+      (error) => {
+        console.error("Error getting user location:", error);
+        useDefaultLocation("We couldn't get your location: " + error.message);
       },
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 0
+        maximumAge: 60000,
       }
     );
-  } catch (e) {
-    console.error("Exception when accessing geolocation:", e);
-    useDefaultLocation("Error accessing location services");
+  } else {
+    useDefaultLocation("Geolocation is not supported by your browser");
   }
   
-  // Helper function to use a default location when geolocation fails
   function useDefaultLocation(reason) {
-    console.log("Using default location because: ", reason);
-    hideLoading();
-    locationButton.innerHTML = originalText;
-    locationButton.disabled = false;
+    console.warn(reason);
+    alert(reason + ". Using default location (Amsterdam).");
     
-    // Use the fallback Amsterdam location
-    currentLocation = fallbackLocation;
-    map.setCenter(currentLocation);
+    // Default location (Amsterdam)
+    const defaultLocation = { lat: 52.3676, lng: 4.9041 };
     
-    // Set Amsterdam as the default location in the input field
-    document.getElementById('location-input').value = "Amsterdam, Netherlands";
+    // Center the map on the default location
+    window.map.setCenter(defaultLocation);
     
-    // Load nearby places with the fallback location
-    loadNearbyPlaces(currentLocation);
-    
-    // Display a notification that geolocation failed but we're using Amsterdam as fallback
-    const notification = document.createElement('div');
-    notification.className = 'alert alert-warning alert-dismissible fade show';
-    notification.setAttribute('role', 'alert');
-    notification.innerHTML = `
-      <i class="fas fa-exclamation-triangle"></i> 
-      ${reason}. Using Amsterdam as default location. You can enter a different location manually.
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-    
-    try {
-      // Add notification to the top of the page
-      const container = document.querySelector('.container');
-      if (container) {
-        container.insertBefore(notification, container.firstChild);
-      } else {
-        console.error("Container element not found for notification");
-        // Try an alternative approach
-        document.body.insertBefore(notification, document.body.firstChild);
-      }
-    } catch (e) {
-      console.error("Error showing notification:", e);
-    }
+    // Load nearby places for the default location
+    loadNearbyPlaces(defaultLocation);
   }
 }
 
-// Search for a location
+// Search for a location by name
 async function searchLocation() {
+  const searchInput = document.getElementById("search-input").value.trim();
+  
+  if (!searchInput) {
+    alert("Please enter a location to search");
+    return;
+  }
+  
   showLoading();
   
-  // Get the keyword input to check if we're searching for a specific place
-  // We don't have a separate keyword input in this version, so use location input
-  const inputValue = document.getElementById('location-input').value.trim();
-  console.log("Searching with input:", inputValue);
-  
-  // Skip searchForSpecificPlace and directly use geocoding for cities/locations
-  // This ensures we get restaurants in the actual location, not elsewhere
-  
-  // If we have a clicked location, use that instead of geocoding
-  if (clickedLocation) {
-    console.log("Using clicked location for search:", clickedLocation);
-    
-    // Use the clicked location
-    currentLocation = {
-      lat: clickedLocation.lat,
-      lng: clickedLocation.lng
-    };
-    
-    // Update map center
-    map.setCenter(currentLocation);
-    map.setZoom(15); // Zoom in to show nearby places
-    
-    // Load nearby places based on clicked location and the current search radius
-    loadNearbyPlaces(currentLocation, inputValue, searchRadius);
-    
-    // Keep the clickedLocation marker visible so user knows where they clicked
-    // but clear the reference so another click will work
-    clickedLocation = null;
-    
-    hideLoading();
-    return;
-  }
-  
-  // If no clicked location, proceed with location input search
-  const locationInput = document.getElementById('location-input').value.trim();
-  
-  if (!locationInput) {
-    hideLoading();
-    alert('Please enter a location to search or click directly on the map');
-    return;
-  }
-  
   try {
-    // Use our server's geocoding endpoint instead of direct Google Maps API
-    console.log("Geocoding using server endpoint for:", locationInput);
+    // First try to use the search term as a direct place search
+    const specificPlaceResult = await searchForSpecificPlace(searchInput);
     
-    // Call our backend geocoding endpoint
-    const response = await fetch(`/api/geocoding?address=${encodeURIComponent(locationInput)}`);
-    
-    if (!response.ok) {
-      throw new Error(`Geocoding API error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    console.log("Geocoding API response:", data);
-    
-    // Handle different API response statuses
-    if (data.status === 'ZERO_RESULTS') {
-      hideLoading();
-      alert(`No results found for "${locationInput}". Please try a different search term or click directly on the map.`);
-      return;
-    }
-    
-    if (data.status === 'OVER_QUERY_LIMIT') {
-      hideLoading();
-      alert('The geocoding service is temporarily unavailable due to too many requests. Please try again later.');
-      return;
-    }
-    
-    if (data.status === 'REQUEST_DENIED') {
-      hideLoading();
-      alert('The geocoding service cannot process your request right now. Please try again later.');
-      return;
-    }
-    
-    if (data.status === 'INVALID_REQUEST') {
-      hideLoading();
-      alert('Invalid location search. Please enter a city, address, or place name.');
-      return;
-    }
-    
-    if (data.status === 'UNKNOWN_ERROR') {
-      hideLoading();
-      alert('An unknown error occurred with the geocoding service. Please try again.');
-      return;
-    }
-    
-    // Check for valid results
-    if (data.status === 'OK' && data.results && data.results.length > 0) {
-      const result = data.results[0];
-      const location = result.geometry.location;
-      
-      // Store current location
-      currentLocation = {
-        lat: location.lat,
-        lng: location.lng
+    if (specificPlaceResult && specificPlaceResult.geometry) {
+      // We found a specific place!
+      const placeLocation = {
+        lat: specificPlaceResult.geometry.location.lat,
+        lng: specificPlaceResult.geometry.location.lng
       };
       
-      console.log("Found location:", currentLocation);
+      // Center the map on this place
+      window.map.setCenter(placeLocation);
+      window.map.setZoom(16); // Closer zoom for a specific place
       
-      // Update map center
-      map.setCenter(currentLocation);
+      // Load nearby places around this specific place
+      loadNearbyPlaces(placeLocation);
       
-      // Add marker for the search location (replacing any clicked location marker)
-      if (clickedLocationMarker) {
-        clickedLocationMarker.setMap(null);
+      // Show this place's details
+      if (specificPlaceResult.place_id) {
+        showPlaceDetails(specificPlaceResult.place_id);
       }
       
-      clickedLocationMarker = new google.maps.Marker({
-        position: currentLocation,
-        map: map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: "#FF5722",
-          fillOpacity: 0.8,
-          strokeColor: "white",
-          strokeWeight: 2,
-        },
-        title: "Search Location"
-      });
+      return;
+    }
+    
+    // If no specific place found, try geocoding the search term as an address/location
+    const response = await fetch(`/api/geocode?address=${encodeURIComponent(searchInput)}`);
+    const data = await response.json();
+    
+    if (data.status === "OK" && data.results && data.results.length > 0) {
+      const location = data.results[0].geometry.location;
       
-      // Determine if this is a specific locality/neighborhood by checking the result types
-      const isSpecificArea = result.types && result.types.some(type => 
-        ['sublocality', 'neighborhood', 'postal_code'].includes(type)
-      );
+      // Center the map on the geocoded location
+      window.map.setCenter(location);
       
-      // Use a smaller radius for more specific area searches to keep results relevant
-      if (isSpecificArea) {
-        // Smaller radius for specific areas like neighborhoods (700m)
-        loadNearbyPlaces(currentLocation, '', 700);
+      // Adjust zoom level based on the result type
+      if (data.results[0].geometry.viewport) {
+        window.map.fitBounds({
+          east: data.results[0].geometry.viewport.northeast.lng,
+          north: data.results[0].geometry.viewport.northeast.lat,
+          west: data.results[0].geometry.viewport.southwest.lng,
+          south: data.results[0].geometry.viewport.southwest.lat
+        });
       } else {
-        // Use default radius for broader areas like cities
-        loadNearbyPlaces(currentLocation);
+        window.map.setZoom(14);
       }
+      
+      // Load nearby places for this location
+      loadNearbyPlaces(location);
     } else {
+      alert("Location not found. Please try a different search term.");
       hideLoading();
-      console.error('Unexpected geocoding response:', data);
-      alert('Location search failed. Please try another search term or click directly on the map.');
     }
   } catch (error) {
-    console.error('Geocoding error:', error);
-    hideLoading();
+    console.error("Error searching for location:", error);
     alert('Error searching for location. Please try again or click directly on the map.');
   }
 }
@@ -968,63 +507,85 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
     if (isDessertSearch) {
       console.log("Performing specialized dessert multi-query search");
       // Multi-query approach for dessert places
-      const queries = [
-        'dessert', 'patisserie', 'bakery', 'chocolate shop', 
-        'cake shop', 'ice cream parlor', 'crêperie', 'sweet', 
-        'gelato', 'pastry', 'donut'
-      ];
       
-      const placesService = new google.maps.places.PlacesService(map);
+      // First search specifically for dessert places
+      let dessertApiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=restaurant&keyword=dessert&radius=${radius}`;
       
-      // Search using multiple specialized queries for dessert places
-      for (const query of queries) {
-        try {
-          console.log(`Searching for: ${query}`);
-          
-          // Make the text search request
-          const results = await new Promise((resolve, reject) => {
-            placesService.textSearch({
-              query: query,
-              location: location,
-              radius: radius,
-              openNow: openNowChecked
-            }, (results, status) => {
-              if (status === google.maps.places.PlacesServiceStatus.OK) {
-                resolve(results);
-              } else {
-                console.log(`No results for ${query} search: ${status}`);
-                resolve([]);
-              }
-            });
-          });
-          
-          // Add unique places to our collection
-          results.forEach(place => {
-            if (!placesMap.has(place.place_id)) {
-              placesMap.set(place.place_id, place);
-            }
-          });
-          
-          // If we have enough places, stop querying more categories
-          if (placesMap.size >= 20) {
-            console.log("Found enough dessert places, stopping queries");
-            break;
-          }
-        } catch (err) {
-          console.error(`Error searching for ${query}:`, err);
-        }
+      if (openNowChecked) {
+        dessertApiUrl += '&opennow=true';
       }
       
-      // Convert map to array
+      const dessertResponse = await fetch(dessertApiUrl);
+      const dessertData = await dessertResponse.json();
+      
+      console.log("Dessert API response:", dessertData);
+      
+      if (dessertData.status === 'OK' && dessertData.results && dessertData.results.length > 0) {
+        // Add dessert places to our collection
+        dessertData.results.forEach(place => {
+          placesMap.set(place.place_id, place);
+        });
+      }
+      
+      // Also search for cafes since many serve desserts
+      let cafeApiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=cafe&radius=${radius}`;
+      
+      if (openNowChecked) {
+        cafeApiUrl += '&opennow=true';
+      }
+      
+      const cafeResponse = await fetch(cafeApiUrl);
+      const cafeData = await cafeResponse.json();
+      
+      console.log("Cafe API response for desserts:", cafeData);
+      
+      if (cafeData.status === 'OK' && cafeData.results && cafeData.results.length > 0) {
+        // Add cafes to our collection
+        cafeData.results.forEach(place => {
+          placesMap.set(place.place_id, place);
+        });
+      }
+      
+      // Also search for bakeries
+      let bakeryApiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=bakery&radius=${radius}`;
+      
+      if (openNowChecked) {
+        bakeryApiUrl += '&opennow=true';
+      }
+      
+      const bakeryResponse = await fetch(bakeryApiUrl);
+      const bakeryData = await bakeryResponse.json();
+      
+      console.log("Bakery API response for desserts:", bakeryData);
+      
+      if (bakeryData.status === 'OK' && bakeryData.results && bakeryData.results.length > 0) {
+        // Add bakeries to our collection
+        bakeryData.results.forEach(place => {
+          placesMap.set(place.place_id, place);
+        });
+      }
+      
+      // Convert our Map back to an array
       places = Array.from(placesMap.values());
-      console.log(`Found ${places.length} dessert places using multi-query approach`);
+      console.log(`Combined ${places.length} unique dessert places`);
+      
+      // For dessert places, we would normally use a lower minimum rating threshold
+      // But this is handled in the renderPlaces function
+      
+      renderPlaces(places, location, "restaurant", true);
     } else {
-      // Standard API request for non-dessert searches
+      // Regular search for other place types
+      // Get the currently selected place type
+      const placeTypeSelect = document.getElementById('place-type-select');
+      const currentPlaceType = placeTypeSelect ? placeTypeSelect.value : 'restaurant';
+      
+      console.log(`Searching for places of type: ${currentPlaceType}`);
+      
       // Build API URL with required parameters
       let apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${currentPlaceType}&radius=${radius}`;
       
-      // Add keyword if provided (for special categories like "cheap eats")
-      if (keyword) {
+      // Add keyword if provided and it's not the dessert keyword (handled separately above)
+      if (keyword && !isDessertSearch) {
         apiUrl += `&keyword=${encodeURIComponent(keyword)}`;
       }
       
@@ -1032,61 +593,6 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       if (openNowChecked) {
         apiUrl += '&opennow=true';
         console.log('Filtering for places open now');
-      }
-      
-      // Define the Haversine formula for distance calculation
-      const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
-        const R = 6371000; // Earth radius in meters
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = 
-          Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-          Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
-      };
-      
-      // Update the sort indicator based on place type
-      const sortIndicator = document.querySelector('.sort-indicator small');
-      if (sortIndicator) {
-        // Get minimum reviews based on place type
-        const MIN_REVIEWS = {
-          restaurant: 20,
-          lodging: 8,
-          night_club: 10,
-          supermarket: 5,
-          default: 10
-        };
-        const minReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
-        
-        let sortText = `
-          <i class="fas fa-info-circle"></i> 
-          Places are sorted by rating, prioritizing those with at least ${minReviews} reviews
-        `;
-        
-        // Build indicators for various filters
-        const indicators = [];
-        
-        // Add "Open Now" indicator
-        if (openNowChecked) {
-          indicators.push('open now');
-        }
-        
-        // Show dessert indicator if keyword is dessert
-        if (keyword === 'dessert') {
-          indicators.push('<i class="fas fa-ice-cream"></i> dessert places only');
-        }
-        
-        // Apply indicators to sort text if any are active
-        if (indicators.length > 0) {
-          sortText = `
-            <i class="fas fa-info-circle"></i> 
-            Showing ${indicators.join(', ')}, sorted by rating (min ${minReviews} reviews)
-          `;
-        }
-        
-        sortIndicator.innerHTML = sortText;
       }
       
       // Call our backend API to get nearby places
@@ -1097,97 +603,15 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       console.log("Nearby places API response:", data);
       
       if (data.status === 'OK' && data.results && data.results.length > 0) {
-        const container = document.getElementById('places-container');
-        container.innerHTML = '';
-        
-        // Log the places we found
-        console.log(`Starting with ${data.results.length} places before filtering`);
-        
-        // Define unwanted business types
-        const UNWANTED_TYPES = [
-          "gas_station", 
-          "convenience_store", 
-          "car_repair", 
-          "car_wash",
-          "car_dealer"
-        ];
-        
-        // Minimum rating to show (different minimum ratings based on place type)
-        let MIN_RATING;
-        if (currentPlaceType === 'restaurant') {
-          MIN_RATING = 4.0;
-        } else if (currentPlaceType === 'night_club') {
-          MIN_RATING = 3.7; // Lower threshold for nightclubs as requested
-        } else if (currentPlaceType === 'supermarket') {
-          MIN_RATING = 3.5; // Lower threshold for supermarkets
-        } else {
-          MIN_RATING = 3.8; // Default more lenient threshold for other place types
-        }
-        
-        // Define minimum reviews for statistical significance
-        const MIN_REVIEWS = {
-          restaurant: 20,
-          lodging: 8,
-          night_club: 10,
-          supermarket: 5,
-          default: 10
-        };
-        const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
-        
-        console.log(`Filtering with minimum rating of ${MIN_RATING} and within ${radius}m for ${currentPlaceType}s`);
-  
-        // Use our shared utility function to filter and sort places
-        const filteredPlaces = filterAndSortPlaces(data.results, location, {
-          radius: radius,
-          minRating: MIN_RATING,
-          minReviews: currentMinReviews,
-          unwantedTypes: UNWANTED_TYPES
-        });
-        
-        // No additional dessert filtering - keyword parameter already handles this
-        let finalPlaces = filteredPlaces;
-        
-        // Log filtering information
-        console.log(`After filtering: ${finalPlaces.length} of ${data.results.length} places remaining`);
-        
-        // Places are already sorted by our utility function
-        console.log(`Showing ${finalPlaces.length} places sorted by rating and review count`);
-        
-        if (finalPlaces.length === 0) {
-          // Show a message if no places meet the criteria
-          const messageText = keyword === 'dessert' ? 
-            `No dessert places found matching your criteria` : 
-            `No places found matching your criteria`;
-            
-          container.innerHTML = `
-            <div class="col-12">
-              <div class="alert alert-info">
-                <strong>${messageText}</strong>
-                <p>No ${formatPlaceType(currentPlaceType)}${keyword === 'dessert' ? ' serving desserts' : ''} with a rating of ${MIN_RATING}+ within ${radius}m found in this area.</p>
-                <p>Try another location or category, or adjust the search radius.</p>
-              </div>
-            </div>
-          `;
-        } else {
-          // Display filtered and sorted places
-          finalPlaces.forEach((place, index) => {
-            // Create a card for each place (the TripAdvisor fetch happens inside createPlaceCard,
-            // no need to call fetchTripAdvisorData again)
-            const card = createPlaceCard(place, index);
-            container.appendChild(card);
-            
-            // Add a marker for this place
-            addMarker(place, index);
-          });
-        }
+        renderPlaces(data.results, location, currentPlaceType);
       } else if (data.status === 'REQUEST_DENIED') {
         // API key issue
-        console.error("Google Places API request denied:", data.error_message || "No error details available");
+        console.error("API request denied:", data.error_message || "No error details available");
         document.getElementById('places-container').innerHTML = `
           <div class="col-12">
             <div class="alert alert-warning">
               <strong>API Request Denied</strong>
-              <p>There was an issue with the Google Places API request: ${data.error_message || "Unknown error"}</p>
+              <p>There was an issue with the API request: ${data.error_message || "Unknown error"}</p>
               <p>This is likely due to API key restrictions or quota limits.</p>
             </div>
           </div>
@@ -1200,8 +624,7 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
           </div>
         `;
       }
-      
-      hideLoading();
+    }
   } catch (error) {
     console.error('Error fetching nearby places:', error);
     document.getElementById('places-container').innerHTML = `
@@ -1209,12 +632,13 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
         <div class="alert alert-danger">Error fetching places. Please try again later.</div>
       </div>
     `;
+  } finally {
     hideLoading();
   }
 }
 
 // Render place cards
-function renderPlaces(places) {
+function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false) {
   const container = document.getElementById('places-container');
   container.innerHTML = '';
   
@@ -1234,100 +658,62 @@ function renderPlaces(places) {
   if (currentPlaceType === 'restaurant') {
     MIN_RATING = 4.0;
   } else if (currentPlaceType === 'night_club') {
-    MIN_RATING = 3.7; // Lower threshold for nightclubs as requested
+    MIN_RATING = 3.7; // Lower threshold for nightclubs
   } else if (currentPlaceType === 'supermarket') {
     MIN_RATING = 3.5; // Lower threshold for supermarkets
   } else {
-    MIN_RATING = 3.8; // Default more lenient threshold for other place types
+    MIN_RATING = 3.8; // Default threshold for other places
   }
   
+  // For dessert searches, lower the threshold slightly
+  if (isDessertSearch) {
+    MIN_RATING = 3.7;
+  }
+  
+  console.log(`Filtering with minimum rating of ${MIN_RATING} for ${isDessertSearch ? 'desserts' : currentPlaceType}`);
+  
   // Define unwanted business types
-  const unwantedTypes = [
+  const UNWANTED_TYPES = [
     "gas_station", 
     "convenience_store", 
     "car_repair", 
     "car_wash",
-    "car_dealer",
-    "ice_cream_parlor",
-    "bakery",
-    "cafe",
-    "grocery_or_supermarket",
-    "food",
-    "store",
-    "market",
-    "liquor_store"
+    "car_dealer"
   ];
   
-  // Make a copy of the places to filter
-  let filteredPlaces = [...places];
+  // Use our shared utility function to filter and sort places
+  const filteredPlaces = filterAndSortPlaces(places, origin, {
+    radius: 1500,
+    minRating: MIN_RATING,
+    minReviews: currentMinReviews,
+    unwantedTypes: UNWANTED_TYPES
+  });
   
-  // Log the number of places before filtering
-  console.log(`Before client filtering: ${filteredPlaces.length} places`);
+  console.log(`After filtering: ${filteredPlaces.length} of ${places.length} places remaining`);
   
-  // Completely bypass filtering and force places to render
-  console.log("SKIPPING FILTERING TO DEBUG - We should see places now");
+  // Clear markers before adding new ones
+  clearMarkers();
   
-  // Force rendering all places received from API
-  const unfilteredPlaces = [...places]; 
-  
-  console.log(`Forcing display of all ${unfilteredPlaces.length} unfiltered places`);
-  
-  // Override the filteredPlaces variable to ensure we show something
-  filteredPlaces = unfilteredPlaces;
-  
-  console.log(`After client filtering: ${filteredPlaces.length} places`);
-  
-  // If no results after filtering, show a message
   if (filteredPlaces.length === 0) {
-    let message = `No high-rated ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.`;
+    // Show a message if no places meet the criteria
+    const messageText = isDessertSearch ? 
+      `No dessert places found matching your criteria` : 
+      `No places found matching your criteria`;
+      
     container.innerHTML = `
       <div class="col-12">
-        <div class="alert alert-info">${message}</div>
+        <div class="alert alert-info">
+          <strong>${messageText}</strong>
+          <p>No ${formatPlaceType(currentPlaceType)}${isDessertSearch ? ' serving desserts' : ''} with a rating of ${MIN_RATING}+ found in this area.</p>
+          <p>Try another location or category, or adjust the search radius.</p>
+        </div>
       </div>
     `;
     return;
   }
   
-  // Update sort indicator
-  const sortIndicator = document.getElementById('sort-indicator');
-  if (sortIndicator) {
-    const indicatorText = `Showing ${filteredPlaces.length} places sorted by Google rating`;
-    sortIndicator.innerHTML = indicatorText;
-  }
-  
-  // Sort places by rating but only consider places with at least currentMinReviews
-  const sortedPlaces = [...filteredPlaces].sort((a, b) => {
-    const aSignificant = a.user_ratings_total >= currentMinReviews;
-    const bSignificant = b.user_ratings_total >= currentMinReviews;
-    
-    // If both places have significant number of reviews, sort by rating
-    if (aSignificant && bSignificant) {
-      return b.rating - a.rating;
-    }
-    // If only one has significant reviews, prioritize that one
-    else if (aSignificant) {
-      return -1;
-    }
-    else if (bSignificant) {
-      return 1;
-    }
-    // If neither has significant reviews, sort by number of reviews
-    else if (a.user_ratings_total && b.user_ratings_total) {
-      return b.user_ratings_total - a.user_ratings_total;
-    }
-    // Fallback to rating if available
-    else if (a.rating && b.rating) {
-      return b.rating - a.rating;
-    }
-    // Keep original order if no sorting criteria apply
-    return 0;
-  });
-  
-  // Reset markers before adding new ones
-  clearMarkers();
-  
-  sortedPlaces.forEach((place, index) => {
-    // Create a card for each place
+  // Display filtered and sorted places
+  filteredPlaces.forEach((place, index) => {
     const card = createPlaceCard(place, index);
     container.appendChild(card);
     
@@ -1338,400 +724,171 @@ function renderPlaces(places) {
 
 // Create a card for a place
 function createPlaceCard(place, index) {
-  const col = document.createElement('div');
-  col.className = 'col-md-4 mb-4';
+  const card = document.createElement('div');
+  card.className = 'col-md-6 col-lg-4 mb-4';
   
-  // Add numerical identifier for this place
-  const placeNumber = index + 1;
+  // Format the price level
+  let priceLevel = '';
+  if (place.price_level) {
+    for (let i = 0; i < place.price_level; i++) {
+      priceLevel += '$';
+    }
+  }
   
-  // Format rating stars for Google
-  let ratingHtml = '';
+  // Check if the place is open now
+  let openNowText = '';
+  if (place.opening_hours) {
+    if (place.opening_hours.open_now) {
+      openNowText = '<span class="badge bg-success ms-2">Open Now</span>';
+    } else if (place.opening_hours.open_now === false) {
+      openNowText = '<span class="badge bg-danger ms-2">Closed</span>';
+    }
+  }
+  
+  // Format the rating stars
+  let ratingStars = '';
   if (place.rating) {
-    ratingHtml = '<div class="mb-2 star-rating">';
-    ratingHtml += '<div class="d-flex align-items-center mb-1">';
-    ratingHtml += '<small class="text-muted me-1">Google:</small>';
-    
     // Full stars
-    for (let i = 0; i < Math.floor(place.rating); i++) {
-      ratingHtml += '<i class="fas fa-star"></i>';
+    const fullStars = Math.floor(place.rating);
+    for (let i = 0; i < fullStars; i++) {
+      ratingStars += '<i class="fas fa-star text-warning"></i>';
     }
     
     // Half star if needed
     if (place.rating % 1 >= 0.5) {
-      ratingHtml += '<i class="fas fa-star-half-alt"></i>';
+      ratingStars += '<i class="fas fa-star-half-alt text-warning"></i>';
     }
     
     // Empty stars
-    for (let i = 0; i < (5 - Math.ceil(place.rating)); i++) {
-      ratingHtml += '<i class="far fa-star"></i>';
-    }
-    
-    ratingHtml += ` <span class="ms-1">${place.rating}</span>`;
-    
-    // Add a more prominent display for the number of reviews
-    if (place.user_ratings_total) {
-      // Add badge indicating statistically significant ratings based on place type
-      const minReviews = {
-        restaurant: 20,
-        lodging: 8,
-        night_club: 10,
-        supermarket: 5,
-        default: 10
-      };
-      const currentMin = minReviews[currentPlaceType] || minReviews.default;
-      
-      if (place.user_ratings_total > 500) {
-        ratingHtml += ` <span class="badge bg-danger ms-2"><i class="fas fa-fire"></i> ${place.user_ratings_total} reviews</span>`;
-      } else if (place.user_ratings_total > 200) {
-        ratingHtml += ` <span class="badge bg-success ms-2">${place.user_ratings_total} reviews</span>`;
-      } else if (place.user_ratings_total >= currentMin) {
-        ratingHtml += ` <span class="badge bg-primary ms-2">${place.user_ratings_total} reviews</span>`;
-      } else {
-        ratingHtml += ` <span class="text-muted">(${place.user_ratings_total} reviews)</span>`;
-      }
-    }
-    
-    ratingHtml += '</div>'; // End of Google rating div
-    
-    // TripAdvisor placeholder with loading indicator
-    ratingHtml += `
-      <div class="d-flex align-items-center mt-2" id="tripadvisor-${place.place_id}">
-        <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" 
-             alt="TripAdvisor" height="15" class="me-2">
-        <div class="spinner-border spinner-border-sm text-success" role="status">
-          <span class="visually-hidden">Loading TripAdvisor data...</span>
-        </div>
-        <small class="text-muted ms-2">Loading...</small>
-      </div>
-    `;
-    
-    ratingHtml += '</div>'; // End star-rating div
-    
-    // Note: TripAdvisor data will be fetched once in the main function
-    // We don't call fetchTripAdvisorData here to avoid duplicate requests
-  }
-  
-  // Format price level
-  let priceHtml = '';
-  if (place.price_level) {
-    priceHtml = '<div class="price-level">';
-    for (let i = 0; i < place.price_level; i++) {
-      priceHtml += '$';
-    }
-    priceHtml += '</div>';
-  }
-  
-  // Create card content
-  let photoHtml = '<div class="bg-light text-center py-5">No Image Available</div>';
-  if (place.photos && place.photos.length > 0) {
-    // Check if we have a photo_reference or if we have a reference property
-    const photoRef = place.photos[0].photo_reference;
-    if (photoRef) {
-      const photoUrl = `/api/photo?photoreference=${photoRef}&maxwidth=400`;
-      photoHtml = `<img src="${photoUrl}" class="card-img-top place-image" alt="${place.name}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x300?text=Image+Not+Available'">`;
-    } else if (place.photos[0].url) {
-      // Some API responses include a direct URL instead
-      photoHtml = `<img src="${place.photos[0].url}" class="card-img-top place-image" alt="${place.name}" loading="lazy" onerror="this.src='https://via.placeholder.com/400x300?text=Image+Not+Available'">`;
+    const emptyStars = 5 - Math.ceil(place.rating);
+    for (let i = 0; i < emptyStars; i++) {
+      ratingStars += '<i class="far fa-star text-warning"></i>';
     }
   }
   
-  // Create a numbered badge for the place
-  const numberBadgeHtml = `
-    <div class="place-number-badge">${placeNumber}</div>
-  `;
+  // Format place types for display
+  let typesBadges = '';
+  if (place.types && place.types.length > 0) {
+    const displayTypes = place.types
+      .filter(type => !['point_of_interest', 'establishment'].includes(type))
+      .slice(0, 3);
+    
+    displayTypes.forEach(type => {
+      typesBadges += `<span class="badge bg-secondary me-1">${formatPlaceType(type)}</span>`;
+    });
+  }
   
-  // We no longer need a dessert badge as there's no dessert mode
-  // The Desserts category button now handles showing dessert places directly
-
-  col.innerHTML = `
-    <div class="card place-card h-100">
-      <div class="position-relative">
-        ${photoHtml}
-        <div class="position-absolute top-0 start-0 mt-2 ms-2 bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; font-weight: bold;">
-          ${placeNumber}
-        </div>
-      </div>
+  // Create the card HTML
+  card.innerHTML = `
+    <div class="card h-100">
       <div class="card-body">
-        <h5 class="card-title">${placeNumber}. ${place.name}</h5>
-        ${ratingHtml}
-        <!-- TripAdvisor Rating Section -->
-        <div id="tripadvisor-${place.place_id}"
-             class="tripadvisor-rating-container small mb-1 py-2"
-             style="min-height: 30px; border-top: 1px dotted #ddd; padding-top: 8px; margin-top: 6px;">
-          <div class="d-flex align-items-center justify-content-center">
-            <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" 
-                 alt="TripAdvisor" height="15" class="me-2">
-            <div class="spinner-border spinner-border-sm text-success" role="status">
-              <span class="visually-hidden">Loading TripAdvisor data...</span>
-            </div>
-            <small class="text-muted ms-2">Loading...</small>
+        <h5 class="card-title">
+          ${index + 1}. ${place.name}
+          ${openNowText}
+        </h5>
+        <p class="card-text">
+          <small class="text-muted">${place.vicinity || place.formatted_address || ''}</small>
+        </p>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="rating">
+            ${ratingStars}
+            <span class="ms-1">${place.rating}</span>
+            <small class="text-muted ms-1">(${place.user_ratings_total})</small>
+          </div>
+          <div class="price">
+            <strong>${priceLevel}</strong>
           </div>
         </div>
-        ${priceHtml}
-        <p class="card-text">${place.vicinity || ''}</p>
-        <button class="btn btn-primary btn-sm view-details" data-place-id="${place.place_id}">View Details</button>
+        <div class="mb-3">
+          ${typesBadges}
+        </div>
+        <button class="btn btn-primary btn-sm view-details-btn" 
+          data-place-id="${place.place_id}" 
+          onclick="showPlaceDetails('${place.place_id}')">
+          View Details
+        </button>
+        <button class="btn btn-outline-secondary btn-sm ms-2" 
+          onmouseover="updateHoverMarker({lat: ${place.geometry.location.lat}, lng: ${place.geometry.location.lng}})">
+          <i class="fas fa-map-marker-alt"></i>
+        </button>
       </div>
     </div>
   `;
   
-  // Add click event to view details button
-  col.querySelector('.view-details').addEventListener('click', () => {
-    showPlaceDetails(place.place_id);
-  });
-  
-  // Add click event to card
-  col.querySelector('.place-card').addEventListener('click', (e) => {
-    if (!e.target.classList.contains('view-details')) {
-      showPlaceDetails(place.place_id);
-    }
-  });
-  
-  // Fetch TripAdvisor data for this place after a slight delay to ensure DOM is updated
-  setTimeout(() => {
-    fetchTripAdvisorData(place);
-  }, 100);
-  
-  return col;
+  return card;
 }
 
-// Simple string similarity function (without requiring external library)
+// Calculate string similarity (for fuzzy matching)
 function calculateStringSimilarity(str1, str2) {
-  str1 = str1.toLowerCase();
-  str2 = str2.toLowerCase();
+  if (!str1 || !str2) return 0;
   
-  // Quick check
-  if (str1 === str2) return 1.0;
+  // Convert to lowercase
+  const s1 = str1.toLowerCase();
+  const s2 = str2.toLowerCase();
   
-  // Check if one string contains the other
-  if (str1.includes(str2) || str2.includes(str1)) {
-    const longerLength = Math.max(str1.length, str2.length);
-    const shorterLength = Math.min(str1.length, str2.length);
-    return shorterLength / longerLength * 0.8; // 80% similarity if one contains the other
-  }
+  // Check for exact match or contains
+  if (s1 === s2) return 1;
+  if (s1.includes(s2) || s2.includes(s1)) return 0.9;
   
-  // Split into words and check for common words
-  const words1 = str1.split(/\s+/);
-  const words2 = str2.split(/\s+/);
+  // Calculate Levenshtein distance
+  const len1 = s1.length;
+  const len2 = s2.length;
   
-  let matches = 0;
-  for (const word1 of words1) {
-    if (word1.length <= 2) continue; // Skip short words
-    for (const word2 of words2) {
-      if (word2.length <= 2) continue;
-      if (word1 === word2 || word1.includes(word2) || word2.includes(word1)) {
-        matches++;
-        break;
-      }
+  // Create distance matrix
+  const matrix = Array(len1 + 1).fill().map(() => Array(len2 + 1).fill(0));
+  
+  // Initialize first row and column
+  for (let i = 0; i <= len1; i++) matrix[i][0] = i;
+  for (let j = 0; j <= len2; j++) matrix[0][j] = j;
+  
+  // Fill the matrix
+  for (let i = 1; i <= len1; i++) {
+    for (let j = 1; j <= len2; j++) {
+      const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,      // deletion
+        matrix[i][j - 1] + 1,      // insertion
+        matrix[i - 1][j - 1] + cost // substitution
+      );
     }
   }
   
-  return matches / Math.max(words1.length, words2.length);
+  // The Levenshtein distance
+  const distance = matrix[len1][len2];
+  
+  // Normalize the result (0 to 1, where 1 is perfect match)
+  const maxLen = Math.max(len1, len2);
+  if (maxLen === 0) return 1; // Both strings are empty
+  
+  return 1 - (distance / maxLen);
 }
 
-// Helper function to fetch TripAdvisor data for a place and update its card
+// Fetch TripAdvisor data for a place
 async function fetchTripAdvisorData(place) {
   try {
-    const { place_id, name, vicinity } = place;
+    const placeName = encodeURIComponent(place.name);
+    const placeLocation = encodeURIComponent(place.vicinity || '');
     
-    // Find the placeholder element for this place by ID
-    let taRatingElement = document.getElementById(`tripadvisor-${place.place_id}`);
+    const response = await fetch(`/api/tripadvisor?place_name=${placeName}&location=${placeLocation}`);
+    const data = await response.json();
     
-    // If not found by ID, log the error and exit
-    if (!taRatingElement) {
-      console.error(`TripAdvisor rating element not found for ${place.place_id}`);
-      return;
+    console.log("TripAdvisor API response:", data);
+    
+    if (data && data.status === 'success' && data.data) {
+      return data.data;
     }
     
-    console.log(`Fetching TripAdvisor data for ${name} in ${vicinity}`);
-    
-    // Show loading state
-    taRatingElement.innerHTML = `
-      <div class="d-flex align-items-center justify-content-center">
-        <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" 
-             alt="TripAdvisor" height="15" class="me-2">
-        <div class="spinner-border spinner-border-sm text-success" role="status">
-          <span class="visually-hidden">Loading TripAdvisor data...</span>
-        </div>
-        <small class="text-muted ms-2">Loading...</small>
-      </div>
-    `;
-    
-    if (name && vicinity) {
-      try {
-        // Make the API call with full address (both name and vicinity/location)
-        const taResponse = await fetch(`/api/tripadvisor?place_name=${encodeURIComponent(name)}&location=${encodeURIComponent(vicinity)}`);
-        const taData = await taResponse.json();
-        console.log("TripAdvisor data response for", name, ":", taData);
-        
-        if (taData.status === 'OK' && taData.result && taData.result.tripadvisor_data) {
-          const tripadvisorData = taData.result.tripadvisor_data;
-          
-          // Check if we have meaningful TripAdvisor data (rating or any other useful info)
-          if (tripadvisorData && (tripadvisorData.rating || tripadvisorData.url || tripadvisorData.ranking)) {
-            console.log(`Got TripAdvisor data for ${name}:`, tripadvisorData);
-            
-            // Start building the HTML for the TripAdvisor section
-            let taHtml = '<div class="d-flex align-items-center justify-content-center">';
-            taHtml += '<img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="me-2">';
-            
-            // If we have a rating, display it
-            if (tripadvisorData.rating) {
-              taHtml += '<div class="d-flex align-items-center">';
-              
-              // TripAdvisor uses circles instead of stars
-              for (let i = 0; i < Math.floor(tripadvisorData.rating); i++) {
-                taHtml += '<i class="fas fa-circle text-success" style="font-size: 0.7rem;"></i>';
-              }
-              
-              // Half circle if needed
-              if (tripadvisorData.rating % 1 >= 0.5) {
-                taHtml += '<i class="fas fa-adjust text-success" style="font-size: 0.7rem;"></i>';
-              }
-              
-              // Empty circles
-              for (let i = 0; i < (5 - Math.ceil(tripadvisorData.rating)); i++) {
-                taHtml += '<i class="far fa-circle text-success" style="font-size: 0.7rem;"></i>';
-              }
-              
-              taHtml += ` <span class="ms-1">${tripadvisorData.rating}</span>`;
-              
-              // Show review count if available (might be num_reviews in official API)
-              if (tripadvisorData.num_reviews) {
-                taHtml += ` <span class="text-muted ms-1">(${tripadvisorData.num_reviews})</span>`;
-              } else if (tripadvisorData.review_count) {
-                taHtml += ` <span class="text-muted ms-1">(${tripadvisorData.review_count})</span>`;
-              }
-              
-              taHtml += '</div>';
-            } else {
-              // If no rating but we have a URL, show a message
-              taHtml += '<span class="text-muted">Listed on TripAdvisor</span>';
-            }
-            
-            // Show ranking information if available (from official API)
-            if (tripadvisorData.ranking) {
-              // Extract ranking position from text like "#10 of 500 hotels in Amsterdam"
-              const rankMatch = tripadvisorData.ranking.match(/#(\d+)/);
-              if (rankMatch) {
-                taHtml += `<div class="ms-2 badge bg-success">${rankMatch[0]}</div>`;
-              } else {
-                taHtml += `<div class="ms-2 badge bg-success">Ranked</div>`;
-              }
-            } 
-            // Legacy ranking format support
-            else if (tripadvisorData.rank_position && tripadvisorData.rank_total) {
-              taHtml += `<div class="ms-2 badge bg-success">#${tripadvisorData.rank_position}/${tripadvisorData.rank_total}</div>`;
-            }
-            
-            taHtml += '</div>';
-            
-            // If we have a TripAdvisor URL, add a link button
-            const taUrl = tripadvisorData.url || 
-                         (tripadvisorData.location_id ? `https://www.tripadvisor.com/AttractionProductReview-g-d${tripadvisorData.location_id}` : null);
-            
-            if (taUrl) {
-              taHtml += `
-                <div class="mt-1 text-center">
-                  <a href="${taUrl}" target="_blank" class="btn btn-sm btn-outline-success">
-                    <i class="fas fa-external-link-alt fa-xs me-1"></i> View on TripAdvisor
-                  </a>
-                </div>
-              `;
-            }
-            
-            // Show category if available (from official API)
-            if (tripadvisorData.category) {
-              taHtml += `<div class="mt-1 text-center"><small class="text-muted">${tripadvisorData.category}</small></div>`;
-            }
-            
-            taRatingElement.innerHTML = taHtml;
-            console.log("Updated TripAdvisor HTML for", name);
-            return;
-          } else {
-            console.log("TripAdvisor data didn't have rating or URL for", name);
-          }
-        }
-        
-        // Handle specific result flags from the API
-        if (taData.result) {
-          if (taData.result.access_limited) {
-            taRatingElement.innerHTML = `
-              <div class="text-center">
-                <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
-                <small class="d-block text-muted"><i class="fas fa-info-circle fa-xs"></i> Data unavailable</small>
-              </div>
-            `;
-          } else if (taData.result.error || taData.result.source_error) {
-            taRatingElement.innerHTML = `
-              <div class="text-center">
-                <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
-                <small class="d-block text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> Connection issue</small>
-              </div>
-            `;
-          } else if (taData.result.message === 'No matching places found') {
-            taRatingElement.innerHTML = `
-              <div class="text-center">
-                <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
-                <small class="d-block text-muted"><i class="fas fa-question-circle fa-xs"></i> Not found</small>
-              </div>
-            `;
-          } else {
-            // Generic message for other cases
-            taRatingElement.innerHTML = `
-              <div class="text-center">
-                <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
-                <small class="d-block text-muted"><i class="fas fa-info-circle fa-xs"></i> No data available</small>
-              </div>
-            `;
-          }
-        } else {
-          // API error
-          taRatingElement.innerHTML = `
-            <div class="text-center">
-              <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
-              <small class="d-block text-muted"><i class="fas fa-exclamation-triangle fa-xs"></i> API error</small>
-            </div>
-          `;
-        }
-      } catch (fetchError) {
-        console.error('Error fetching TripAdvisor data:', fetchError);
-        taRatingElement.innerHTML = `
-          <div class="text-center">
-            <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
-            <small class="d-block text-muted"><i class="fas fa-exclamation-circle fa-xs"></i> Connection failed</small>
-          </div>
-        `;
-      }
-    } else {
-      // Not enough information to fetch TripAdvisor data
-      taRatingElement.innerHTML = `
-        <div class="text-center">
-          <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
-          <small class="d-block text-muted"><i class="fas fa-info-circle fa-xs"></i> Insufficient details</small>
-        </div>
-      `;
-    }
+    return null;
   } catch (error) {
-    console.error('Error in TripAdvisor data processing:', error);
-    // Try to find and update the element with an error message
-    try {
-      const taRatingElement = document.getElementById(`tripadvisor-${place.place_id}`);
-      if (taRatingElement) {
-        taRatingElement.innerHTML = `
-          <div class="text-center">
-            <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="15" class="mb-1">
-            <small class="d-block text-muted"><i class="fas fa-exclamation-triangle fa-xs"></i> Error</small>
-          </div>
-        `;
-      }
-    } catch (e) {
-      // Cannot update the error message, just log it
-      console.error('Cannot update TripAdvisor element with error:', e);
-    }
+    console.error("Error fetching TripAdvisor data:", error);
+    return null;
   }
 }
 
-// Add a marker to the map
+// Global array to keep track of markers
+window.markers = [];
+
+// Add a marker for a place
 function addMarker(place, index) {
   if (!place.geometry || !place.geometry.location) return;
   
@@ -1740,1103 +897,486 @@ function addMarker(place, index) {
     lng: place.geometry.location.lng
   };
   
-  // Create a custom marker with a number
-  const markerNumber = index + 1;
-  
-  // Create the marker with labeled content
+  // Create marker with label
   const marker = new google.maps.Marker({
     position: position,
-    map: map,
-    title: `${markerNumber}. ${place.name}`,
-    animation: google.maps.Animation.DROP,
+    map: window.map,
+    title: place.name,
     label: {
-      text: markerNumber.toString(),
-      color: 'white',
-      fontSize: '12px',
-      fontWeight: 'bold'
+      text: (index + 1).toString(),
+      color: 'white'
     },
-    // Set marker color to red
-    icon: {
-      path: google.maps.SymbolPath.CIRCLE,
-      fillColor: '#E21818',
-      fillOpacity: 0.9,
-      strokeWeight: 0,
-      scale: 12
-    }
+    animation: google.maps.Animation.DROP
   });
-  
-  markers.push(marker);
   
   // Add click event to marker
-  marker.addListener('click', () => {
-    map.panTo(position);
+  marker.addListener("click", () => {
+    window.map.setCenter(position);
+    window.map.setZoom(16);
     showPlaceDetails(place.place_id);
   });
+  
+  // Store marker in global array
+  window.markers.push(marker);
 }
 
 // Clear all markers from the map
 function clearMarkers() {
-  markers.forEach(marker => marker.setMap(null));
-  markers = [];
+  if (window.markers) {
+    for (let marker of window.markers) {
+      marker.setMap(null);
+    }
+  }
+  window.markers = [];
+  
+  // Also clear the hover marker if it exists
+  if (window.hoverMarker) {
+    window.hoverMarker.setMap(null);
+    window.hoverMarker = null;
+  }
 }
 
-// Show place details in modal
+// Show details for a specific place
 async function showPlaceDetails(placeId) {
-  // Show the modal with loading state
-  document.getElementById('place-details').innerHTML = `
-    <div class="text-center py-5">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-    </div>
-  `;
-  
-  placeModal.show();
+  showLoading();
   
   try {
-    // Call our backend API to get place details
     const response = await fetch(`/api/details?place_id=${placeId}`);
     const data = await response.json();
     
-    // Fetch TripAdvisor data if Google place data is available
-    let tripadvisorData = null;
-    if (data.status === 'OK' && data.result) {
-      try {
-        const place = data.result;
-        const placeName = place.name;
-        // Use the full address for better TripAdvisor matching
-        let location = '';
-        if (place.formatted_address) {
-          // Use the full address for better matching
-          location = place.formatted_address.trim();
-        }
-        
-        if (placeName && location) {
-          console.log(`Fetching TripAdvisor data for ${placeName} in ${location}`);
-          const taResponse = await fetch(`/api/tripadvisor?place_name=${encodeURIComponent(placeName)}&location=${encodeURIComponent(location)}`);
-          const taData = await taResponse.json();
-          
-          if (taData.status === 'OK' && taData.result && taData.result.tripadvisor_data) {
-            tripadvisorData = taData.result.tripadvisor_data;
-            console.log('TripAdvisor data:', tripadvisorData);
-          }
-        }
-      } catch (taError) {
-        console.error('Error fetching TripAdvisor data:', taError);
-      }
-    }
-    
     if (data.status === 'OK' && data.result) {
       const place = data.result;
+      console.log("Place details:", place);
       
-      // Prepare custom photo gallery HTML (simpler than Bootstrap carousel)
-      let photoHtml = '';
-      if (place.photos && place.photos.length > 0) {
-        // Store photos data for later use
-        window.currentPlacePhotos = place.photos;
-        window.currentPhotoIndex = 0;
-        
-        // Create a simpler custom photo gallery
-        photoHtml = `
-          <div id="custom-photo-gallery" class="position-relative">
-            <div id="photo-display" class="main-photo-container">
-              <img id="main-photo" src="${place.photos[0].url || `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=800`}" 
-                   class="w-100 rounded" alt="Photo of ${place.name}">
-            </div>
-            
-            ${place.photos.length > 1 ? `
-              <div class="d-flex justify-content-between position-absolute top-50 start-0 end-0 px-2" style="transform: translateY(-50%);">
-                <button type="button" id="prev-photo" class="btn btn-dark btn-sm rounded-circle opacity-75" onclick="prevPhoto()">
-                  <i class="fas fa-chevron-left"></i>
-                </button>
-                <button type="button" id="next-photo" class="btn btn-dark btn-sm rounded-circle opacity-75" onclick="nextPhoto()">
-                  <i class="fas fa-chevron-right"></i>
-                </button>
-              </div>
-              <div id="photo-counter" class="position-absolute bottom-0 end-0 bg-dark bg-opacity-50 text-white px-2 py-1 rounded-top-left m-2">
-                1 / ${place.photos.length}
-              </div>
-            ` : ''}
-          </div>
-          
-          ${place.photos.length > 1 ? `
-            <div class="thumbnail-container mt-2 d-flex flex-wrap justify-content-start">
-              ${place.photos.map((photo, index) => `
-                <img src="${photo.url || `/api/photo?photoreference=${photo.photo_reference}&maxwidth=120`}" 
-                    class="thumbnail mx-1 mb-1 ${index === 0 ? 'active' : ''}" 
-                    onclick="showPhoto(${index})"
-                    alt="Thumbnail ${index + 1}" style="width: 60px; height: 45px; object-fit: cover; cursor: pointer; 
-                    border: 2px solid ${index === 0 ? '#007bff' : 'transparent'}; 
-                    opacity: ${index === 0 ? '1' : '0.7'};
-                    transition: all 0.2s ease;">
-              `).join('')}
-            </div>
-          ` : ''}
-        `;
-        
-        // Add window functions to handle photo navigation
-        window.prevPhoto = function() {
-          const photos = window.currentPlacePhotos || [];
-          if (!photos || photos.length <= 1) return;
-          
-          let index = window.currentPhotoIndex - 1;
-          if (index < 0) index = photos.length - 1;
-          showPhoto(index);
-        };
-        
-        window.nextPhoto = function() {
-          const photos = window.currentPlacePhotos || [];
-          if (!photos || photos.length <= 1) return;
-          
-          let index = window.currentPhotoIndex + 1;
-          if (index >= photos.length) index = 0;
-          showPhoto(index);
-        };
-        
-        window.showPhoto = function(index) {
-          const photos = window.currentPlacePhotos || [];
-          if (!photos || index < 0 || index >= photos.length) return;
-          
-          const photo = photos[index];
-          const mainPhotoEl = document.getElementById('main-photo');
-          const counterEl = document.getElementById('photo-counter');
-          const thumbnails = document.querySelectorAll('.thumbnail');
-          
-          if (mainPhotoEl) {
-            mainPhotoEl.src = photo.url || `/api/photo?photoreference=${photo.photo_reference}&maxwidth=800`;
-          }
-          
-          if (counterEl) {
-            counterEl.textContent = `${index + 1} / ${photos.length}`;
-          }
-          
-          thumbnails.forEach((thumb, idx) => {
-            if (idx === index) {
-              thumb.style.border = '2px solid #007bff';
-              thumb.style.opacity = '1';
-            } else {
-              thumb.style.border = '2px solid transparent';
-              thumb.style.opacity = '0.7';
-            }
-          });
-          
-          window.currentPhotoIndex = index;
-        };
+      // Get TripAdvisor data if available
+      let tripAdvisorData = null;
+      try {
+        tripAdvisorData = await fetchTripAdvisorData(place);
+        console.log("TripAdvisor data:", tripAdvisorData);
+      } catch (tripadvisorError) {
+        console.error("Error fetching TripAdvisor data:", tripadvisorError);
       }
       
-      // TripAdvisor data is already fetched at the beginning of this function
-      
-      // Format Google rating stars
-      let ratingHtml = '';
-      if (place.rating) {
-        ratingHtml = '<div class="ratings-container mb-4">';
-        
-        // Google Rating
-        ratingHtml += '<div class="star-rating mb-3 fs-5">';
-        ratingHtml += '<div class="d-flex align-items-center mb-2">';
-        ratingHtml += '<img src="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png" alt="Google" height="20" class="me-2">';
-        ratingHtml += '<strong>Google Rating:</strong>';
-        ratingHtml += '</div>';
-        
-        // Full stars
-        for (let i = 0; i < Math.floor(place.rating); i++) {
-          ratingHtml += '<i class="fas fa-star"></i>';
-        }
-        
-        // Half star if needed
-        if (place.rating % 1 >= 0.5) {
-          ratingHtml += '<i class="fas fa-star-half-alt"></i>';
-        }
-        
-        // Empty stars
-        for (let i = 0; i < (5 - Math.ceil(place.rating)); i++) {
-          ratingHtml += '<i class="far fa-star"></i>';
-        }
-        
-        ratingHtml += ` <span class="ms-2">${place.rating}</span>`;
-        
-        if (place.user_ratings_total) {
-          // Add badge indicating statistically significant ratings
-          const MIN_REVIEWS = currentPlaceType === 'lodging' ? 8 : 
-                             (currentPlaceType === 'restaurant' ? 20 : 10);
-          
-          if (place.user_ratings_total > 500) {
-            ratingHtml += ` <span class="badge bg-danger ms-2"><i class="fas fa-fire"></i> ${place.user_ratings_total} reviews</span>`;
-          } else if (place.user_ratings_total > 200) {
-            ratingHtml += ` <span class="badge bg-success ms-2">${place.user_ratings_total} reviews</span>`;
-          } else if (place.user_ratings_total >= MIN_REVIEWS) {
-            ratingHtml += ` <span class="badge bg-primary ms-2">${place.user_ratings_total} reviews</span>`;
-          } else {
-            ratingHtml += ` <span class="text-muted">(${place.user_ratings_total} reviews)</span>`;
-          }
-        }
-        
-        ratingHtml += '</div>'; // End Google Rating
-        
-        // TripAdvisor Rating (if available)
-        if (tripadvisorData && tripadvisorData.rating) {
-          ratingHtml += '<div class="star-rating mb-3 fs-5">';
-          ratingHtml += '<div class="d-flex align-items-center mb-2">';
-          ratingHtml += '<img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" alt="TripAdvisor" height="20" class="me-2">';
-          ratingHtml += '<strong>TripAdvisor Rating:</strong>';
-          ratingHtml += '</div>';
-          
-          // Full circles (bubbles in TripAdvisor)
-          for (let i = 0; i < Math.floor(tripadvisorData.rating); i++) {
-            ratingHtml += '<i class="fas fa-circle text-success"></i>';
-          }
-          
-          // Half circle if needed
-          if (tripadvisorData.rating % 1 >= 0.5) {
-            ratingHtml += '<i class="fas fa-adjust text-success"></i>';
-          }
-          
-          // Empty circles
-          for (let i = 0; i < (5 - Math.ceil(tripadvisorData.rating)); i++) {
-            ratingHtml += '<i class="far fa-circle text-success"></i>';
-          }
-          
-          ratingHtml += ` <span class="ms-2">${tripadvisorData.rating}</span>`;
-          
-          if (tripadvisorData.review_count) {
-            ratingHtml += ` <span class="text-muted">(${tripadvisorData.review_count} reviews)</span>`;
-          }
-          
-          // Add TripAdvisor ranking if available
-          if (tripadvisorData.rank_position && tripadvisorData.rank_total) {
-            ratingHtml += `
-              <div class="mt-1">
-                <span class="badge bg-success">
-                  #${tripadvisorData.rank_position} of ${tripadvisorData.rank_total} 
-                  ${currentPlaceType === 'restaurant' ? 'restaurants' : 
-                     currentPlaceType === 'lodging' ? 'hotels' : 'places'}
-                </span>
-              </div>
-            `;
-          }
-          
-          // If we have a TripAdvisor URL, add a link
-          if (tripadvisorData.url) {
-            ratingHtml += `
-              <div class="mt-2">
-                <a href="${tripadvisorData.url}" target="_blank" class="btn btn-sm btn-outline-success">
-                  <i class="fas fa-external-link-alt me-1"></i> View on TripAdvisor
-                </a>
-              </div>
-            `;
-          }
-          
-          ratingHtml += '</div>'; // End TripAdvisor Rating
-          
-          // Add detailed ratings breakdown if available
-          if (tripadvisorData.detailed_ratings) {
-            const details = tripadvisorData.detailed_ratings;
-            
-            ratingHtml += `
-              <div class="detailed-ratings mt-3">
-                <h6>Rating Breakdown (TripAdvisor)</h6>
-                <div class="rating-bars">
-            `;
-            
-            if (details.excellent) {
-              ratingHtml += `
-                <div class="rating-bar">
-                  <span class="rating-label">Excellent</span>
-                  <div class="progress">
-                    <div class="progress-bar bg-success" style="width: ${details.excellent}%"></div>
-                  </div>
-                  <span class="rating-count">${details.excellent}</span>
-                </div>
-              `;
-            }
-            
-            if (details.very_good) {
-              ratingHtml += `
-                <div class="rating-bar">
-                  <span class="rating-label">Very Good</span>
-                  <div class="progress">
-                    <div class="progress-bar bg-info" style="width: ${details.very_good}%"></div>
-                  </div>
-                  <span class="rating-count">${details.very_good}</span>
-                </div>
-              `;
-            }
-            
-            if (details.average) {
-              ratingHtml += `
-                <div class="rating-bar">
-                  <span class="rating-label">Average</span>
-                  <div class="progress">
-                    <div class="progress-bar bg-warning" style="width: ${details.average}%"></div>
-                  </div>
-                  <span class="rating-count">${details.average}</span>
-                </div>
-              `;
-            }
-            
-            if (details.poor) {
-              ratingHtml += `
-                <div class="rating-bar">
-                  <span class="rating-label">Poor</span>
-                  <div class="progress">
-                    <div class="progress-bar bg-danger" style="width: ${details.poor}%"></div>
-                  </div>
-                  <span class="rating-count">${details.poor}</span>
-                </div>
-              `;
-            }
-            
-            if (details.terrible) {
-              ratingHtml += `
-                <div class="rating-bar">
-                  <span class="rating-label">Terrible</span>
-                  <div class="progress">
-                    <div class="progress-bar bg-dark" style="width: ${details.terrible}%"></div>
-                  </div>
-                  <span class="rating-count">${details.terrible}</span>
-                </div>
-              `;
-            }
-            
-            ratingHtml += `
-                </div>
-              </div>
-            `;
-          }
-        }
-        
-        ratingHtml += '</div>'; // End ratings-container
-      }
-      
-      // Format price level
-      let priceHtml = '';
-      if (place.price_level) {
-        priceHtml = '<div class="mb-3">';
-        priceHtml += '<i class="fas fa-tag text-success me-2"></i><strong>Price Level:</strong> ';
-        
-        for (let i = 0; i < place.price_level; i++) {
-          priceHtml += '$';
-        }
-        
-        priceHtml += '</div>';
-      }
-      
-      // Format phone number and website
-      let contactHtml = '';
-      
-      if (place.formatted_phone_number) {
-        contactHtml += `
-          <div class="mb-3">
-            <i class="fas fa-phone text-primary me-2"></i><strong>Phone:</strong> 
-            <a href="tel:${place.formatted_phone_number}">${place.formatted_phone_number}</a>
-          </div>
-        `;
-      }
-      
-      if (place.website) {
-        contactHtml += `
-          <div class="mb-3">
-            <i class="fas fa-globe text-primary me-2"></i><strong>Website:</strong> 
-            <a href="${place.website}" target="_blank">${place.website}</a>
-          </div>
-        `;
-      }
-      
-      // Format place types/categories
-      let typesHtml = '';
-      
-      if (place.types && place.types.length > 0) {
-        typesHtml = '<div class="mb-3">';
-        typesHtml += '<i class="fas fa-list text-info me-2"></i><strong>Categories:</strong>';
-        typesHtml += '<div class="mt-2">';
-        
-        place.types.forEach(type => {
-          if (type !== 'point_of_interest' && type !== 'establishment') {
-            const formattedType = formatPlaceType(type);
-            typesHtml += `<span class="badge bg-secondary me-1 mb-1">${formattedType}</span>`;
-          }
+      // Format opening hours
+      let hoursHtml = '';
+      if (place.opening_hours && place.opening_hours.weekday_text) {
+        hoursHtml = '<h5 class="mt-3">Opening Hours</h5><ul class="list-group mb-3">';
+        place.opening_hours.weekday_text.forEach(day => {
+          hoursHtml += `<li class="list-group-item">${day}</li>`;
         });
-        
-        typesHtml += '</div></div>';
+        hoursHtml += '</ul>';
       }
       
-      // Format reviews with carousel
+      // Format reviews
       let reviewsHtml = '';
-      
       if (place.reviews && place.reviews.length > 0) {
-        reviewsHtml = '<div class="mt-4 mb-3">';
-        reviewsHtml += '<h5><i class="fas fa-comment-alt text-primary me-2"></i>Top Reviews</h5>';
-        
-        // Create review carousel
-        reviewsHtml += '<div class="reviews-carousel">';
-        reviewsHtml += '<div class="reviews-container">';
-        
-        // Add all reviews to carousel
-        place.reviews.forEach((review, index) => {
-          // Format rating stars for this review
-          let reviewRating = '<div class="star-rating mb-1">';
-          
-          for (let i = 0; i < review.rating; i++) {
-            reviewRating += '<i class="fas fa-star"></i>';
-          }
-          
-          for (let i = 0; i < (5 - review.rating); i++) {
-            reviewRating += '<i class="far fa-star"></i>';
-          }
-          
-          reviewRating += '</div>';
-          
-          // Format time
-          const date = new Date(review.time * 1000);
-          const formattedDate = date.toLocaleDateString();
-          
+        reviewsHtml = '<h5 class="mt-3">Reviews</h5><div class="reviews-carousel mb-3">';
+        place.reviews.forEach(review => {
+          const reviewDate = new Date(review.time * 1000).toLocaleDateString();
           reviewsHtml += `
-            <div class="reviews-slide ${index === 0 ? 'active' : ''}">
-              <div class="review">
-                <div class="review-author">
-                  <img src="${review.profile_photo_url}" alt="${review.author_name}">
+            <div class="review-card">
+              <div class="d-flex align-items-center mb-2">
+                <img src="${review.profile_photo_url}" alt="${review.author_name}" class="review-avatar me-2">
+                <div>
+                  <strong>${review.author_name}</strong>
                   <div>
-                    <strong>${review.author_name}</strong>
-                    <div class="text-muted small">${formattedDate}</div>
+                    ${Array(Math.round(review.rating)).fill('<i class="fas fa-star text-warning"></i>').join('')}
+                    <small class="text-muted ms-2">${reviewDate}</small>
                   </div>
                 </div>
-                ${reviewRating}
-                <p>${review.text}</p>
               </div>
+              <p>${review.text}</p>
             </div>
           `;
         });
-        
-        // Only add navigation if there are multiple reviews
-        if (place.reviews.length > 1) {
-          // Add carousel navigation
-          reviewsHtml += `
-            <div class="reviews-nav reviews-prev">
-              <i class="fas fa-chevron-left"></i>
-            </div>
-            <div class="reviews-nav reviews-next">
-              <i class="fas fa-chevron-right"></i>
-            </div>
-          `;
-        }
-        
-        reviewsHtml += '</div>'; // Close reviews-container
-        
-        // Add counter
-        if (place.reviews.length > 1) {
-          reviewsHtml += `
-            <div class="reviews-counter">
-              <span class="current-review">1</span> / ${place.reviews.length}
-            </div>
-          `;
-        }
-        
-        reviewsHtml += '</div>'; // Close reviews-carousel
-        reviewsHtml += '</div>'; // Close the mt-4 mb-3 div
-        
-        // Store reviews data for later use
-        window.currentPlaceReviews = place.reviews;
+        reviewsHtml += '</div>';
       }
       
-      // Additional photos
+      // Format photos
       let photosHtml = '';
-      
-      if (place.photos && place.photos.length > 1) {
-        photosHtml = '<div class="photo-gallery mt-4">';
-        photosHtml += '<h5><i class="fas fa-images text-success me-2"></i>Photos</h5>';
-        photosHtml += '<div class="row mt-2">';
-        
-        // Show up to 6 additional photos
-        const photosToShow = place.photos.slice(1, 7);
-        
-        photosToShow.forEach(photo => {
-          const photoUrl = `/api/photo?photoreference=${photo.photo_reference}&maxwidth=200`;
+      if (place.photos && place.photos.length > 0) {
+        photosHtml = '<h5 class="mt-3">Photos</h5><div class="photo-carousel mb-3">';
+        place.photos.forEach(photo => {
+          const photoUrl = photo.photo_reference ? 
+            `/api/photo?photo_reference=${photo.photo_reference}&maxwidth=400` : 
+            'https://via.placeholder.com/400x300?text=No+Image';
           
           photosHtml += `
-            <div class="col-md-4 col-6 mb-2">
-              <img src="${photoUrl}" class="w-100" alt="Place photo">
+            <div class="photo-item">
+              <img src="${photoUrl}" alt="${place.name}" class="img-fluid rounded">
             </div>
           `;
         });
-        
-        photosHtml += '</div></div>';
+        photosHtml += '</div>';
       }
       
-      // Add nearby recommendations section
-      let nearbyRecommendationsHtml = `
-        <div class="mt-4 nearby-recommendations">
-          <h5><i class="fas fa-compass text-primary me-2"></i>Nearby Recommendations</h5>
-          <div id="nearby-places-container" class="mt-3">
-            <div class="text-center py-3">
-              <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+      // TripAdvisor data section
+      let tripAdvisorHtml = '';
+      if (tripAdvisorData) {
+        tripAdvisorHtml = `
+          <div class="tripadvisor-section mt-3">
+            <h5>TripAdvisor Information</h5>
+            <div class="card mb-3">
+              <div class="card-body">
+                ${tripAdvisorData.rating ? `
+                  <div class="d-flex align-items-center mb-2">
+                    <span class="me-2">TripAdvisor Rating:</span>
+                    <strong class="me-1">${tripAdvisorData.rating}</strong>
+                    ${Array(Math.round(tripAdvisorData.rating)).fill('<i class="fas fa-star text-warning"></i>').join('')}
+                    <small class="text-muted ms-2">(${tripAdvisorData.review_count || 0} reviews)</small>
+                  </div>
+                ` : ''}
+                
+                ${tripAdvisorData.price_range ? `
+                  <div class="mb-2">
+                    <span>Price Range: <strong>${tripAdvisorData.price_range}</strong></span>
+                  </div>
+                ` : ''}
+                
+                ${tripAdvisorData.cuisine ? `
+                  <div class="mb-2">
+                    <span>Cuisine: <strong>${tripAdvisorData.cuisine}</strong></span>
+                  </div>
+                ` : ''}
+                
+                ${tripAdvisorData.website ? `
+                  <div class="mb-2">
+                    <a href="${tripAdvisorData.website}" target="_blank" class="btn btn-sm btn-outline-primary">
+                      <i class="fas fa-globe me-1"></i> Visit Website
+                    </a>
+                  </div>
+                ` : ''}
+                
+                ${tripAdvisorData.tripadvisor_url ? `
+                  <div>
+                    <a href="${tripAdvisorData.tripadvisor_url}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                      <i class="fab fa-tripadvisor me-1"></i> TripAdvisor Page
+                    </a>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+      
+      // Nearby recommendations section
+      let recommendationsHtml = '';
+      recommendationsHtml = `
+        <div class="mt-4">
+          <h5>Nearby Recommendations</h5>
+          <div id="recommendations-container" class="row">
+            <div class="col-12 loading">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
               <span class="ms-2">Loading recommendations...</span>
             </div>
           </div>
         </div>
       `;
       
-      // Add Google Maps link
-      const googleMapsLink = place.geometry && place.geometry.location ? 
-        `https://www.google.com/maps/search/?api=1&query=${place.geometry.location.lat},${place.geometry.location.lng}&query_place_id=${place.place_id}` : null;
-      
-      let mapsLinkHtml = '';
-      if (googleMapsLink) {
-        mapsLinkHtml = `
-          <div class="mb-3">
-            <i class="fab fa-google text-primary me-2"></i>
-            <a href="${googleMapsLink}" target="_blank" class="btn btn-sm btn-outline-primary">
-              <i class="fas fa-map-marked-alt me-1"></i> View on Google Maps
-            </a>
+      // Create modal content
+      const modalHtml = `
+        <div class="modal fade" id="placeDetailsModal" tabindex="-1" aria-labelledby="placeDetailsModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="placeDetailsModalLabel">${place.name}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                  <div>
+                    <p class="text-muted">${place.vicinity || place.formatted_address || ''}</p>
+                    ${place.rating ? `
+                      <div class="rating mb-2">
+                        ${Array(Math.round(place.rating)).fill('<i class="fas fa-star text-warning"></i>').join('')}
+                        <span class="ms-1">${place.rating}</span>
+                        <small class="text-muted ms-1">(${place.user_ratings_total} reviews)</small>
+                      </div>
+                    ` : ''}
+                    ${place.price_level ? `
+                      <div class="price mb-2">
+                        <strong>${'$'.repeat(place.price_level)}</strong>
+                      </div>
+                    ` : ''}
+                    ${place.website ? `
+                      <div class="mb-2">
+                        <a href="${place.website}" target="_blank" class="btn btn-sm btn-outline-primary">
+                          <i class="fas fa-globe me-1"></i> Visit Website
+                        </a>
+                      </div>
+                    ` : ''}
+                  </div>
+                  <div>
+                    ${place.formatted_phone_number ? `
+                      <div class="mb-2">
+                        <a href="tel:${place.formatted_phone_number}" class="btn btn-sm btn-outline-success">
+                          <i class="fas fa-phone me-1"></i> ${place.formatted_phone_number}
+                        </a>
+                      </div>
+                    ` : ''}
+                    ${place.url ? `
+                      <div>
+                        <a href="${place.url}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                          <i class="fas fa-map-marked-alt me-1"></i> Google Maps
+                        </a>
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+                
+                ${photosHtml}
+                ${tripAdvisorHtml}
+                ${hoursHtml}
+                ${reviewsHtml}
+                ${recommendationsHtml}
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="window.map.setCenter({lat: ${place.geometry.location.lat}, lng: ${place.geometry.location.lng}})">
+                  <i class="fas fa-map-marker-alt me-1"></i> Show on Map
+                </button>
+              </div>
+            </div>
           </div>
-        `;
-      }
-      
-      // Put it all together
-      document.getElementById('place-details').innerHTML = `
-        ${photoHtml}
-        <h3>${place.name}</h3>
-        ${ratingHtml}
-        <div class="mb-3">
-          <i class="fas fa-map-marker-alt text-danger me-2"></i>
-          <strong>Address:</strong> ${place.formatted_address || 'Not available'}
         </div>
-        ${mapsLinkHtml}
-        ${priceHtml}
-        ${contactHtml}
-        ${typesHtml}
-        ${reviewsHtml}
-        ${photosHtml}
-        ${nearbyRecommendationsHtml}
       `;
       
-      // Our new photo gallery doesn't need initialization - it's all handled with 
-      // the functions we created directly within the photo HTML section
-      
-      // Initialize reviews carousel if there are multiple reviews
-      if (place.reviews && place.reviews.length > 1) {
-        initReviewsCarousel();
+      // Remove any existing modal
+      const existingModal = document.getElementById('placeDetailsModal');
+      if (existingModal) {
+        existingModal.remove();
       }
       
-      // After rendering the place details, load nearby recommendations
-      if (place.geometry && place.geometry.location) {
-        loadNearbyRecommendations(place);
-      }
+      // Add modal to the document
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      
+      // Show the modal
+      const modal = new bootstrap.Modal(document.getElementById('placeDetailsModal'));
+      modal.show();
+      
+      // Initialize photo carousel once the modal is shown
+      document.getElementById('placeDetailsModal').addEventListener('shown.bs.modal', function () {
+        if (place.photos && place.photos.length > 0) {
+          $('.photo-carousel').slick({
+            dots: true,
+            infinite: true,
+            speed: 500,
+            slidesToShow: 1,
+            slidesToScroll: 1,
+            autoplay: true,
+            autoplaySpeed: 3000
+          });
+        }
+        
+        // Initialize reviews carousel
+        if (place.reviews && place.reviews.length > 0) {
+          initReviewsCarousel();
+        }
+        
+        // Load nearby recommendations
+        if (place.geometry && place.geometry.location) {
+          const placeLocation = {
+            lat: place.geometry.location.lat,
+            lng: place.geometry.location.lng
+          };
+          loadNearbyRecommendations(place);
+        }
+      });
     } else {
-      document.getElementById('place-details').innerHTML = `
-        <div class="alert alert-warning">
-          Unable to load place details. Please try again later.
-        </div>
-      `;
+      alert("Could not load place details. Please try again.");
     }
   } catch (error) {
-    console.error('Error fetching place details:', error);
-    document.getElementById('place-details').innerHTML = `
-      <div class="alert alert-danger">
-        Error loading place details. Please try again later.
-      </div>
-    `;
+    console.error("Error fetching place details:", error);
+    alert("Error loading place details. Please try again later.");
+  } finally {
+    hideLoading();
   }
 }
 
-// Load nearby recommendations for a place
+// Load nearby recommendations based on a place
 async function loadNearbyRecommendations(place) {
-  const container = document.getElementById('nearby-places-container');
-  
   try {
-    // Get place location
-    const location = {
+    const placeLocation = {
       lat: place.geometry.location.lat,
       lng: place.geometry.location.lng
     };
     
-    // Always focus on restaurant recommendations
-    const recommendedType = 'restaurant';
-    const radius = 500; // 500 meters radius
+    // Determine what kind of place this is to make better recommendations
+    let recommendationType = 'restaurant'; // Default
     
-    // Fetch nearby restaurants
-    const response = await fetch(`/api/nearby?lat=${location.lat}&lng=${location.lng}&type=${recommendedType}&radius=${radius}`);
+    if (place.types) {
+      // Check for common place types and adjust recommendations accordingly
+      if (place.types.includes('restaurant') || place.types.includes('cafe') || 
+          place.types.includes('bakery') || place.types.includes('bar')) {
+        // For food places, recommend more food places
+        recommendationType = 'restaurant';
+      } else if (place.types.includes('lodging') || place.types.includes('hotel')) {
+        // For hotels, recommend attractions and restaurants
+        recommendationType = Math.random() > 0.5 ? 'restaurant' : 'tourist_attraction';
+      } else if (place.types.includes('museum') || place.types.includes('tourist_attraction') ||
+                place.types.includes('art_gallery')) {
+        // For attractions, recommend other attractions or restaurants
+        recommendationType = Math.random() > 0.4 ? 'tourist_attraction' : 'restaurant';
+      } else if (place.types.includes('night_club') || place.types.includes('bar')) {
+        // For nightlife, recommend other nightlife spots
+        recommendationType = 'night_club';
+      } else {
+        // For other places, recommend a mix
+        const types = ['restaurant', 'tourist_attraction', 'cafe'];
+        recommendationType = types[Math.floor(Math.random() * types.length)];
+      }
+    }
+    
+    // Build API URL for nearby places of the recommendation type
+    const apiUrl = `/api/nearby?lat=${placeLocation.lat}&lng=${placeLocation.lng}&type=${recommendationType}&radius=500`;
+    
+    const response = await fetch(apiUrl);
     const data = await response.json();
     
-    if (data.status !== 'OK' || !data.results || data.results.length === 0) {
-      container.innerHTML = `
-        <div class="alert alert-info">
-          No nearby restaurants found within ${radius}m.
-        </div>
-      `;
-      return;
-    }
+    const recommendationsContainer = document.getElementById('recommendations-container');
     
-    // First filter out the current place
-    let nearbyRestaurants = data.results.filter(nearbyPlace => 
-      nearbyPlace.place_id !== place.place_id
-    );
-    
-    // Define minimum ratings and review thresholds based on place type
-    const MIN_RATING = currentPlaceType === 'restaurant' ? 4.0 : 
-                      (currentPlaceType === 'night_club' ? 3.7 : 
-                      (currentPlaceType === 'supermarket' ? 3.5 : 3.8));
-    
-    const MIN_REVIEWS = {
-      restaurant: 20,
-      lodging: 8,
-      night_club: 10,
-      supermarket: 5,
-      default: 10
-    };
-    
-    const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
-    
-    // Define unwanted business types
-    const UNWANTED_TYPES = [
-      "gas_station", 
-      "car_repair", 
-      "car_dealer", 
-      "convenience_store", 
-      "grocery_or_supermarket", 
-      "liquor_store", 
-      "market", 
-      "store"
-    ];
-    
-    // Define the Haversine formula for accurate distance calculation
-    const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
-      const R = 6371000; // Earth radius in meters
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    };
-    
-    // Apply enhanced filtering logic
-    nearbyRestaurants = nearbyRestaurants.filter(restaurant => {
-      // Filter by geometry existence
-      if (!restaurant.geometry || !restaurant.geometry.location) return false;
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      // Filter out the current place and get up to 3 other places
+      const otherPlaces = data.results
+        .filter(p => p.place_id !== place.place_id)
+        .slice(0, 3);
       
-      // Get location coordinates, handling both function and property access
-      const pLat = typeof restaurant.geometry.location.lat === 'function' ? 
-                  restaurant.geometry.location.lat() : restaurant.geometry.location.lat;
-      const pLng = typeof restaurant.geometry.location.lng === 'function' ? 
-                  restaurant.geometry.location.lng() : restaurant.geometry.location.lng;
-      
-      // Calculate distance using Haversine formula
-      const dist = getDistanceInMeters(
-        location.lat, 
-        location.lng, 
-        pLat, 
-        pLng
-      );
-      
-      // Exclude places that are too far away
-      if (dist > radius) return false;
-      
-      // Filter unwanted business types
-      if (restaurant.types && restaurant.types.some(type => UNWANTED_TYPES.includes(type))) {
-        return false;
-      }
-      
-      // Filter by minimum rating
-      if (restaurant.rating && restaurant.rating < MIN_RATING) {
-        return false;
-      }
-      
-      return true;
-    });
-    
-    if (nearbyRestaurants.length === 0) {
-      container.innerHTML = `
-        <div class="alert alert-info">
-          <i class="fas fa-info-circle"></i> No high-quality restaurants found nearby within ${radius}m.
-          <p class="small mt-1">Try adjusting your search or exploring a different area.</p>
-        </div>
-      `;
-      return;
-    }
-    
-    // Apply the improved sorting logic
-    nearbyRestaurants.sort((a, b) => {
-      const aSignificant = a.user_ratings_total >= currentMinReviews;
-      const bSignificant = b.user_ratings_total >= currentMinReviews;
-      
-      // If both places have significant number of reviews, sort by rating
-      if (aSignificant && bSignificant) {
-        return b.rating - a.rating;
-      }
-      // If only one has significant reviews, prioritize that one
-      else if (aSignificant) {
-        return -1;
-      }
-      else if (bSignificant) {
-        return 1;
-      }
-      // If neither has significant reviews, sort by number of reviews
-      else if (a.user_ratings_total && b.user_ratings_total) {
-        return b.user_ratings_total - a.user_ratings_total;
-      }
-      // Fallback to rating if available
-      else if (a.rating && b.rating) {
-        return b.rating - a.rating;
-      }
-      // Keep original order if no sorting criteria apply
-      return 0;
-    });
-    
-    // Limit to top 6 recommendations
-    const topRecommendations = nearbyRestaurants.slice(0, 6);
-    
-    if (topRecommendations.length > 0) {
-      // Create HTML for recommendations
-      let recommendationsHtml = '<div class="row">';
-      
-      topRecommendations.forEach((recommendation, index) => {
-        // For restaurant recommendations, use consistent utensils icon
-        const typeIcon = 'fa-utensils';
-        const typeLabel = 'Restaurant';
+      if (otherPlaces.length > 0) {
+        recommendationsContainer.innerHTML = '';
         
-        // Add numerical identifier for this recommendation
-        const recNumber = index + 1;
-        
-        // Prepare photo HTML
-        let photoHtml = '<div class="bg-light text-center py-2">No Image</div>';
-        if (recommendation.photos && recommendation.photos.length > 0) {
-          const photoUrl = recommendation.photos[0].url || `/api/photo?photoreference=${recommendation.photos[0].photo_reference}&maxwidth=200`;
-          photoHtml = `<img src="${photoUrl}" class="card-img-top recommendation-image" alt="${recommendation.name}">`;
-        }
-        
-        // Create Google Maps link
-        const googleMapsLink = recommendation.geometry && recommendation.geometry.location ? 
-          `https://www.google.com/maps/search/?api=1&query=${recommendation.geometry.location.lat},${recommendation.geometry.location.lng}&query_place_id=${recommendation.place_id}` : null;
-
-        recommendationsHtml += `
-          <div class="col-md-4 col-6 mb-3">
-            <div class="card recommendation-card h-100" data-place-id="${recommendation.place_id}">
-              <div class="position-relative">
-                ${photoHtml}
-                <div class="position-absolute top-0 start-0 mt-1 ms-1 bg-danger text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-weight: bold; font-size: 12px;">
-                  ${recNumber}
+        otherPlaces.forEach(recommendation => {
+          const card = document.createElement('div');
+          card.className = 'col-md-4 mb-3';
+          
+          // Format the price level
+          let priceLevel = '';
+          if (recommendation.price_level) {
+            for (let i = 0; i < recommendation.price_level; i++) {
+              priceLevel += '$';
+            }
+          }
+          
+          // Format rating stars
+          let ratingStars = '';
+          if (recommendation.rating) {
+            const fullStars = Math.floor(recommendation.rating);
+            for (let i = 0; i < fullStars; i++) {
+              ratingStars += '<i class="fas fa-star text-warning"></i>';
+            }
+            
+            if (recommendation.rating % 1 >= 0.5) {
+              ratingStars += '<i class="fas fa-star-half-alt text-warning"></i>';
+            }
+          }
+          
+          card.innerHTML = `
+            <div class="card h-100">
+              <div class="card-body">
+                <h6 class="card-title">${recommendation.name}</h6>
+                <small class="text-muted">${recommendation.vicinity || ''}</small>
+                <div class="mt-2">
+                  ${ratingStars}
+                  <small class="ms-1">${recommendation.rating || 'No rating'}</small>
                 </div>
-              </div>
-              <div class="card-body p-2">
-                <h6 class="card-title mb-1">${recNumber}. ${recommendation.name}</h6>
-                <div class="small mb-1">
-                  <i class="fas ${typeIcon} text-secondary me-1"></i> ${typeLabel}
+                <div class="mt-2">
+                  <strong>${priceLevel}</strong>
                 </div>
-                ${recommendation.rating ? 
-                  `<div class="star-rating small">
-                    <i class="fas fa-star"></i> ${recommendation.rating}
-                    ${recommendation.user_ratings_total ? 
-                      `<span class="text-muted">(${recommendation.user_ratings_total})</span>` : 
-                      ''}
-                  </div>` : 
-                  ''}
-                ${googleMapsLink ? 
-                  `<div class="mt-2">
-                    <a href="${googleMapsLink}" target="_blank" class="btn btn-sm btn-outline-secondary w-100" onclick="event.stopPropagation();">
-                      <i class="fas fa-map-marker-alt"></i> Maps
-                    </a>
-                  </div>` : 
-                  ''}
+                <button class="btn btn-outline-primary btn-sm mt-2" onclick="showPlaceDetails('${recommendation.place_id}')">
+                  View Details
+                </button>
               </div>
             </div>
+          `;
+          
+          recommendationsContainer.appendChild(card);
+        });
+      } else {
+        recommendationsContainer.innerHTML = `
+          <div class="col-12">
+            <div class="alert alert-info">No nearby recommendations found.</div>
           </div>
         `;
-      });
-      
-      recommendationsHtml += '</div>';
-      container.innerHTML = recommendationsHtml;
-      
-      // Add click event to each recommendation card
-      document.querySelectorAll('.recommendation-card').forEach(card => {
-        card.addEventListener('click', () => {
-          const placeId = card.getAttribute('data-place-id');
-          showPlaceDetails(placeId);
-        });
-      });
+      }
     } else {
-      container.innerHTML = `
-        <div class="alert alert-info">
-          No nearby recommendations found.
+      recommendationsContainer.innerHTML = `
+        <div class="col-12">
+          <div class="alert alert-info">No nearby recommendations found.</div>
         </div>
       `;
     }
   } catch (error) {
-    console.error('Error fetching nearby recommendations:', error);
-    container.innerHTML = `
-      <div class="alert alert-warning">
-        Error loading recommendations. Please try again later.
+    console.error("Error loading recommendations:", error);
+    document.getElementById('recommendations-container').innerHTML = `
+      <div class="col-12">
+        <div class="alert alert-danger">Error loading recommendations. Please try again later.</div>
       </div>
     `;
   }
 }
 
-// Format place type to user-friendly format
+// Format a place type for display
 function formatPlaceType(type) {
-  // Replace underscores with spaces and capitalize each word
-  return type.split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.substring(1))
+  if (!type) return '';
+  
+  // Special cases
+  const specialCases = {
+    'lodging': 'Hotel',
+    'establishment': 'Business',
+    'health': 'Health & Fitness',
+    'restaurant': 'Restaurant',
+    'cafe': 'Café',
+    'food': 'Food',
+    'point_of_interest': 'Attraction',
+    'tourist_attraction': 'Tourist Attraction',
+    'store': 'Shop',
+    'bar': 'Bar',
+    'bakery': 'Bakery',
+    'amusement_park': 'Amusement Park',
+    'night_club': 'Nightclub',
+    'shopping_mall': 'Shopping Mall',
+    'zoo': 'Zoo',
+    'aquarium': 'Aquarium',
+    'supermarket': 'Supermarket',
+    'convenience_store': 'Convenience Store',
+    'park': 'Park',
+    'museum': 'Museum',
+    'art_gallery': 'Art Gallery',
+    'movie_theater': 'Cinema',
+    'spa': 'Spa'
+  };
+  
+  // Return special case or format the type string
+  return specialCases[type] || type
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
 
-// Function to search for a specific place by name
+// Search for a specific place by name
 async function searchForSpecificPlace(placeName) {
-  console.log("Searching for specific place:", placeName);
-  
   try {
-    // Create a places service instance
-    const placesService = new google.maps.places.PlacesService(map);
+    const encodedName = encodeURIComponent(placeName);
+    const response = await fetch(`/api/search?query=${encodedName}`);
+    const data = await response.json();
     
-    // Get the location input to use as a bias for the search
-    const locationInput = document.getElementById('location-input').value.trim();
-    let locationBias = null;
-    
-    // If there's a location input, try to geocode it for search bias
-    if (locationInput) {
-      const geocoder = new google.maps.Geocoder();
-      const geocodePromise = new Promise((resolve) => {
-        geocoder.geocode({ address: locationInput }, (results, status) => {
-          if (status === google.maps.GeocoderStatus.OK && results[0]) {
-            resolve(results[0].geometry.location);
-          } else {
-            resolve(null);
-          }
-        });
-      });
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      console.log(`Found ${data.results.length} places matching "${placeName}"`);
       
-      // Wait for geocoding result
-      const location = await geocodePromise;
-      if (location) {
-        locationBias = {
-          center: location,
-          radius: searchRadius
-        };
-      }
+      // Return the first result
+      return data.results[0];
     }
     
-    // Create search request
-    const searchRequest = {
-      query: placeName,
-      fields: ['name', 'geometry', 'place_id', 'formatted_address', 'photos', 'rating', 'types']
-    };
-    
-    // Add location bias if available
-    if (locationBias) {
-      searchRequest.locationBias = locationBias;
-    }
-    
-    // Perform place search
-    const searchPromise = new Promise((resolve) => {
-      placesService.findPlaceFromQuery(searchRequest, (results, status) => {
-        if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
-          resolve(results[0]);
-        } else {
-          // Try text search if findPlaceFromQuery fails
-          const textSearchRequest = {
-            query: placeName,
-            type: currentPlaceType !== 'attraction' ? currentPlaceType : undefined
-          };
-          if (locationBias) {
-            textSearchRequest.location = locationBias.center;
-            textSearchRequest.radius = locationBias.radius;
-          }
-          
-          placesService.textSearch(textSearchRequest, (textResults, textStatus) => {
-            if (textStatus === google.maps.places.PlacesServiceStatus.OK && textResults && textResults.length > 0) {
-              resolve(textResults[0]);
-            } else {
-              resolve(null);
-            }
-          });
-        }
-      });
-    });
-    
-    // Wait for search result
-    const place = await searchPromise;
-    if (place) {
-      // Found a place, center the map on it
-      map.setCenter(place.geometry.location);
-      map.setZoom(17); // Closer zoom for specific place
-      
-      // Clear existing markers
-      clearMarkers();
-      
-      // Add marker for this specific place
-      const marker = new google.maps.Marker({
-        position: place.geometry.location,
-        map: map,
-        animation: google.maps.Animation.DROP,
-        title: place.name
-      });
-      
-      // Keep track of marker
-      markers.push(marker);
-      
-      // Get detailed information about this place
-      const detailsPromise = new Promise((resolve) => {
-        placesService.getDetails({
-          placeId: place.place_id,
-          fields: [
-            'name', 'place_id', 'rating', 'user_ratings_total',
-            'formatted_address', 'photos', 'price_level', 'types',
-            'vicinity', 'geometry', 'opening_hours', 'website',
-            'formatted_phone_number', 'reviews'
-          ]
-        }, (placeDetails, detailsStatus) => {
-          if (detailsStatus === google.maps.places.PlacesServiceStatus.OK && placeDetails) {
-            resolve(placeDetails);
-          } else {
-            resolve(place); // Fall back to original place object
-          }
-        });
-      });
-      
-      // Wait for details
-      const placeDetails = await detailsPromise;
-      
-      // Show place in the places container
-      const container = document.getElementById('places-container');
-      container.innerHTML = '';
-      
-      // Create a full-width card for this specific place
-      const col = document.createElement('div');
-      col.className = 'col-12 mb-4';
-      
-      // Create a special highlighted card for the specific place
-      const card = document.createElement('div');
-      card.className = 'card h-100 shadow-sm border-primary specific-place-card';
-      
-      // Format photos
-      let photoHtml = '';
-      if (placeDetails.photos && placeDetails.photos.length > 0) {
-        // Try to use the Google Photos API or direct URL if available
-        let photoUrl;
-        try {
-          photoUrl = placeDetails.photos[0].getUrl({ maxWidth: 800, maxHeight: 400 });
-        } catch(e) {
-          // If getUrl fails, check if we have a photo_reference
-          if (placeDetails.photos[0].photo_reference) {
-            photoUrl = `/api/photo?photoreference=${placeDetails.photos[0].photo_reference}&maxwidth=800`;
-          } else {
-            // Last resort fallback
-            photoUrl = '';
-          }
-        }
-        
-        photoHtml = `
-          <div class="position-relative">
-            <img src="${photoUrl}" 
-                 class="card-img-top" alt="${placeDetails.name}" 
-                 style="height: 200px; object-fit: cover;">
-            <div class="position-absolute bottom-0 end-0 p-2">
-              <button class="btn btn-sm btn-light" onclick="showPlaceDetails('${placeDetails.place_id}')">
-                <i class="fas fa-images"></i> More Photos
-              </button>
-            </div>
-          </div>
-        `;
-      } else {
-        photoHtml = `
-          <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-            <i class="fas fa-image text-muted fa-3x"></i>
-          </div>
-        `;
-      }
-      
-      // Format rating stars for Google
-      let ratingHtml = '';
-      if (placeDetails.rating) {
-        ratingHtml = '<div class="mb-2 star-rating">';
-        ratingHtml += '<div class="d-flex align-items-center mb-1">';
-        ratingHtml += '<small class="text-muted me-1">Google:</small>';
-        
-        // Full stars
-        for (let i = 0; i < Math.floor(placeDetails.rating); i++) {
-          ratingHtml += '<i class="fas fa-star"></i>';
-        }
-        
-        // Half star if needed
-        if (placeDetails.rating % 1 >= 0.5) {
-          ratingHtml += '<i class="fas fa-star-half-alt"></i>';
-        }
-        
-        // Empty stars
-        for (let i = 0; i < (5 - Math.ceil(placeDetails.rating)); i++) {
-          ratingHtml += '<i class="far fa-star"></i>';
-        }
-        
-        ratingHtml += ` <span class="ms-1">${placeDetails.rating}</span>`;
-        
-        // Add review count with visual indicator
-        if (placeDetails.user_ratings_total) {
-          if (placeDetails.user_ratings_total > 500) {
-            ratingHtml += ` <span class="badge bg-danger ms-2"><i class="fas fa-fire"></i> ${placeDetails.user_ratings_total} reviews</span>`;
-          } else if (placeDetails.user_ratings_total > 200) {
-            ratingHtml += ` <span class="badge bg-success ms-2">${placeDetails.user_ratings_total} reviews</span>`;
-          } else if (placeDetails.user_ratings_total >= 20) {
-            ratingHtml += ` <span class="badge bg-primary ms-2">${placeDetails.user_ratings_total} reviews</span>`;
-          } else {
-            ratingHtml += ` <span class="text-muted">(${placeDetails.user_ratings_total} reviews)</span>`;
-          }
-        }
-        
-        ratingHtml += '</div>'; // End of Google rating div
-        
-        // TripAdvisor placeholder
-        ratingHtml += `
-          <div class="d-flex align-items-center mt-2" id="tripadvisor-${placeDetails.place_id}">
-            <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_lockup_horizontal_secondary_registered.svg" 
-                 alt="TripAdvisor" height="15" class="me-2">
-            <div class="spinner-border spinner-border-sm text-success" role="status">
-              <span class="visually-hidden">Loading TripAdvisor data...</span>
-            </div>
-            <small class="text-muted ms-2">Loading...</small>
-          </div>
-        `;
-        
-        ratingHtml += '</div>'; // End star-rating div
-      }
-      
-      // Create the card body
-      card.innerHTML = `
-        ${photoHtml}
-        <div class="card-body">
-          <h5 class="card-title">${placeDetails.name}</h5>
-          <p class="card-text text-muted mb-2">${placeDetails.formatted_address || placeDetails.vicinity || ''}</p>
-          ${ratingHtml}
-          <div class="mt-3 d-flex justify-content-between">
-            <button class="btn btn-primary btn-sm" onclick="showPlaceDetails('${placeDetails.place_id}')">
-              <i class="fas fa-info-circle"></i> View Details
-            </button>
-            <a href="https://www.google.com/maps/place/?q=place_id:${placeDetails.place_id}" 
-               target="_blank" class="btn btn-outline-secondary btn-sm">
-              <i class="fas fa-directions"></i> Directions
-            </a>
-          </div>
-        </div>
-      `;
-      
-      // Append card to column and column to container
-      col.appendChild(card);
-      container.appendChild(col);
-      
-      // Fetch TripAdvisor data for this place
-      fetchTripAdvisorData(placeDetails);
-      
-      // Indicate that we successfully found and displayed a specific place
-      return true;
-    }
-    
-    // No places found
-    return false;
+    return null;
   } catch (error) {
-    console.error("Error searching for specific place:", error);
-    return false;
+    console.error('Error searching for specific place:', error);
+    return null;
   }
 }
 
-// Debounce function to limit how often a function is called
+// Debounce function to limit the frequency of function calls
 function debounce(func, delay) {
   let timeout;
   return function() {
@@ -2849,209 +1389,67 @@ function debounce(func, delay) {
 
 // Update the hover marker on the map
 function updateHoverMarker(location) {
-  // Only update if the location has changed significantly
-  if (lastHoverLocation && 
-      Math.abs(location.lat - lastHoverLocation.lat) < 0.0001 && 
-      Math.abs(location.lng - lastHoverLocation.lng) < 0.0001) {
-    return;
+  // Remove existing hover marker
+  if (window.hoverMarker) {
+    window.hoverMarker.setMap(null);
   }
   
-  lastHoverLocation = location;
-  
-  // Remove existing hover marker if it exists
-  if (hoverMarker) {
-    hoverMarker.setMap(null);
-  }
-  
-  // Create a new marker at the hover location
-  hoverMarker = new google.maps.Marker({
+  // Create a new hover marker
+  window.hoverMarker = new google.maps.Marker({
     position: location,
-    map: map,
+    map: window.map,
     icon: {
       path: google.maps.SymbolPath.CIRCLE,
-      scale: 7,
-      fillColor: "#FF6B6B",
-      fillOpacity: 0.6,
-      strokeColor: "white",
-      strokeWeight: 1,
+      scale: 10,
+      fillColor: "#FF4081",
+      fillOpacity: 0.8,
+      strokeColor: "#FFFFFF",
+      strokeWeight: 2
     },
-    zIndex: 1,
-    title: "Hover Location"
+    zIndex: 999  // Make sure it appears above other markers
   });
+  
+  // Animate the marker
+  window.hoverMarker.setAnimation(google.maps.Animation.BOUNCE);
+  
+  // Stop animation after a short time
+  setTimeout(() => {
+    if (window.hoverMarker) {
+      window.hoverMarker.setAnimation(null);
+    }
+  }, 1500);
 }
 
-// Search for nearby places when hovering over an area
+// Search for places nearby the hover location
 function searchNearbyOnHover(location) {
-  // Don't search if a place modal is open
-  if (document.getElementById('place-modal').classList.contains('show')) {
-    return;
+  // Clear the current hover timeout
+  if (window.hoverSearchTimeout) {
+    clearTimeout(window.hoverSearchTimeout);
   }
   
-  // Cancel any existing hover search timeout
-  if (hoverTimeout) {
-    clearTimeout(hoverTimeout);
-  }
-  
-  // Set a timeout to avoid too many API calls
-  hoverTimeout = setTimeout(() => {
-    // Initialize or reuse info window
-    if (!hoverInfoWindow) {
-      hoverInfoWindow = new google.maps.InfoWindow({
-        disableAutoPan: true,
-        maxWidth: 320,
-        content: '<div class="p-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Finding nearby places...</div>'
-      });
-      
-      // Add event listeners
-      google.maps.event.addListener(map, 'click', function() {
-        hoverInfoWindow.close();
-      });
-      
-      google.maps.event.addListener(hoverInfoWindow, 'closeclick', function() {
-        if (hoverTimeout) clearTimeout(hoverTimeout);
-      });
-    } else {
-      hoverInfoWindow.close();
+  // Set a new timeout to search after a delay
+  window.hoverSearchTimeout = setTimeout(() => {
+    // Only search if the hover marker is still visible
+    if (window.hoverMarker && window.hoverMarker.getMap()) {
+      loadNearbyPlaces(location);
     }
-    
-    // Show loading indicator
-    hoverInfoWindow.setContent('<div class="p-2"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Finding nearby places...</div>');
-    hoverInfoWindow.setPosition(location);
-    hoverInfoWindow.open(map);
-    
-    // Define our filtering constants based on place type
-    let MIN_RATING;
-    if (currentPlaceType === 'restaurant') {
-      MIN_RATING = 4.0;
-    } else if (currentPlaceType === 'night_club') {
-      MIN_RATING = 3.7;
-    } else if (currentPlaceType === 'supermarket') {
-      MIN_RATING = 3.5;
-    } else {
-      MIN_RATING = 3.8;
-    }
-    
-    // Minimum required reviews for statistical significance
-    const MIN_REVIEWS = {
-      restaurant: 20,
-      lodging: 8,
-      night_club: 10,
-      supermarket: 5,
-      default: 10
-    };
-    const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
-    
-    const UNWANTED_TYPES = [
-      "gas_station", 
-      "car_repair", 
-      "car_dealer", 
-      "convenience_store", 
-      "grocery_or_supermarket", 
-      "liquor_store", 
-      "market", 
-      "store"
-    ];
-    
-    // Search for nearby places
-    const placesService = new google.maps.places.PlacesService(map);
-    
-    // Build search parameters with dessert mode support
-    const searchParams = {
-      location: location,
-      radius: 300,
-      type: currentPlaceType,
-      rankBy: google.maps.places.RankBy.PROMINENCE
-    };
-    
-    // We only add a dessert keyword if it's explicitly requested through the category button
-    // This is already handled by the category button click handlers
-    
-    placesService.nearbySearch(searchParams, function(results, status) {
-      // Handle error or no results
-      if (status !== google.maps.places.PlacesServiceStatus.OK || !results || results.length === 0) {
-        hoverInfoWindow.setContent(`<div class="p-2">No ${formatPlaceType(currentPlaceType)}s found here</div>`);
-        return;
-      }
-      
-      // Use our shared utility function for consistent filtering
-      const filteredPlaces = filterAndSortPlaces(results, location, {
-        radius: searchRadius,
-        minRating: MIN_RATING,
-        minReviews: currentMinReviews,
-        unwantedTypes: UNWANTED_TYPES
-      });
-      
-      // No special dessert filtering - all handled by category button
-      let placesToShow = filteredPlaces;
-      
-      // Take top 5 places for display
-      const topPlaces = placesToShow.slice(0, 5);
-      
-      // Handle no results after filtering
-      if (topPlaces.length === 0) {
-        let noResultsMessage = `No high-rated ${formatPlaceType(currentPlaceType)}s nearby`;
-        hoverInfoWindow.setContent(`<div class="p-2">${noResultsMessage}</div>`);
-        return;
-      }
-      
-      // Build content HTML
-      let contentHtml = `
-        <div class="p-2" style="max-width: 300px;">
-          <h6 class="mb-2">
-            Nearby ${formatPlaceType(currentPlaceType)}s
-          </h6>
-          <ul class="list-group list-group-flush ps-0">
-      `;
-      
-      // Add each place to the content
-      topPlaces.forEach(function(place) {
-        const ratingHtml = place.rating ? 
-          `<span class="text-warning">${'★'.repeat(Math.round(place.rating))}</span>` : 
-          '<span class="text-muted">No rating</span>';
-        
-        // Get place photo if available
-        let photoHtml = '';
-        if (place.photos && place.photos.length > 0 && place.photos[0].photo_reference) {
-          const photoUrl = `/api/photo?photoreference=${place.photos[0].photo_reference}&maxwidth=100`;
-          photoHtml = `<img src="${photoUrl}" class="float-start me-2 rounded" style="width: 40px; height: 40px; object-fit: cover;" alt="${place.name}">`;
-        }
-        
-        // Add clickable list item
-        contentHtml += `
-          <li class="list-group-item p-2 mb-1 border-0" style="cursor: pointer" 
-              onclick="showPlaceDetails('${place.place_id}'); if(hoverInfoWindow) hoverInfoWindow.close();">
-            <div class="d-flex align-items-center">
-              ${photoHtml}
-              <div>
-                <strong>${place.name}</strong><br>
-                ${ratingHtml} ${place.user_ratings_total ? `<small>(${place.user_ratings_total})</small>` : ''}
-              </div>
-            </div>
-          </li>
-        `;
-      });
-      
-      // Finish content HTML
-      contentHtml += `
-          </ul>
-          <div class="text-center"><small class="text-muted">Click to view details</small></div>
-        </div>
-      `;
-      
-      // Update the info window with the content
-      hoverInfoWindow.setContent(contentHtml);
-    });
-  }, 500);
+  }, 1000);
 }
 
 // Show loading indicator
 function showLoading() {
-  document.getElementById('loading-indicator').classList.remove('d-none');
+  const loadingIndicator = document.getElementById("loading-indicator");
+  if (loadingIndicator) {
+    loadingIndicator.style.display = "flex";
+  }
 }
 
 // Hide loading indicator
 function hideLoading() {
-  document.getElementById('loading-indicator').classList.add('d-none');
+  const loadingIndicator = document.getElementById("loading-indicator");
+  if (loadingIndicator) {
+    loadingIndicator.style.display = "none";
+  }
 }
 
 /**
@@ -3060,28 +1458,20 @@ function hideLoading() {
  */
 async function fetchWeatherData(location) {
   try {
-    const weatherUrl = `/api/weather?lat=${location.lat}&lng=${location.lng}`;
-    console.log("Fetching weather data from:", weatherUrl);
-    
-    const response = await fetch(weatherUrl);
-    
-    if (!response.ok) {
-      throw new Error(`Weather API returned ${response.status}: ${response.statusText}`);
-    }
-    
+    const response = await fetch(`/api/weather?lat=${location.lat}&lng=${location.lng}`);
     const data = await response.json();
     
-    if (data.status === 'OK' && data.result) {
-      weatherData = data.result;
-      displayWeatherData(weatherData);
+    if (data && data.status === 'success') {
+      displayWeatherData(data);
     } else {
       console.error("Weather API error:", data.message || "Unknown error");
-      // Hide weather container if there's an error
-      document.getElementById('weather-container').style.display = 'none';
+      // Clear weather display on error
+      document.getElementById('weather-widget').innerHTML = '';
     }
   } catch (error) {
     console.error("Error fetching weather data:", error);
-    document.getElementById('weather-container').style.display = 'none';
+    // Clear weather display on error
+    document.getElementById('weather-widget').innerHTML = '';
   }
 }
 
@@ -3090,136 +1480,114 @@ async function fetchWeatherData(location) {
  * @param {Object} data - Weather data
  */
 function displayWeatherData(data) {
-  const container = document.getElementById('weather-container');
+  const weatherWidget = document.getElementById('weather-widget');
+  
+  if (!weatherWidget) return;
   
   if (!data || !data.current) {
-    container.style.display = 'none';
+    weatherWidget.innerHTML = '';
     return;
   }
   
-  // Get current weather data
   const current = data.current;
   const forecast = data.forecast || [];
   
-  // Update location name
-  const locationElement = document.getElementById('weather-location');
-  let locationName = 'Current Location';
-  if (current.location && current.location.name) {
-    locationName = current.location.name;
-    if (current.location.country) {
-      locationName += `, ${current.location.country}`;
-    }
-  }
-  locationElement.textContent = locationName;
+  // Current weather HTML
+  let currentWeatherHtml = `
+    <div class="current-weather">
+      <div class="d-flex align-items-center">
+        <img src="${current.icon}" alt="${current.description}" class="weather-icon">
+        <div class="ms-3">
+          <div class="current-temp">${Math.round(current.temp)}°C</div>
+          <div class="weather-description">${current.description}</div>
+        </div>
+      </div>
+      <div class="weather-details mt-2">
+        <div><i class="fas fa-tint"></i> ${current.humidity}%</div>
+        <div><i class="fas fa-wind"></i> ${current.wind_speed} m/s</div>
+      </div>
+    </div>
+  `;
   
-  // Update weather description
-  const descriptionElement = document.getElementById('weather-description');
-  descriptionElement.textContent = current.weather?.description || '';
-  
-  // Update temperature
-  const tempElement = document.getElementById('weather-temp');
-  tempElement.textContent = `${current.temperature?.current || 0}°C`;
-  
-  // Update feels like
-  const feelsLikeElement = document.getElementById('weather-feels-like');
-  feelsLikeElement.textContent = `Feels like ${current.temperature?.feels_like || 0}°C`;
-  
-  // Update weather icon
-  const iconElement = document.getElementById('weather-icon');
-  if (current.weather && current.weather.icon) {
-    iconElement.innerHTML = `<img src="${current.weather.icon_url || `https://openweathermap.org/img/wn/${current.weather.icon}@2x.png`}" alt="${current.weather.description}">`;
-  }
-  
-  // Update weather details
-  document.getElementById('weather-wind').textContent = `${current.wind?.speed || 0} m/s`;
-  document.getElementById('weather-humidity').textContent = `${current.humidity || 0}%`;
-  
-  // Update sun times (sunrise and sunset)
-  const sunriseTime = new Date(current.sunrise).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  const sunsetTime = new Date(current.sunset).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  document.getElementById('weather-sun-times').textContent = `${sunriseTime} / ${sunsetTime}`;
-  
-  // Update forecast
-  const forecastContainer = document.getElementById('weather-forecast');
-  forecastContainer.innerHTML = '';
-  
-  // Only display up to 6 forecast items
-  const displayCount = Math.min(forecast.length, 6);
-  
-  for (let i = 0; i < displayCount; i++) {
-    const item = forecast[i];
-    const time = new Date(item.datetime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  // Forecast HTML
+  let forecastHtml = '';
+  if (forecast.length > 0) {
+    forecastHtml = '<div class="forecast mt-3"><div class="row">';
     
-    const forecastItem = document.createElement('div');
-    forecastItem.className = 'forecast-item';
-    forecastItem.innerHTML = `
-      <div class="forecast-time">${time}</div>
-      <img src="${item.weather?.icon_url || `https://openweathermap.org/img/wn/${item.weather?.icon}@2x.png`}" alt="${item.weather?.description}">
-      <div class="forecast-temp">${item.temperature?.value || 0}°C</div>
-    `;
+    // Only show next 3 days
+    const displayForecast = forecast.slice(0, 3);
     
-    forecastContainer.appendChild(forecastItem);
+    displayForecast.forEach(day => {
+      forecastHtml += `
+        <div class="col">
+          <div class="forecast-day text-center">
+            <div class="day-name">${day.day}</div>
+            <img src="${day.icon}" alt="${day.description}" class="forecast-icon">
+            <div class="forecast-temp">${Math.round(day.max)}° / ${Math.round(day.min)}°</div>
+          </div>
+        </div>
+      `;
+    });
+    
+    forecastHtml += '</div></div>';
   }
   
-  // Show the weather container with important flag
-  container.style.display = 'block';
-  container.style.visibility = 'visible';
-  container.style.opacity = '1';
-  console.log("Weather container should now be visible:", container);
+  // Combine current weather and forecast
+  weatherWidget.innerHTML = currentWeatherHtml + forecastHtml;
+  
+  // Add a dark mode class if dark mode is enabled
+  if (document.body.classList.contains('dark-mode')) {
+    weatherWidget.classList.add('dark-mode');
+  } else {
+    weatherWidget.classList.remove('dark-mode');
+  }
 }
 
-// We no longer need the Bootstrap initPhotoCarousel function
-// since we've implemented a simpler, custom photo gallery with direct event handlers.
-
-// Initialize reviews carousel
 function initReviewsCarousel() {
-  // Get carousel elements
-  const carousel = document.querySelector('.reviews-carousel');
-  if (!carousel) return;
+  updateReviewsCarousel();
   
-  const slides = carousel.querySelectorAll('.reviews-slide');
-  const prevBtn = carousel.querySelector('.reviews-prev');
-  const nextBtn = carousel.querySelector('.reviews-next');
-  const counter = carousel.querySelector('.reviews-counter');
-  
-  // Store current index
-  let currentIndex = 0;
-  const reviews = window.currentPlaceReviews || [];
-  
-  if (!reviews || reviews.length <= 1 || slides.length <= 1) return;
-  
-  // Function to update reviews carousel display
+  // Function to handle window resize and update the carousel
   function updateReviewsCarousel() {
-    // Hide all slides
-    slides.forEach(slide => {
-      slide.classList.remove('active');
-    });
-    
-    // Show current slide
-    slides[currentIndex].classList.add('active');
-    
-    // Update counter if present
-    if (counter) {
-      const currentCounterElement = counter.querySelector('.current-review');
-      if (currentCounterElement) {
-        currentCounterElement.textContent = currentIndex + 1;
-      }
+    // Determine how many slides to show based on window width
+    let slidesToShow = 1;
+    if (window.innerWidth >= 992) {
+      slidesToShow = 3; // Large devices
+    } else if (window.innerWidth >= 768) {
+      slidesToShow = 2; // Medium devices
     }
-  }
-  
-  // Previous button click
-  if (prevBtn) {
-    prevBtn.addEventListener('click', () => {
-      currentIndex = (currentIndex - 1 + slides.length) % slides.length;
-      updateReviewsCarousel();
+    
+    // Initialize or update the carousel
+    if ($('.reviews-carousel').hasClass('slick-initialized')) {
+      $('.reviews-carousel').slick('unslick');
+    }
+    
+    $('.reviews-carousel').slick({
+      dots: true,
+      infinite: true,
+      speed: 500,
+      slidesToShow: slidesToShow,
+      slidesToScroll: 1,
+      autoplay: true,
+      autoplaySpeed: 4000
     });
   }
   
-  // Next button click
-  if (nextBtn) {
-    nextBtn.addEventListener('click', () => {
-      currentIndex = (currentIndex + 1) % slides.length;
-      updateReviewsCarousel();
-    });
-  }
+  // Update carousel when window is resized
+  window.addEventListener('resize', debounce(updateReviewsCarousel, 200));
+}
+
+// Calculate the distance between two points in meters
+function getDistanceInMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371e3; // Earth's radius in meters
+  const φ1 = lat1 * Math.PI / 180; // Convert to radians
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lng2 - lng1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+           Math.cos(φ1) * Math.cos(φ2) *
+           Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c; // Distance in meters
 }
