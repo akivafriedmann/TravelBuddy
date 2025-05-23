@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Map</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+    
+    .container {
+      height: 100%;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="map"></div>
+  </div>
+
+  <script>
+    function initMap() {
+      console.log("Map initialization started");
+      
+      // Default center (Amsterdam)
+      const defaultCenter = { lat: 52.3676, lng: 4.9041 };
+      
+      // Create map
+      const map = new google.maps.Map(document.getElementById('map'), {
+        center: defaultCenter,
+        zoom: 14
+      });
+      
+      // Add a marker
+      new google.maps.Marker({
+        position: defaultCenter,
+        map: map,
+        title: "Amsterdam"
+      });
+      
+      console.log("Map initialized successfully");
+    }
+  </script>
+  
+  <script src="/api/maps-loader"></script>
+</body>
+</html>
