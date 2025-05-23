@@ -241,9 +241,9 @@ function initMap() {
   useMyLocation();
   
   // Set up event listeners for UI elements
-  document.getElementById("use-my-location").addEventListener("click", useMyLocation);
+  document.getElementById("use-location-button").addEventListener("click", useMyLocation);
   document.getElementById("search-button").addEventListener("click", searchLocation);
-  document.getElementById("search-input").addEventListener("keyup", function(event) {
+  document.getElementById("location-input").addEventListener("keyup", function(event) {
     if (event.key === "Enter") {
       searchLocation();
     }
@@ -414,7 +414,7 @@ function useMyLocation() {
 
 // Search for a location by name
 async function searchLocation() {
-  const searchInput = document.getElementById("search-input").value.trim();
+  const searchInput = document.getElementById("location-input").value.trim();
   
   if (!searchInput) {
     alert("Please enter a location to search");
