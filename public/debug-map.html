@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Map</title>
+    <style>
+        body { margin: 0; padding: 20px; }
+        #map { 
+            height: 400px; 
+            width: 100%; 
+            border: 2px solid red;
+            background-color: lightblue;
+        }
+        .debug { 
+            background: yellow; 
+            padding: 10px; 
+            margin: 10px 0; 
+        }
+    </style>
+</head>
+<body>
+    <div class="debug">Map Debug Test</div>
+    <div id="map">MAP SHOULD APPEAR HERE</div>
+    <div class="debug">End of map area</div>
+    
+    <script>
+        function initMap() {
+            console.log("Debug map initializing...");
+            
+            const mapElement = document.getElementById('map');
+            console.log("Map element found:", mapElement);
+            
+            if (!mapElement) {
+                console.error("No map element!");
+                return;
+            }
+            
+            const map = new google.maps.Map(mapElement, {
+                center: { lat: 52.3676, lng: 4.9041 },
+                zoom: 13
+            });
+            
+            new google.maps.Marker({
+                position: { lat: 52.3676, lng: 4.9041 },
+                map: map,
+                title: "Test Marker"
+            });
+            
+            console.log("Debug map created successfully!");
+        }
+        
+        // Also try manual initialization
+        window.addEventListener('load', function() {
+            console.log("Window loaded, attempting manual init...");
+            if (typeof google !== 'undefined' && google.maps) {
+                initMap();
+            } else {
+                console.log("Google Maps not yet available");
+            }
+        });
+    </script>
+    
+    <script src="/api/maps-loader"></script>
+</body>
+</html>
