@@ -3,15 +3,26 @@
 <head>
     <title>Debug Map</title>
     <style>
-        body { margin: 0; padding: 20px; }
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
         #map { 
-            height: 400px; 
+            height: 500px; 
             width: 100%; 
-            border: 2px solid red;
+            border: 3px solid red;
             background-color: lightblue;
+            position: relative;
+            z-index: 999;
+            display: block !important;
+            visibility: visible !important;
         }
         .debug { 
             background: yellow; 
+            padding: 10px; 
+            margin: 10px 0; 
+            border: 1px solid black;
+        }
+        .error { 
+            background: red; 
+            color: white; 
             padding: 10px; 
             margin: 10px 0; 
         }
