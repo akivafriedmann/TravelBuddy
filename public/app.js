@@ -225,6 +225,9 @@ function initMap() {
   
   console.log("Map created successfully!");
   
+  // Load places for the default location immediately
+  loadNearbyPlaces(defaultCenter);
+  
   // Add click event to the map
   google.maps.event.addListener(window.map, "click", function(event) {
     const clickedLocation = {
@@ -248,9 +251,6 @@ function initMap() {
   document.getElementById('dark-mode-toggle').addEventListener('change', function(e) {
     toggleDarkMode(e.target.checked);
   });
-  
-  // Get the user's current location
-  useMyLocation();
   
   // Set up event listeners for UI elements
   document.getElementById("use-location-button").addEventListener("click", useMyLocation);
