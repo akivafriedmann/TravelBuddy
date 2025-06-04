@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Map Test</title>
+    <style>
+        #map {
+            height: 400px;
+            width: 100%;
+            background: lightblue;
+            border: 2px solid red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Map Test</h1>
+    <div id="map"></div>
+    
+    <script>
+        function initMap() {
+            console.log("Simple map initializing...");
+            const map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 13,
+                center: { lat: 52.3676, lng: 4.9041 },
+            });
+            
+            new google.maps.Marker({
+                position: { lat: 52.3676, lng: 4.9041 },
+                map: map,
+                title: "Amsterdam"
+            });
+            
+            console.log("Simple map created successfully!");
+        }
+        
+        window.initMap = initMap;
+    </script>
+    
+    <script src="/api/maps-loader"></script>
+</body>
+</html>
