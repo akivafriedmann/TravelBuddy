@@ -210,11 +210,25 @@ function initMap() {
     return;
   }
   
-  // Create the map with minimal configuration to ensure it works
+  // Create the map with explicit configuration to ensure it displays
   window.map = new google.maps.Map(mapElement, {
-    zoom: 12,
+    zoom: 13,
     center: defaultCenter,
+    mapTypeId: google.maps.MapTypeId.ROADMAP,
+    gestureHandling: 'greedy',
+    zoomControl: true,
+    mapTypeControl: true,
+    scaleControl: true,
+    streetViewControl: true,
+    rotateControl: true,
+    fullscreenControl: true
   });
+  
+  // Force map to resize after creation
+  setTimeout(() => {
+    google.maps.event.trigger(window.map, 'resize');
+    window.map.setCenter(defaultCenter);
+  }, 100);
   
   // Add a marker at the center
   new google.maps.Marker({
