@@ -402,27 +402,11 @@ app.get('/api/nearby', async (req, res) => {
     console.log(`Search requested for ${type} near location [${lat}, ${lng}] with radius ${radius}m` + 
                 (keyword ? ` and keyword "${keyword}"` : ''));
     
-    // Build URL with parameters
-    let url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&key=${apiKey}`;
+    // Use Text Search API instead of Nearby Search since it's working
+    const searchQuery = keyword ? `${keyword} near ${lat},${lng}` : `${type}s near ${lat},${lng}`;
+    let url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&key=${apiKey}`;
     
-    // Add keyword if provided
-    if (keyword) {
-      url += `&keyword=${encodeURIComponent(keyword)}`;
-    }
-    
-    // When using rankby=distance, we cannot specify a radius
-    if (type === 'restaurant') {
-      // Use rankby=distance to get more restaurants
-      // Note: When using rankby=distance, radius parameter is ignored and must not be included
-      url = url.replace(`radius=${radius}&`, '');
-      url += '&rankby=distance';
-      // Add a keyword to narrow results - we want quality places
-      if (!keyword) {
-        url += '&keyword=restaurant';
-      }
-    }
-    
-    console.log(`Fetching nearby places: ${url.replace(apiKey, 'API_KEY')}`);
+    console.log(`Fetching places with text search: ${url.replace(apiKey, 'API_KEY')}`);
     
     // Make the first request to get initial results
     const data = await makeRequest(url);
