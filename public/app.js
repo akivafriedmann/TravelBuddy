@@ -120,8 +120,37 @@ function createSkeletonCards(count = 6) {
 // ==================== MARKER CLUSTERING ====================
 window.clusterInstance = null;
 
+function createCustomClusterRenderer() {
+  return {
+    render: function({ count, position }, stats) {
+      const color = count > 10 ? '#e74c3c' : count > 5 ? '#f39c12' : '#3498db';
+      const size = count > 10 ? 60 : count > 5 ? 50 : 40;
+      
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}">
+          <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="3" opacity="0.9"/>
+          <text x="50" y="42" text-anchor="middle" fill="white" font-size="18" font-weight="bold">${count}</text>
+          <text x="50" y="60" text-anchor="middle" fill="white" font-size="10">places</text>
+        </svg>
+      `;
+      
+      const marker = new google.maps.Marker({
+        position,
+        icon: {
+          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+          scaledSize: new google.maps.Size(size, size),
+          anchor: new google.maps.Point(size / 2, size / 2)
+        },
+        zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count,
+        title: `${count} places in this area - click to see them`
+      });
+      
+      return marker;
+    }
+  };
+}
+
 function initMarkerClusterer() {
-  // Check if the CDN library loaded the MarkerClusterer correctly
   const MarkerClustererClass = window.markerClusterer?.MarkerClusterer;
   
   if (window.clusterInstance) {
@@ -131,9 +160,73 @@ function initMarkerClusterer() {
   if (MarkerClustererClass && window.markers && window.markers.length > 0) {
     window.clusterInstance = new MarkerClustererClass({
       map: window.map,
-      markers: window.markers
+      markers: window.markers,
+      renderer: createCustomClusterRenderer(),
+      onClusterClick: handleClusterClick
     });
   }
+}
+
+function handleClusterClick(event, cluster, map) {
+  const markers = cluster.markers;
+  const places = markers.map(marker => marker.placeData).filter(p => p);
+  
+  if (places.length > 0) {
+    showClusterPlacesModal(places, cluster.position);
+  } else {
+    map.fitBounds(cluster.bounds);
+  }
+}
+
+function showClusterPlacesModal(places, position) {
+  let modal = document.getElementById('cluster-places-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'cluster-places-modal';
+    modal.className = 'modal fade';
+    modal.innerHTML = `
+      <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-map-marker-alt me-2"></i>Places in this area</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body" id="cluster-places-list"></div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="zoom-to-cluster">
+              <i class="fas fa-search-plus me-1"></i>Zoom to Area
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  
+  const listContainer = document.getElementById('cluster-places-list');
+  listContainer.innerHTML = places.map((place, i) => `
+    <div class="cluster-place-item d-flex align-items-center p-2 border-bottom" style="cursor: pointer" 
+         onclick="showPlaceDetails('${place.place_id}'); bootstrap.Modal.getInstance(document.getElementById('cluster-places-modal')).hide();">
+      <div class="flex-grow-1">
+        <strong>${place.name}</strong>
+        <div class="small text-muted">
+          <span class="text-warning">${'★'.repeat(Math.round(place.rating || 0))}</span>
+          ${place.rating || 'N/A'} (${place.user_ratings_total || 0} reviews)
+        </div>
+      </div>
+      <i class="fas fa-chevron-right text-muted"></i>
+    </div>
+  `).join('');
+  
+  const zoomBtn = document.getElementById('zoom-to-cluster');
+  zoomBtn.onclick = function() {
+    window.map.setCenter(position);
+    window.map.setZoom(window.map.getZoom() + 2);
+    bootstrap.Modal.getInstance(modal).hide();
+  };
+  
+  new bootstrap.Modal(modal).show();
 }
 
 function updateMarkerClusterer() {
@@ -147,6 +240,47 @@ function updateMarkerClusterer() {
   } else if (MarkerClustererClass && window.markers && window.markers.length > 0) {
     initMarkerClusterer();
   }
+  
+  // Show first-time helper tooltip if clusters exist
+  if (window.markers && window.markers.length > 3) {
+    showClusterHelperTooltip();
+  }
+}
+
+// ==================== CLUSTER HELPER TOOLTIP ====================
+function showClusterHelperTooltip() {
+  const hasSeenHelper = localStorage.getItem('clusterHelperDismissed');
+  if (hasSeenHelper) return;
+  
+  // Wait a bit for clusters to render first
+  setTimeout(() => {
+    const tooltip = document.createElement('div');
+    tooltip.className = 'cluster-helper-tooltip';
+    tooltip.innerHTML = `
+      <div class="helper-icon"><i class="fas fa-layer-group"></i></div>
+      <div class="helper-text">
+        <strong>Multiple places nearby</strong>
+        <small>Tap the numbered circles on the map to see all places in that area</small>
+      </div>
+      <button class="helper-dismiss" aria-label="Dismiss">&times;</button>
+    `;
+    
+    document.body.appendChild(tooltip);
+    
+    const dismissBtn = tooltip.querySelector('.helper-dismiss');
+    dismissBtn.addEventListener('click', () => {
+      tooltip.remove();
+      localStorage.setItem('clusterHelperDismissed', 'true');
+    });
+    
+    // Auto-dismiss after 8 seconds
+    setTimeout(() => {
+      if (tooltip.parentNode) {
+        tooltip.remove();
+        localStorage.setItem('clusterHelperDismissed', 'true');
+      }
+    }, 8000);
+  }, 2000);
 }
 
 // ==================== FAVORITES VIEW ====================
@@ -1240,6 +1374,9 @@ function addMarker(place, index) {
     },
     animation: google.maps.Animation.DROP
   });
+  
+  // Store place data on marker for cluster access
+  marker.placeData = place;
   
   // Add click event to marker
   marker.addListener("click", () => {

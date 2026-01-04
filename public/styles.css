@@ -876,3 +876,73 @@ body.dark-mode .skeleton {
 .card .btn-outline-danger:hover i.far.fa-heart {
   color: white;
 }
+
+/* Cluster Helper Tooltip */
+.cluster-helper-tooltip {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(52, 73, 94, 0.95);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 90%;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.cluster-helper-tooltip .helper-icon {
+  font-size: 24px;
+}
+
+.cluster-helper-tooltip .helper-text {
+  flex: 1;
+}
+
+.cluster-helper-tooltip .helper-text strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.cluster-helper-tooltip .helper-text small {
+  opacity: 0.8;
+}
+
+.cluster-helper-tooltip .helper-dismiss {
+  background: none;
+  border: none;
+  color: white;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 18px;
+}
+
+.cluster-helper-tooltip .helper-dismiss:hover {
+  opacity: 1;
+}
+
+/* Cluster place list items */
+.cluster-place-item:hover {
+  background-color: #f8f9fa;
+}
+
+body.dark-mode .cluster-place-item:hover {
+  background-color: #2d2d2d;
+}
