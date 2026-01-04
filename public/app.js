@@ -1,3 +1,174 @@
+// ==================== FAVORITES STORAGE ====================
+const FAVORITES_KEY = 'travelplanner_favorites';
+
+function getFavorites() {
+  try {
+    const stored = localStorage.getItem(FAVORITES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Error reading favorites from storage:', error);
+    return [];
+  }
+}
+
+function saveFavorite(place) {
+  const favorites = getFavorites();
+  
+  if (!favorites.find(f => f.place_id === place.place_id)) {
+    const favoriteData = {
+      place_id: place.place_id,
+      name: place.name,
+      rating: place.rating,
+      user_ratings_total: place.user_ratings_total,
+      vicinity: place.vicinity || place.formatted_address,
+      price_level: place.price_level,
+      types: place.types,
+      geometry: place.geometry,
+      opening_hours: place.opening_hours,
+      savedAt: Date.now()
+    };
+    
+    favorites.push(favoriteData);
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    return true;
+  }
+  return false;
+}
+
+function removeFavorite(placeId) {
+  const favorites = getFavorites();
+  const filtered = favorites.filter(f => f.place_id !== placeId);
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(filtered));
+  return filtered;
+}
+
+function isFavorite(placeId) {
+  return getFavorites().some(f => f.place_id === placeId);
+}
+
+function toggleFavorite(place) {
+  if (isFavorite(place.place_id)) {
+    removeFavorite(place.place_id);
+    updateFavoritesBadge();
+    return false;
+  } else {
+    saveFavorite(place);
+    updateFavoritesBadge();
+    return true;
+  }
+}
+
+function updateFavoritesBadge() {
+  const badge = document.getElementById('favorites-count');
+  if (badge) {
+    const count = getFavorites().length;
+    badge.textContent = count;
+    badge.style.display = count > 0 ? 'inline-flex' : 'none';
+  }
+}
+
+// ==================== URL SHARING ====================
+function updateURL(location, type) {
+  const params = new URLSearchParams();
+  params.set('lat', location.lat.toFixed(6));
+  params.set('lng', location.lng.toFixed(6));
+  params.set('type', type);
+  
+  const newURL = `${window.location.pathname}?${params.toString()}`;
+  window.history.replaceState({}, '', newURL);
+}
+
+function getURLParams() {
+  const params = new URLSearchParams(window.location.search);
+  const lat = parseFloat(params.get('lat'));
+  const lng = parseFloat(params.get('lng'));
+  const type = params.get('type');
+  
+  if (!isNaN(lat) && !isNaN(lng)) {
+    return { location: { lat, lng }, type: type || 'restaurant' };
+  }
+  return null;
+}
+
+// ==================== SKELETON LOADING ====================
+function createSkeletonCards(count = 6) {
+  let html = '';
+  for (let i = 0; i < count; i++) {
+    html += `
+      <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 skeleton-card">
+          <div class="card-body">
+            <div class="skeleton skeleton-title"></div>
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text short"></div>
+            <div class="d-flex gap-1 mt-3">
+              <div class="skeleton skeleton-badge"></div>
+              <div class="skeleton skeleton-badge"></div>
+            </div>
+            <div class="d-flex gap-1 mt-3">
+              <div class="skeleton skeleton-button"></div>
+              <div class="skeleton skeleton-button small"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  return html;
+}
+
+// ==================== MARKER CLUSTERING ====================
+window.markerClusterer = null;
+
+function initMarkerClusterer() {
+  if (window.markerClusterer) {
+    window.markerClusterer.clearMarkers();
+  }
+  
+  if (typeof markerClusterer !== 'undefined' && window.markers && window.markers.length > 0) {
+    window.markerClusterer = new markerClusterer.MarkerClusterer({
+      map: window.map,
+      markers: window.markers
+    });
+  }
+}
+
+function updateMarkerClusterer() {
+  if (window.markerClusterer) {
+    window.markerClusterer.clearMarkers();
+    window.markerClusterer.addMarkers(window.markers);
+  } else {
+    initMarkerClusterer();
+  }
+}
+
+// ==================== FAVORITES VIEW ====================
+window.showingFavorites = false;
+
+function showFavoritesView() {
+  const container = document.getElementById('places-container');
+  container.innerHTML = '';
+  
+  const favorites = getFavorites();
+  
+  if (favorites.length === 0) {
+    container.innerHTML = `
+      <div class="col-12">
+        <div class="alert alert-info">
+          <strong>No favorites saved yet</strong>
+          <p>Click the <i class="fas fa-heart"></i> heart icon on any place to add it to your favorites.</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
+  favorites.forEach((place, index) => {
+    const card = createPlaceCard(place, index);
+    container.appendChild(card);
+  });
+}
+
 /**
  * Shared utility for filtering places based on radius, rating, and unwanted types
  * @param {Array} places - The array of place objects to filter
@@ -203,6 +374,17 @@ function initMap() {
   // Default center location (Amsterdam)
   const defaultCenter = { lat: 52.3676, lng: 4.9041 };
   
+  // Check for URL parameters (shareable URLs)
+  const urlParams = getURLParams();
+  const initialCenter = urlParams?.location || defaultCenter;
+  const initialType = urlParams?.type || 'restaurant';
+  
+  // Set the initial type from URL if present
+  if (urlParams?.type) {
+    const typeSelect = document.getElementById('place-type-select');
+    if (typeSelect) typeSelect.value = initialType;
+  }
+  
   // Find the map element and make sure it exists
   const mapElement = document.getElementById("map");
   if (!mapElement) {
@@ -213,7 +395,7 @@ function initMap() {
   // Create the map with explicit configuration to ensure it displays
   window.map = new google.maps.Map(mapElement, {
     zoom: 13,
-    center: defaultCenter,
+    center: initialCenter,
     mapTypeId: google.maps.MapTypeId.ROADMAP,
     gestureHandling: 'greedy',
     zoomControl: true,
@@ -227,20 +409,23 @@ function initMap() {
   // Force map to resize after creation
   setTimeout(() => {
     google.maps.event.trigger(window.map, 'resize');
-    window.map.setCenter(defaultCenter);
+    window.map.setCenter(initialCenter);
   }, 100);
   
   // Add a marker at the center
   new google.maps.Marker({
-    position: defaultCenter,
+    position: initialCenter,
     map: window.map,
-    title: "Amsterdam"
+    title: urlParams ? "Shared Location" : "Amsterdam"
   });
   
   console.log("Map created successfully!");
   
-  // Load places for the default location immediately
-  loadNearbyPlaces(defaultCenter);
+  // Initialize favorites badge
+  updateFavoritesBadge();
+  
+  // Load places for the initial location
+  loadNearbyPlaces(initialCenter);
   
   // Add click event to the map
   google.maps.event.addListener(window.map, "click", function(event) {
@@ -463,6 +648,25 @@ function initMap() {
       }
     });
   });
+  
+  // Favorites button handler
+  const favoritesBtn = document.getElementById('favorites-button');
+  if (favoritesBtn) {
+    favoritesBtn.addEventListener('click', function() {
+      window.showingFavorites = !window.showingFavorites;
+      this.classList.toggle('active', window.showingFavorites);
+      
+      if (window.showingFavorites) {
+        showFavoritesView();
+      } else {
+        const currentLocation = window.map.getCenter();
+        loadNearbyPlaces({
+          lat: currentLocation.lat(),
+          lng: currentLocation.lng()
+        });
+      }
+    });
+  }
 }
 
 // Use the user's current location
@@ -602,6 +806,11 @@ async function searchLocation() {
 // Load nearby places from our API endpoint
 async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
   showLoading();
+  window.showingFavorites = false;
+  
+  // Show skeleton loading cards
+  const container = document.getElementById('places-container');
+  container.innerHTML = createSkeletonCards(6);
   
   // Fetch weather data for this location
   fetchWeatherData(location);
@@ -621,65 +830,28 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
     let places = [];
     
     if (isDessertSearch) {
-      console.log("Performing specialized dessert multi-query search");
-      // Multi-query approach for dessert places
+      console.log("Performing specialized dessert multi-query search with Promise.all");
       
-      // First search specifically for dessert places
-      let dessertApiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=restaurant&keyword=dessert&radius=${radius}`;
+      // Build URLs for parallel fetching
+      const baseParams = `lat=${location.lat}&lng=${location.lng}&radius=${radius}${openNowChecked ? '&opennow=true' : ''}`;
       
-      if (openNowChecked) {
-        dessertApiUrl += '&opennow=true';
-      }
-      
-      const dessertResponse = await fetch(dessertApiUrl);
-      const dessertData = await dessertResponse.json();
+      // Use Promise.all for parallel fetching
+      const [dessertData, cafeData, bakeryData] = await Promise.all([
+        fetch(`/api/nearby?${baseParams}&type=restaurant&keyword=dessert`).then(r => r.json()),
+        fetch(`/api/nearby?${baseParams}&type=cafe`).then(r => r.json()),
+        fetch(`/api/nearby?${baseParams}&type=bakery`).then(r => r.json())
+      ]);
       
       console.log("Dessert API response:", dessertData);
-      
-      if (dessertData.status === 'OK' && dessertData.results && dessertData.results.length > 0) {
-        // Add dessert places to our collection
-        dessertData.results.forEach(place => {
-          placesMap.set(place.place_id, place);
-        });
-      }
-      
-      // Also search for cafes since many serve desserts
-      let cafeApiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=cafe&radius=${radius}`;
-      
-      if (openNowChecked) {
-        cafeApiUrl += '&opennow=true';
-      }
-      
-      const cafeResponse = await fetch(cafeApiUrl);
-      const cafeData = await cafeResponse.json();
-      
       console.log("Cafe API response for desserts:", cafeData);
-      
-      if (cafeData.status === 'OK' && cafeData.results && cafeData.results.length > 0) {
-        // Add cafes to our collection
-        cafeData.results.forEach(place => {
-          placesMap.set(place.place_id, place);
-        });
-      }
-      
-      // Also search for bakeries
-      let bakeryApiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=bakery&radius=${radius}`;
-      
-      if (openNowChecked) {
-        bakeryApiUrl += '&opennow=true';
-      }
-      
-      const bakeryResponse = await fetch(bakeryApiUrl);
-      const bakeryData = await bakeryResponse.json();
-      
       console.log("Bakery API response for desserts:", bakeryData);
       
-      if (bakeryData.status === 'OK' && bakeryData.results && bakeryData.results.length > 0) {
-        // Add bakeries to our collection
-        bakeryData.results.forEach(place => {
-          placesMap.set(place.place_id, place);
-        });
-      }
+      // Add all results to our collection
+      [dessertData, cafeData, bakeryData].forEach(data => {
+        if (data.status === 'OK' && data.results) {
+          data.results.forEach(place => placesMap.set(place.place_id, place));
+        }
+      });
       
       // Convert our Map back to an array
       places = Array.from(placesMap.values());
@@ -828,6 +1000,9 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false)
     return;
   }
   
+  // Update URL for shareable links
+  updateURL(origin, isDessertSearch ? 'dessert' : currentPlaceType);
+  
   // Display filtered and sorted places
   filteredPlaces.forEach((place, index) => {
     const card = createPlaceCard(place, index);
@@ -836,6 +1011,9 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false)
     // Add a marker for this place
     addMarker(place, index);
   });
+  
+  // Initialize/update marker clustering
+  updateMarkerClusterer();
 }
 
 // Create a card for a place
@@ -894,6 +1072,12 @@ function createPlaceCard(place, index) {
     });
   }
   
+  // Check if this place is a favorite
+  const isPlaceFavorite = isFavorite(place.place_id);
+  const favoriteClass = isPlaceFavorite ? 'btn-danger' : 'btn-outline-danger';
+  const favoriteIcon = isPlaceFavorite ? 'fas fa-heart' : 'far fa-heart';
+  const favoriteTitle = isPlaceFavorite ? 'Remove from Favorites' : 'Add to Favorites';
+  
   // Create the card HTML
   card.innerHTML = `
     <div class="card h-100">
@@ -918,22 +1102,43 @@ function createPlaceCard(place, index) {
         <div class="mb-3">
           ${typesBadges}
         </div>
-        <button class="btn btn-primary btn-sm view-details-btn" 
-          data-place-id="${place.place_id}" 
-          onclick="showPlaceDetails('${place.place_id}')">
-          View Details
-        </button>
-        <a href="https://www.google.com/maps/dir/?api=1&destination=${place.geometry.location.lat},${place.geometry.location.lng}" 
-          target="_blank" class="btn btn-outline-success btn-sm ms-1" title="Get Directions">
-          <i class="fas fa-directions"></i>
-        </a>
-        <button class="btn btn-outline-secondary btn-sm ms-1" 
-          onmouseover="updateHoverMarker({lat: ${place.geometry.location.lat}, lng: ${place.geometry.location.lng}})">
-          <i class="fas fa-map-marker-alt"></i>
-        </button>
+        <div class="d-flex flex-wrap gap-1">
+          <button class="btn btn-primary btn-sm view-details-btn" 
+            data-place-id="${place.place_id}" 
+            onclick="showPlaceDetails('${place.place_id}')">
+            View Details
+          </button>
+          <a href="https://www.google.com/maps/dir/?api=1&destination=${place.geometry.location.lat},${place.geometry.location.lng}" 
+            target="_blank" class="btn btn-outline-success btn-sm" title="Get Directions">
+            <i class="fas fa-directions"></i>
+          </a>
+          <button class="btn btn-outline-secondary btn-sm" 
+            onmouseover="updateHoverMarker({lat: ${place.geometry.location.lat}, lng: ${place.geometry.location.lng}})">
+            <i class="fas fa-map-marker-alt"></i>
+          </button>
+          <button class="btn ${favoriteClass} btn-sm favorite-btn" 
+            data-place-id="${place.place_id}"
+            title="${favoriteTitle}">
+            <i class="${favoriteIcon}"></i>
+          </button>
+        </div>
       </div>
     </div>
   `;
+  
+  // Add click handler for favorite button
+  const favoriteBtn = card.querySelector('.favorite-btn');
+  favoriteBtn.addEventListener('click', function() {
+    const nowFavorite = toggleFavorite(place);
+    this.className = `btn ${nowFavorite ? 'btn-danger' : 'btn-outline-danger'} btn-sm favorite-btn`;
+    this.querySelector('i').className = nowFavorite ? 'fas fa-heart' : 'far fa-heart';
+    this.title = nowFavorite ? 'Remove from Favorites' : 'Add to Favorites';
+    
+    // If showing favorites and we unfavorited, refresh the view
+    if (window.showingFavorites && !nowFavorite) {
+      setTimeout(showFavoritesView, 100);
+    }
+  });
   
   return card;
 }
