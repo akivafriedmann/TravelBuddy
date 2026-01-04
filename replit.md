@@ -112,6 +112,12 @@ Preferred communication style: Simple, everyday language.
 ### Latest Updates (January 4, 2026)
 
 - **Favorites System**: Added heart icons on place cards to save favorites to localStorage. Includes badge counter on favorites button and dedicated "Show Favorites" view.
+- **Share Button**: Added visible Share button on map (top-left) that copies the current URL to clipboard with toast notification feedback.
+- **Browser History Support**: Added popstate event listener so browser Back/Forward buttons restore previous search location and type.
+- **MarkerClusterer Reliability**: Added retry logic if the clustering library hasn't loaded yet when initialization is attempted.
+- **Custom Cluster Renderer**: Clusters display "X places" text labels with color-coding (blue/orange/red by count).
+- **Cluster Click Modal**: Clicking a cluster opens a modal listing all places in that area with ratings.
+- **First-Time Cluster Tooltip**: Helper tooltip explains what clusters are (stored in localStorage, shows once).
 - **Shareable URLs**: Implemented URL query parameters (lat, lng, type) that auto-restore search location and type when sharing or bookmarking pages.
 - **Skeleton Loading**: Added skeleton card placeholders with CSS animations during data fetching for better perceived performance.
 - **Marker Clustering**: Integrated @googlemaps/markerclusterer CDN library to group nearby markers for cleaner map display.
