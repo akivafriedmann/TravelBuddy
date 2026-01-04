@@ -564,20 +564,14 @@ app.get('/api/nearby', async (req, res) => {
       'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.photos,places.priceLevel'
     };
     
-    let data;
-    try {
-      data = await makePostRequest(apiUrl, requestBody, headers);
-      console.log(`New Places API response received`);
-    } catch (apiError) {
-      console.log(`New Places API failed: ${apiError.message}, falling back to legacy API`);
-      
-      // Fallback to legacy Text Search API with location parameter
+    // Helper function for legacy API fallback
+    async function useLegacyApi(reason) {
+      console.log(`${reason}, falling back to legacy API`);
       const legacyUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&location=${centerLat},${centerLng}&radius=${radiusMeters}&key=${apiKey}`;
       console.log(`Using legacy API: ${legacyUrl.replace(apiKey, 'API_KEY')}`);
       
       const legacyData = await makeRequest(legacyUrl);
       
-      // Return legacy format directly
       if (legacyData.results) {
         legacyData.results.forEach(place => {
           if (place.photos && place.photos.length > 0) {
@@ -590,13 +584,23 @@ app.get('/api/nearby', async (req, res) => {
       }
       
       console.log(`Legacy API returned ${legacyData.results?.length || 0} places`);
-      return res.json(legacyData);
+      return legacyData;
     }
     
-    // Check for API errors
-    if (data.error) {
-      console.log(`API error: ${JSON.stringify(data.error)}`);
-      return res.json({ status: 'ERROR', results: [], error_message: data.error.message });
+    let data;
+    try {
+      data = await makePostRequest(apiUrl, requestBody, headers);
+      console.log(`New Places API response received`);
+      
+      // Check for API errors in response body and trigger fallback
+      if (data.error) {
+        console.log(`New Places API returned error: ${JSON.stringify(data.error)}`);
+        const legacyData = await useLegacyApi('API error in response');
+        return res.json(legacyData);
+      }
+    } catch (apiError) {
+      const legacyData = await useLegacyApi(`New Places API failed: ${apiError.message}`);
+      return res.json(legacyData);
     }
     
     // Transform New Places API response to match legacy format
