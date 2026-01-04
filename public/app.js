@@ -1049,28 +1049,54 @@ async function showPlaceDetails(placeId) {
         reviewsHtml += '</div>';
       }
       
-      // Format photos
+      // Format photos as Bootstrap carousel
       let photosHtml = '';
       if (place.photos && place.photos.length > 0) {
-        photosHtml = '<h5 class="mt-3">Photos</h5><div class="photo-carousel mb-3">';
-        place.photos.forEach(photo => {
-          // Handle both New Places API (url) and legacy API (photo_reference)
+        const carouselId = 'photoCarousel-' + place.place_id.replace(/[^a-zA-Z0-9]/g, '');
+        photosHtml = `
+          <h5 class="mt-3">Photos</h5>
+          <div id="${carouselId}" class="carousel slide mb-3" data-bs-ride="false">
+            <div class="carousel-indicators">
+              ${place.photos.map((_, i) => `
+                <button type="button" data-bs-target="#${carouselId}" data-bs-slide-to="${i}" 
+                  ${i === 0 ? 'class="active" aria-current="true"' : ''} aria-label="Slide ${i + 1}"></button>
+              `).join('')}
+            </div>
+            <div class="carousel-inner rounded">
+        `;
+        
+        place.photos.forEach((photo, index) => {
           let photoUrl;
           if (photo.url) {
             photoUrl = photo.url;
           } else if (photo.photo_reference) {
-            photoUrl = `/api/photo?photo_reference=${photo.photo_reference}&maxwidth=400`;
+            photoUrl = `/api/photo?photo_reference=${photo.photo_reference}&maxwidth=600`;
           } else {
-            photoUrl = 'https://via.placeholder.com/400x300?text=No+Image';
+            photoUrl = 'https://via.placeholder.com/600x400?text=No+Image';
           }
           
           photosHtml += `
-            <div class="photo-item">
-              <img src="${photoUrl}" alt="${place.name}" class="img-fluid rounded">
+            <div class="carousel-item ${index === 0 ? 'active' : ''}">
+              <img src="${photoUrl}" class="d-block w-100" alt="${place.name}" style="height: 300px; object-fit: cover;">
             </div>
           `;
         });
-        photosHtml += '</div>';
+        
+        photosHtml += `
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#${carouselId}" data-bs-slide="prev">
+              <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#${carouselId}" data-bs-slide="next">
+              <span class="carousel-control-next-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">Next</span>
+            </button>
+          </div>
+          <div class="text-center text-muted small mb-2">
+            <i class="fas fa-arrow-left me-2"></i> Swipe or use arrows to browse photos <i class="fas fa-arrow-right ms-2"></i>
+          </div>
+        `;
       }
       
       // TripAdvisor data section
