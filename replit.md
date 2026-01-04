@@ -109,6 +109,15 @@ Preferred communication style: Simple, everyday language.
 - **Added Legacy API Fallback**: If the New Places API fails or returns an error, the system automatically falls back to the legacy Text Search API.
 - **Cleaned Up Workflows**: Removed unused/broken workflows (BasicServer, ModernPlacesApp).
 
+### Latest Updates (January 4, 2026)
+
+- **Favorites System**: Added heart icons on place cards to save favorites to localStorage. Includes badge counter on favorites button and dedicated "Show Favorites" view.
+- **Shareable URLs**: Implemented URL query parameters (lat, lng, type) that auto-restore search location and type when sharing or bookmarking pages.
+- **Skeleton Loading**: Added skeleton card placeholders with CSS animations during data fetching for better perceived performance.
+- **Marker Clustering**: Integrated @googlemaps/markerclusterer CDN library to group nearby markers for cleaner map display.
+- **Mobile Bottom Sheet**: Added responsive CSS styling for mobile screens (<768px) with bottom sheet layout for place listings.
+- **Modular Architecture**: Created ES6 module structure (public/services/, public/ui/) for future code organization improvements.
+
 ## External Dependencies
 
 ### Core APIs
