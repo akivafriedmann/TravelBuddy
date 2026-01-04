@@ -373,6 +373,37 @@ function initMap() {
     };
     loadNearbyPlaces(location);
   });
+  
+  // Generic handler for all category buttons without specific IDs
+  document.querySelectorAll('.category-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const type = this.getAttribute('data-type');
+      const keyword = this.getAttribute('data-keyword');
+      
+      // Update the select dropdown
+      if (type) {
+        document.getElementById("place-type-select").value = type;
+      }
+      
+      // Remove active class from all category buttons and add to this one
+      document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
+      this.classList.add('active');
+      
+      // Get current location from map
+      const currentLocation = window.map.getCenter();
+      const location = {
+        lat: currentLocation.lat(),
+        lng: currentLocation.lng()
+      };
+      
+      // Load places with keyword if present
+      if (keyword) {
+        loadNearbyPlaces(location, keyword);
+      } else {
+        loadNearbyPlaces(location);
+      }
+    });
+  });
 }
 
 // Use the user's current location
@@ -1023,9 +1054,15 @@ async function showPlaceDetails(placeId) {
       if (place.photos && place.photos.length > 0) {
         photosHtml = '<h5 class="mt-3">Photos</h5><div class="photo-carousel mb-3">';
         place.photos.forEach(photo => {
-          const photoUrl = photo.photo_reference ? 
-            `/api/photo?photo_reference=${photo.photo_reference}&maxwidth=400` : 
-            'https://via.placeholder.com/400x300?text=No+Image';
+          // Handle both New Places API (url) and legacy API (photo_reference)
+          let photoUrl;
+          if (photo.url) {
+            photoUrl = photo.url;
+          } else if (photo.photo_reference) {
+            photoUrl = `/api/photo?photo_reference=${photo.photo_reference}&maxwidth=400`;
+          } else {
+            photoUrl = 'https://via.placeholder.com/400x300?text=No+Image';
+          }
           
           photosHtml += `
             <div class="photo-item">
@@ -1487,85 +1524,70 @@ async function fetchWeatherData(location) {
     const response = await fetch(`/api/weather?lat=${location.lat}&lng=${location.lng}`);
     const data = await response.json();
     
-    if (data && data.status === 'success') {
+    // OpenWeather API returns weather data directly (check for main.temp)
+    if (data && data.main && data.main.temp !== undefined) {
       displayWeatherData(data);
-    } else {
+    } else if (data && data.status === 'ERROR') {
       console.error("Weather API error:", data.message || "Unknown error");
-      // Clear weather display on error
-      document.getElementById('weather-widget').innerHTML = '';
     }
   } catch (error) {
     console.error("Error fetching weather data:", error);
-    // Clear weather display on error
-    document.getElementById('weather-widget').innerHTML = '';
   }
 }
 
 /**
  * Display weather data in the UI
- * @param {Object} data - Weather data
+ * @param {Object} data - Weather data from OpenWeather API
  */
 function displayWeatherData(data) {
-  const weatherWidget = document.getElementById('weather-widget');
+  const weatherContainer = document.getElementById('weather-container');
   
-  if (!weatherWidget) return;
+  if (!weatherContainer) return;
   
-  if (!data || !data.current) {
-    weatherWidget.innerHTML = '';
+  if (!data || !data.main) {
+    weatherContainer.style.display = 'none';
     return;
   }
   
-  const current = data.current;
-  const forecast = data.forecast || [];
+  // Extract data from OpenWeather API format
+  const temp = Math.round(data.main.temp);
+  const humidity = data.main.humidity;
+  const windSpeed = data.wind ? data.wind.speed : 0;
+  const description = data.weather && data.weather[0] ? data.weather[0].description : '';
+  const iconCode = data.weather && data.weather[0] ? data.weather[0].icon : '01d';
+  const iconUrl = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+  const cityName = data.name || '';
   
   // Current weather HTML
-  let currentWeatherHtml = `
-    <div class="current-weather">
-      <div class="d-flex align-items-center">
-        <img src="${current.icon}" alt="${current.description}" class="weather-icon">
-        <div class="ms-3">
-          <div class="current-temp">${Math.round(current.temp)}°C</div>
-          <div class="weather-description">${current.description}</div>
+  const weatherHtml = `
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <img src="${iconUrl}" alt="${description}" class="weather-icon" style="width: 50px; height: 50px;">
+            <div class="ms-3">
+              <div class="h4 mb-0">${temp}°C</div>
+              <div class="text-capitalize">${description}</div>
+              ${cityName ? `<small class="text-muted">${cityName}</small>` : ''}
+            </div>
+            <div class="ms-auto text-end">
+              <div><i class="fas fa-tint"></i> ${humidity}%</div>
+              <div><i class="fas fa-wind"></i> ${windSpeed} m/s</div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="weather-details mt-2">
-        <div><i class="fas fa-tint"></i> ${current.humidity}%</div>
-        <div><i class="fas fa-wind"></i> ${current.wind_speed} m/s</div>
       </div>
     </div>
   `;
   
-  // Forecast HTML
-  let forecastHtml = '';
-  if (forecast.length > 0) {
-    forecastHtml = '<div class="forecast mt-3"><div class="row">';
-    
-    // Only show next 3 days
-    const displayForecast = forecast.slice(0, 3);
-    
-    displayForecast.forEach(day => {
-      forecastHtml += `
-        <div class="col">
-          <div class="forecast-day text-center">
-            <div class="day-name">${day.day}</div>
-            <img src="${day.icon}" alt="${day.description}" class="forecast-icon">
-            <div class="forecast-temp">${Math.round(day.max)}° / ${Math.round(day.min)}°</div>
-          </div>
-        </div>
-      `;
-    });
-    
-    forecastHtml += '</div></div>';
-  }
-  
-  // Combine current weather and forecast
-  weatherWidget.innerHTML = currentWeatherHtml + forecastHtml;
+  weatherContainer.innerHTML = weatherHtml;
+  weatherContainer.style.display = 'flex';
   
   // Add a dark mode class if dark mode is enabled
   if (document.body.classList.contains('dark-mode')) {
-    weatherWidget.classList.add('dark-mode');
+    weatherContainer.classList.add('dark-mode');
   } else {
-    weatherWidget.classList.remove('dark-mode');
+    weatherContainer.classList.remove('dark-mode');
   }
 }
 

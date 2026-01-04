@@ -857,9 +857,17 @@ app.get('/api/weather', async (req, res) => {
     
     console.log(`Fetching weather data for location [${lat}, ${lng}]`);
     
-    // Forward request to our backend server
-    const serverUrl = `http://localhost:8000/api/weather?lat=${lat}&lng=${lng}`;
-    const weatherData = await makeRequest(serverUrl);
+    // Call OpenWeather API directly
+    const openWeatherKey = process.env.OPENWEATHER_API_KEY;
+    if (!openWeatherKey) {
+      return res.status(500).json({
+        status: 'ERROR',
+        message: 'OpenWeather API key is not configured'
+      });
+    }
+    
+    const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${openWeatherKey}&units=metric`;
+    const weatherData = await makeRequest(weatherUrl);
     
     // Cache the result
     weatherCache.set(cacheKey, {
