@@ -946,3 +946,55 @@ body.dark-mode .skeleton {
 body.dark-mode .cluster-place-item:hover {
   background-color: #2d2d2d;
 }
+
+/* Share Toast Notification */
+.share-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #333;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.share-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.share-toast-success {
+  background: #28a745;
+}
+
+.share-toast-error {
+  background: #dc3545;
+}
+
+.share-toast i {
+  font-size: 18px;
+}
+
+/* Share button styling */
+#share-btn:hover {
+  background: #f8f9fa;
+  transform: scale(1.05);
+}
+
+body.dark-mode #share-btn {
+  background: #444;
+  color: white;
+  border-color: #555;
+}
+
+body.dark-mode #share-btn:hover {
+  background: #555;
+}

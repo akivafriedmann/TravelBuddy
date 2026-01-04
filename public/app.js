@@ -90,6 +90,57 @@ function getURLParams() {
   return null;
 }
 
+// Handle browser Back/Forward button navigation
+window.addEventListener('popstate', function(event) {
+  const params = getURLParams();
+  if (params && params.location && window.map) {
+    window.map.setCenter(params.location);
+    
+    const typeSelect = document.getElementById('place-type-select');
+    if (typeSelect) typeSelect.value = params.type;
+    
+    loadNearbyPlaces(params.location, '', 1500);
+  }
+});
+
+// Share button functionality
+function initShareButton() {
+  const shareBtn = document.getElementById('share-btn');
+  if (shareBtn) {
+    shareBtn.addEventListener('click', function() {
+      const currentUrl = window.location.href;
+      navigator.clipboard.writeText(currentUrl).then(() => {
+        showToast('Link copied to clipboard!', 'success');
+      }).catch(() => {
+        showToast('Failed to copy link', 'error');
+      });
+    });
+  }
+}
+
+function showToast(message, type = 'info') {
+  const existingToast = document.querySelector('.share-toast');
+  if (existingToast) existingToast.remove();
+  
+  const toast = document.createElement('div');
+  toast.className = `share-toast share-toast-${type}`;
+  toast.innerHTML = `
+    <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+    <span>${message}</span>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.classList.add('show');
+  }, 10);
+  
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
 // ==================== SKELETON LOADING ====================
 function createSkeletonCards(count = 6) {
   let html = '';
@@ -151,7 +202,14 @@ function createCustomClusterRenderer() {
 }
 
 function initMarkerClusterer() {
-  const MarkerClustererClass = window.markerClusterer?.MarkerClusterer;
+  // Retry if MarkerClusterer library isn't loaded yet
+  if (!window.markerClusterer) {
+    console.warn("MarkerClusterer lib not ready, retrying in 500ms...");
+    setTimeout(initMarkerClusterer, 500);
+    return;
+  }
+  
+  const MarkerClustererClass = window.markerClusterer.MarkerClusterer;
   
   if (window.clusterInstance) {
     window.clusterInstance.clearMarkers();
@@ -564,6 +622,7 @@ function initMap() {
   
   // Initialize favorites badge
   updateFavoritesBadge();
+  initShareButton();
   
   // Load places for the initial location
   loadNearbyPlaces(initialCenter);
