@@ -25,12 +25,22 @@ setInterval(() => {
 const weatherCache = new Map();
 const WEATHER_CACHE_EXPIRATION = 30 * 60 * 1000; // 30 minutes
 
+// TripAdvisor data cache
+const tripAdvisorCache = new Map();
+const TRIPADVISOR_CACHE_EXPIRATION = 60 * 60 * 1000; // 1 hour
+
 // Clean up weather cache too
 setInterval(() => {
   const now = Date.now();
   for (const [key, entry] of weatherCache.entries()) {
     if (now - entry.timestamp > WEATHER_CACHE_EXPIRATION) {
       weatherCache.delete(key);
+    }
+  }
+  // Clean TripAdvisor cache
+  for (const [key, entry] of tripAdvisorCache.entries()) {
+    if (now - entry.timestamp > TRIPADVISOR_CACHE_EXPIRATION) {
+      tripAdvisorCache.delete(key);
     }
   }
 }, 60 * 60 * 1000);
@@ -60,6 +70,45 @@ function makeRequest(url) {
       res.on('end', () => {
         try {
           const result = JSON.parse(Buffer.concat(data).toString());
+          resolve(result);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+    
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+// Helper function to make HTTP GET requests with headers (for TripAdvisor)
+function makeRequestWithHeaders(url, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        ...headers
+      }
+    };
+    
+    const req = https.request(options, (res) => {
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        return reject(new Error(`Status Code: ${res.statusCode}`));
+      }
+      
+      const data = [];
+      res.on('data', chunk => {
+        data.push(chunk);
+      });
+      
+      res.on('end', () => {
+        try {
+          const result = Buffer.concat(data).toString();
           resolve(result);
         } catch (e) {
           reject(e);
@@ -247,41 +296,113 @@ app.get('/api/places/details', async (req, res) => {
   }
 });
 
-// TripAdvisor integration - handles API limitations
+// TripAdvisor integration using Content API
 app.get('/api/tripadvisor', async (req, res) => {
   try {
-    const { place_name, location } = req.query;
+    const { place_name, lat, lng, category } = req.query;
+    const apiKey = process.env.TRIPADVISOR_API_KEY;
     
-    // Require both place name and location
-    if (!place_name || !location) {
-      return res.status(400).json({
-        status: 'ERROR',
-        message: 'Both place_name and location parameters are required'
+    if (!apiKey) {
+      console.log('TripAdvisor API key not configured');
+      return res.status(200).json({
+        status: 'OK',
+        result: { tripadvisor_data: null, message: 'API key not configured' }
       });
     }
     
-    console.log(`TripAdvisor data request for: "${place_name}" in "${location}"`);
+    if (!place_name) {
+      return res.status(400).json({
+        status: 'ERROR',
+        message: 'place_name parameter is required'
+      });
+    }
     
-    // Return a clean response that indicates the service is currently working
-    // but we don't have detailed TripAdvisor data at the moment
-    return res.status(200).json({
+    // Create cache key
+    const cacheKey = `${place_name}_${lat}_${lng}`.toLowerCase();
+    
+    // Check cache first
+    if (tripAdvisorCache.has(cacheKey)) {
+      const cached = tripAdvisorCache.get(cacheKey);
+      if (Date.now() - cached.timestamp < TRIPADVISOR_CACHE_EXPIRATION) {
+        console.log(`TripAdvisor cache hit for: ${place_name}`);
+        return res.json(cached.data);
+      }
+    }
+    
+    console.log(`TripAdvisor API request for: "${place_name}"`);
+    
+    // Headers required by TripAdvisor API for domain-restricted keys
+    const tripAdvisorHeaders = {
+      'Referer': req.headers.referer || req.headers.origin || 'https://replit.com',
+      'Origin': req.headers.origin || 'https://replit.com'
+    };
+    
+    // Build search URL
+    let searchUrl = `https://api.content.tripadvisor.com/api/v1/location/search?key=${apiKey}&searchQuery=${encodeURIComponent(place_name)}&language=en`;
+    
+    // Add coordinates if provided
+    if (lat && lng) {
+      searchUrl += `&latLong=${lat},${lng}`;
+    }
+    
+    // Add category filter
+    if (category === 'restaurant') {
+      searchUrl += '&category=restaurants';
+    } else if (category === 'lodging') {
+      searchUrl += '&category=hotels';
+    } else if (category === 'tourist_attraction') {
+      searchUrl += '&category=attractions';
+    }
+    
+    // Make API request with headers
+    const searchResponse = await makeRequestWithHeaders(searchUrl, tripAdvisorHeaders);
+    const searchData = JSON.parse(searchResponse);
+    
+    if (!searchData.data || searchData.data.length === 0) {
+      const noResultResponse = {
+        status: 'OK',
+        result: { tripadvisor_data: null, message: 'No matching location found' }
+      };
+      tripAdvisorCache.set(cacheKey, { data: noResultResponse, timestamp: Date.now() });
+      return res.json(noResultResponse);
+    }
+    
+    // Get the first (best match) result
+    const location = searchData.data[0];
+    
+    // Get location details for rating
+    const detailsUrl = `https://api.content.tripadvisor.com/api/v1/location/${location.location_id}/details?key=${apiKey}&language=en`;
+    const detailsResponse = await makeRequestWithHeaders(detailsUrl, tripAdvisorHeaders);
+    const detailsData = JSON.parse(detailsResponse);
+    
+    const result = {
       status: 'OK',
       result: {
-        name: place_name,
-        location: location,
-        tripadvisor_data: null,
-        access_limited: true,
-        message: "TripAdvisor data not available at this time."
+        tripadvisor_data: {
+          location_id: location.location_id,
+          name: detailsData.name || location.name,
+          rating: detailsData.rating ? parseFloat(detailsData.rating) : null,
+          num_reviews: detailsData.num_reviews ? parseInt(detailsData.num_reviews) : null,
+          ranking_string: detailsData.ranking_data?.ranking_string || null,
+          price_level: detailsData.price_level || null,
+          web_url: detailsData.web_url || null,
+          address: detailsData.address_obj?.address_string || null
+        }
       }
-    });
+    };
+    
+    // Cache the result
+    tripAdvisorCache.set(cacheKey, { data: result, timestamp: Date.now() });
+    
+    console.log(`TripAdvisor data found: ${result.result.tripadvisor_data.rating} rating, ${result.result.tripadvisor_data.num_reviews} reviews`);
+    
+    return res.json(result);
     
   } catch (error) {
-    console.error('Error in TripAdvisor route:', error);
-    res.status(200).json({  // Use 200 to keep frontend working
+    console.error('Error in TripAdvisor route:', error.message);
+    res.status(200).json({
       status: 'OK',
       result: {
-        name: req.query.place_name,
-        location: req.query.location,
         tripadvisor_data: null,
         api_error: true,
         error_message: error.message

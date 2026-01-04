@@ -67,6 +67,62 @@ function updateFavoritesBadge() {
   }
 }
 
+// ==================== TRIPADVISOR INTEGRATION ====================
+const tripAdvisorCache = new Map();
+
+async function fetchTripAdvisorRating(place) {
+  const cacheKey = place.place_id;
+  
+  if (tripAdvisorCache.has(cacheKey)) {
+    return tripAdvisorCache.get(cacheKey);
+  }
+  
+  try {
+    const lat = place.geometry?.location?.lat;
+    const lng = place.geometry?.location?.lng;
+    const category = document.getElementById('place-type-select')?.value || 'restaurant';
+    
+    const url = `/api/tripadvisor?place_name=${encodeURIComponent(place.name)}&lat=${lat}&lng=${lng}&category=${category}`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.result?.tripadvisor_data) {
+      tripAdvisorCache.set(cacheKey, data.result.tripadvisor_data);
+      return data.result.tripadvisor_data;
+    }
+    
+    tripAdvisorCache.set(cacheKey, null);
+    return null;
+  } catch (error) {
+    console.warn('TripAdvisor fetch error:', error.message);
+    return null;
+  }
+}
+
+function updateCardWithTripAdvisor(placeId, tripAdvisorData) {
+  const badge = document.querySelector(`[data-tripadvisor-id="${placeId}"]`);
+  if (!badge) return;
+  
+  if (tripAdvisorData && tripAdvisorData.rating) {
+    badge.innerHTML = `
+      <span class="badge bg-success" title="TripAdvisor: ${tripAdvisorData.num_reviews || 0} reviews">
+        <i class="fab fa-tripadvisor"></i> ${tripAdvisorData.rating.toFixed(1)}
+      </span>
+    `;
+  } else {
+    badge.innerHTML = '';
+  }
+}
+
+async function loadTripAdvisorForPlaces(places) {
+  for (const place of places.slice(0, 10)) {
+    const data = await fetchTripAdvisorRating(place);
+    updateCardWithTripAdvisor(place.place_id, data);
+    await new Promise(r => setTimeout(r, 200));
+  }
+}
+
 // ==================== URL SHARING ====================
 function updateURL(location, type) {
   const params = new URLSearchParams();
@@ -1214,6 +1270,9 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false)
   
   // Initialize/update marker clustering
   updateMarkerClusterer();
+  
+  // Load TripAdvisor ratings for displayed places
+  loadTripAdvisorForPlaces(filteredPlaces);
 }
 
 // Create a card for a place
@@ -1294,6 +1353,7 @@ function createPlaceCard(place, index) {
             ${ratingStars}
             <span class="ms-1">${place.rating}</span>
             <small class="text-muted ms-1">(${place.user_ratings_total})</small>
+            <span class="tripadvisor-badge ms-2" data-tripadvisor-id="${place.place_id}"></span>
           </div>
           <div class="price">
             <strong>${priceLevel}</strong>
