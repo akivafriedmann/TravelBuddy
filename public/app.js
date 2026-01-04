@@ -507,7 +507,7 @@ async function searchLocation() {
     }
     
     // If no specific place found, try geocoding the search term as an address/location
-    const response = await fetch(`/api/geocode?address=${encodeURIComponent(searchInput)}`);
+    const response = await fetch(`/api/geocoding?address=${encodeURIComponent(searchInput)}`);
     const data = await response.json();
     
     if (data.status === "OK" && data.results && data.results.length > 0) {
@@ -1246,31 +1246,10 @@ async function showPlaceDetails(placeId) {
       const modal = new bootstrap.Modal(document.getElementById('placeDetailsModal'));
       modal.show();
       
-      // Initialize photo carousel once the modal is shown
+      // Initialize when the modal is shown
       document.getElementById('placeDetailsModal').addEventListener('shown.bs.modal', function () {
-        if (place.photos && place.photos.length > 0) {
-          $('.photo-carousel').slick({
-            dots: true,
-            infinite: true,
-            speed: 500,
-            slidesToShow: 1,
-            slidesToScroll: 1,
-            autoplay: true,
-            autoplaySpeed: 3000
-          });
-        }
-        
-        // Initialize reviews carousel
-        if (place.reviews && place.reviews.length > 0) {
-          initReviewsCarousel();
-        }
-        
         // Load nearby recommendations
         if (place.geometry && place.geometry.location) {
-          const placeLocation = {
-            lat: place.geometry.location.lat,
-            lng: place.geometry.location.lng
-          };
           loadNearbyRecommendations(place);
         }
       });
