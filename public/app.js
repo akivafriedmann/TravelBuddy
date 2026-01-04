@@ -254,6 +254,65 @@ function initMap() {
     
     // Load nearby places for this location
     loadNearbyPlaces(clickedLocation);
+    
+    // Hide the "Search This Area" button since we're already searching
+    document.getElementById('search-this-area-btn').style.display = 'none';
+  });
+  
+  // Track the last searched location
+  window.lastSearchedCenter = defaultCenter;
+  
+  // Show "Search This Area" button when map is dragged
+  google.maps.event.addListener(window.map, "dragend", function() {
+    const newCenter = window.map.getCenter();
+    const lastCenter = window.lastSearchedCenter;
+    
+    // Calculate distance from last search (function expects 4 numeric args)
+    const distance = getDistanceInMeters(
+      lastCenter.lat,
+      lastCenter.lng,
+      newCenter.lat(),
+      newCenter.lng()
+    );
+    
+    // Show button if moved more than 200 meters
+    if (distance > 200) {
+      document.getElementById('search-this-area-btn').style.display = 'block';
+    }
+  });
+  
+  // "Search This Area" button click handler
+  document.getElementById('search-this-area-btn').addEventListener('click', function() {
+    const newCenter = window.map.getCenter();
+    const location = {
+      lat: newCenter.lat(),
+      lng: newCenter.lng()
+    };
+    
+    // Update last searched center
+    window.lastSearchedCenter = location;
+    
+    // Hide the button
+    this.style.display = 'none';
+    
+    // Load places at new location
+    loadNearbyPlaces(location);
+  });
+  
+  // Transit layer toggle
+  window.transitLayer = new google.maps.TransitLayer();
+  window.transitLayerVisible = false;
+  
+  document.getElementById('transit-layer-btn').addEventListener('click', function() {
+    if (window.transitLayerVisible) {
+      window.transitLayer.setMap(null);
+      this.classList.remove('active');
+      window.transitLayerVisible = false;
+    } else {
+      window.transitLayer.setMap(window.map);
+      this.classList.add('active');
+      window.transitLayerVisible = true;
+    }
   });
   
   // Detect system dark mode preference
@@ -864,7 +923,11 @@ function createPlaceCard(place, index) {
           onclick="showPlaceDetails('${place.place_id}')">
           View Details
         </button>
-        <button class="btn btn-outline-secondary btn-sm ms-2" 
+        <a href="https://www.google.com/maps/dir/?api=1&destination=${place.geometry.location.lat},${place.geometry.location.lng}" 
+          target="_blank" class="btn btn-outline-success btn-sm ms-1" title="Get Directions">
+          <i class="fas fa-directions"></i>
+        </a>
+        <button class="btn btn-outline-secondary btn-sm ms-1" 
           onmouseover="updateHoverMarker({lat: ${place.geometry.location.lat}, lng: ${place.geometry.location.lng}})">
           <i class="fas fa-map-marker-alt"></i>
         </button>
