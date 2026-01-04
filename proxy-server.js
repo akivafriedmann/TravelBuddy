@@ -415,6 +415,80 @@ app.get('/api/photo', (req, res) => {
   }
 });
 
+// Photo proxy for Places API v1 (new format with full photo name)
+app.get('/api/photo-v2', async (req, res) => {
+  try {
+    const { name, maxwidth = 400, maxheight = 300 } = req.query;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Photo name is required' });
+    }
+    
+    if (!apiKey) {
+      return res.status(403).json({ 
+        status: 'ERROR', 
+        error: 'Google Maps API key is not configured' 
+      });
+    }
+    
+    // Log abbreviated photo name
+    const shortName = name.length > 50 ? name.substring(0, 50) + '...' : name;
+    console.log(`Fetching photo-v2: ${shortName}`);
+    
+    // Use Places API v1 media endpoint
+    // Format: GET https://places.googleapis.com/v1/{name}/media?maxHeightPx=400&maxWidthPx=400&key=API_KEY
+    const photoUrl = `https://places.googleapis.com/v1/${name}/media?maxHeightPx=${maxheight}&maxWidthPx=${maxwidth}&key=${apiKey}`;
+    
+    const photoReq = https.get(photoUrl, (photoRes) => {
+      console.log(`Photo-v2 response: status=${photoRes.statusCode}, content-type=${photoRes.headers['content-type']}`);
+      
+      if (photoRes.statusCode === 403 || photoRes.statusCode === 400) {
+        console.error(`Photo-v2 API request denied: status=${photoRes.statusCode}`);
+        return res.status(403).json({ 
+          status: 'ERROR', 
+          error: `API request was denied with status: ${photoRes.statusCode}` 
+        });
+      }
+      
+      // If we got a redirect, follow it
+      if (photoRes.statusCode === 302 && photoRes.headers.location) {
+        console.log(`Following photo-v2 redirect`);
+        const redirectReq = https.get(photoRes.headers.location, (redirectRes) => {
+          if (redirectRes.statusCode >= 200 && redirectRes.statusCode < 300) {
+            res.setHeader('Content-Type', redirectRes.headers['content-type'] || 'image/jpeg');
+            res.setHeader('Cache-Control', 'public, max-age=86400');
+            redirectRes.pipe(res);
+          } else {
+            res.status(redirectRes.statusCode).send('Failed to retrieve image');
+          }
+        });
+        redirectReq.on('error', (error) => {
+          console.error('Error following redirect:', error);
+          res.status(500).json({ error: 'Failed to follow redirect' });
+        });
+        redirectReq.end();
+        return;
+      }
+      
+      // Stream the photo directly
+      res.setHeader('Content-Type', photoRes.headers['content-type'] || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      photoRes.pipe(res);
+    });
+    
+    photoReq.on('error', (error) => {
+      console.error('Error fetching photo-v2:', error);
+      res.status(500).json({ error: 'Failed to fetch photo' });
+    });
+    
+    photoReq.end();
+  } catch (error) {
+    console.error('Error in photo-v2 proxy:', error);
+    res.status(500).json({ error: 'Failed to process photo request' });
+  }
+});
+
 // Nearby places search endpoint - Uses New Places API (v1) with locationRestriction
 app.get('/api/nearby', async (req, res) => {
   try {
@@ -548,12 +622,36 @@ app.get('/api/nearby', async (req, res) => {
       return R * c;
     }
     
+    // Map price level strings to numeric values (0-4)
+    function mapPriceLevel(priceLevel) {
+      if (!priceLevel) return undefined;
+      const mapping = {
+        'PRICE_LEVEL_FREE': 0,
+        'PRICE_LEVEL_INEXPENSIVE': 1,
+        'PRICE_LEVEL_MODERATE': 2,
+        'PRICE_LEVEL_EXPENSIVE': 3,
+        'PRICE_LEVEL_VERY_EXPENSIVE': 4
+      };
+      return mapping[priceLevel] !== undefined ? mapping[priceLevel] : undefined;
+    }
+    
     // Transform to legacy format for frontend compatibility
     let results = places.map(place => {
       const placeLat = place.location?.latitude;
       const placeLng = place.location?.longitude;
       const distance = (placeLat && placeLng) ? 
         getDistanceInMeters(centerLat, centerLng, placeLat, placeLng) : null;
+      
+      // Process photos - use full photo name for v1 API photos endpoint
+      const photos = place.photos ? place.photos.map(photo => {
+        // photo.name format: "places/PLACE_ID/photos/PHOTO_NAME"
+        // We need to extract a usable reference for our proxy
+        const photoName = photo.name || '';
+        return {
+          photo_reference: photoName,
+          url: `/api/photo-v2?name=${encodeURIComponent(photoName)}&maxwidth=400&maxheight=200`
+        };
+      }) : [];
       
       return {
         place_id: place.id?.replace('places/', ''),
@@ -569,12 +667,9 @@ app.get('/api/nearby', async (req, res) => {
         rating: place.rating,
         user_ratings_total: place.userRatingCount,
         types: place.types || [],
-        price_level: place.priceLevel ? parseInt(place.priceLevel.replace('PRICE_LEVEL_', '')) : undefined,
+        price_level: mapPriceLevel(place.priceLevel),
         distance_meters: distance ? Math.round(distance) : null,
-        photos: place.photos ? place.photos.map(photo => ({
-          photo_reference: photo.name?.split('/').pop(),
-          url: `/api/photo?reference=${photo.name?.split('/').pop()}&maxwidth=400&maxheight=200`
-        })) : []
+        photos: photos
       };
     });
     
