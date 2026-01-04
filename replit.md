@@ -50,10 +50,11 @@ Preferred communication style: Simple, everyday language.
 - Response caching for improved performance
 
 **Route Organization**:
-- `/api/nearby` - Place discovery and search
+- `/api/nearby` - Place discovery and search (uses New Places API v1 with locationRestriction)
 - `/api/geocode` - Address to coordinates conversion
 - `/api/details` - Detailed place information
-- `/api/photo` - Image proxy for place photos
+- `/api/photo` - Image proxy for place photos (legacy format)
+- `/api/photo-v2` - Image proxy for Places API v1 photos
 - `/api/weather` - Weather data integration
 - `/api/tripadvisor` - Third-party review data
 
@@ -101,10 +102,17 @@ Preferred communication style: Simple, everyday language.
 - Bootstrap CDN for UI components
 - FontAwesome for icons and visual elements
 
+## Recent Changes (January 2026)
+
+- **Upgraded to New Places API (v1)**: The `/api/nearby` endpoint now uses the New Places API with `locationRestriction` parameter for accurate geographic search results. This ensures searches for restaurants in Amsterdam return Amsterdam restaurants (not US locations).
+- **Added Photo API v2 Endpoint**: New `/api/photo-v2` endpoint handles the Places API v1 photo format using the media endpoint.
+- **Added Legacy API Fallback**: If the New Places API fails or returns an error, the system automatically falls back to the legacy Text Search API.
+- **Cleaned Up Workflows**: Removed unused/broken workflows (BasicServer, ModernPlacesApp).
+
 ## External Dependencies
 
 ### Core APIs
-- **Google Maps Platform**: Maps JavaScript API, Places API, Geocoding API, Photos API
+- **Google Maps Platform**: Maps JavaScript API, Places API (v1 and legacy), Geocoding API, Photos API
 - **OpenWeather API**: Weather data service
 - **TripAdvisor**: Review and rating data (via web scraping)
 
