@@ -43,7 +43,7 @@ const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 console.log('Serving static files from:', publicPath);
 
-// Helper function to make HTTP requests
+// Helper function to make HTTP GET requests
 function makeRequest(url) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('https') ? https : http;
@@ -68,6 +68,42 @@ function makeRequest(url) {
     });
     
     req.on('error', reject);
+    req.end();
+  });
+}
+
+// Helper function to make HTTP POST requests (for New Places API)
+function makePostRequest(url, body, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const options = {
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers
+      }
+    };
+    
+    const req = https.request(options, (res) => {
+      const data = [];
+      res.on('data', chunk => {
+        data.push(chunk);
+      });
+      
+      res.on('end', () => {
+        try {
+          const result = JSON.parse(Buffer.concat(data).toString());
+          resolve(result);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+    
+    req.on('error', reject);
+    req.write(JSON.stringify(body));
     req.end();
   });
 }
@@ -379,7 +415,7 @@ app.get('/api/photo', (req, res) => {
   }
 });
 
-// Nearby places search endpoint
+// Nearby places search endpoint - Uses New Places API (v1) with locationRestriction
 app.get('/api/nearby', async (req, res) => {
   try {
     const { lat, lng, type = 'restaurant', radius = 1500, keyword } = req.query;
@@ -389,7 +425,6 @@ app.get('/api/nearby', async (req, res) => {
       return res.status(400).json({ status: 'ERROR', error: 'Missing required location parameters' });
     }
     
-    // Check if API key is missing
     if (!apiKey) {
       console.log('API key is missing');
       return res.status(500).json({ 
@@ -398,208 +433,186 @@ app.get('/api/nearby', async (req, res) => {
       });
     }
     
-    // Log the search parameters for debugging
     console.log(`Search requested for ${type} near location [${lat}, ${lng}] with radius ${radius}m` + 
                 (keyword ? ` and keyword "${keyword}"` : ''));
     
-    // Use Text Search API instead of Nearby Search since it's working
-    const searchQuery = keyword ? `${keyword} near ${lat},${lng}` : `${type}s near ${lat},${lng}`;
-    let url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&key=${apiKey}`;
+    const centerLat = parseFloat(lat);
+    const centerLng = parseFloat(lng);
+    const radiusMeters = parseInt(radius) || 1500;
     
-    console.log(`Fetching places with text search: ${url.replace(apiKey, 'API_KEY')}`);
+    // Calculate bounding box for locationRestriction (rectangle)
+    // 1 degree latitude = ~111km, 1 degree longitude varies by latitude
+    const latDelta = radiusMeters / 111000;
+    const lngDelta = radiusMeters / (111000 * Math.cos(centerLat * Math.PI / 180));
     
-    // Make the first request to get initial results
-    const data = await makeRequest(url);
+    // Build the search query
+    const searchQuery = keyword ? keyword : type;
     
-    // Log the full data response for debugging
-    console.log(`First page response status: ${data.status}`);
-    console.log(`First page results count: ${data.results ? data.results.length : 0}`);
-    console.log(`Next page token exists: ${!!data.next_page_token}`);
-    
-    if (data.next_page_token) {
-      console.log(`Token: ${data.next_page_token.substring(0, 20)}...`);
-    }
-    
-    // For restaurants, we need to expand our search to get more high-rated places
-    // Google Places API returns results in pages of up to 20
-    let allResults = [...(data.results || [])];
-    
-    // If we have a next_page_token, we can get more results
-    if (data.next_page_token && allResults.length > 0) {
-      // Google requires a delay before using the page token
-      // https://developers.google.com/maps/documentation/places/web-service/search-nearby#PlacesSearchPaging
-      console.log("Page token available, waiting 2 seconds before fetching more results...");
-      await new Promise(resolve => setTimeout(resolve, 2500));
-      
-      try {
-        // Make second request with page token
-        const secondPageUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${encodeURIComponent(data.next_page_token)}&key=${apiKey}`;
-        console.log(`Fetching second page: ${secondPageUrl.replace(apiKey, 'API_KEY').substring(0, 100)}...`);
-        
-        const secondPageData = await makeRequest(secondPageUrl);
-        console.log(`Second page response status: ${secondPageData.status}`);
-        
-        if (secondPageData.status === 'OK' && secondPageData.results) {
-          console.log(`Got ${secondPageData.results.length} more places from second page`);
-          allResults = [...allResults, ...secondPageData.results];
-          
-          // Check if we have a token for a third page
-          if (secondPageData.next_page_token) {
-            console.log(`Third page token exists: ${!!secondPageData.next_page_token}`);
-            // Wait again before using the next token
-            await new Promise(resolve => setTimeout(resolve, 2500));
-            
-            try {
-              const thirdPageUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?pagetoken=${encodeURIComponent(secondPageData.next_page_token)}&key=${apiKey}`;
-              console.log(`Fetching third page: ${thirdPageUrl.replace(apiKey, 'API_KEY').substring(0, 100)}...`);
-              
-              const thirdPageData = await makeRequest(thirdPageUrl);
-              console.log(`Third page response status: ${thirdPageData.status}`);
-              
-              if (thirdPageData.status === 'OK' && thirdPageData.results) {
-                console.log(`Got ${thirdPageData.results.length} more places from third page`);
-                allResults = [...allResults, ...thirdPageData.results];
-              } else {
-                console.log(`Third page error: ${thirdPageData.status}, ${thirdPageData.error_message || 'No error message'}`);
-              }
-            } catch (pageError) {
-              console.log("Error fetching third page:", pageError.message);
-            }
-          } else {
-            console.log("No third page token available");
+    // Use New Places API (v1) with locationRestriction for accurate results
+    const requestBody = {
+      textQuery: searchQuery,
+      locationRestriction: {
+        rectangle: {
+          low: {
+            latitude: centerLat - latDelta,
+            longitude: centerLng - lngDelta
+          },
+          high: {
+            latitude: centerLat + latDelta,
+            longitude: centerLng + lngDelta
           }
-        } else {
-          console.log(`Second page error: ${secondPageData.status}, ${secondPageData.error_message || 'No error message'}`);
         }
-      } catch (pageError) {
-        console.log("Error fetching second page:", pageError.message);
-      }
-    } else {
-      console.log("No next page token available or no results in first page");
+      },
+      maxResultCount: 20,
+      languageCode: "en"
+    };
+    
+    // Add includedType for better filtering
+    const typeMapping = {
+      'restaurant': 'restaurant',
+      'hotel': 'hotel',
+      'lodging': 'lodging',
+      'bar': 'bar',
+      'cafe': 'cafe',
+      'bakery': 'bakery'
+    };
+    
+    if (typeMapping[type]) {
+      requestBody.includedType = typeMapping[type];
     }
     
-    // Replace the original results with all results
-    data.results = allResults;
-    console.log(`Total places found after pagination: ${allResults.length}`);
+    console.log(`Using New Places API (v1) with locationRestriction`);
+    console.log(`Bounding box: [${(centerLat - latDelta).toFixed(4)}, ${(centerLng - lngDelta).toFixed(4)}] to [${(centerLat + latDelta).toFixed(4)}, ${(centerLng + lngDelta).toFixed(4)}]`);
     
-    // Check if the API request was denied (likely due to domain restrictions)
-    if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT') {
-      console.log(`API request was denied with status: ${data.status}, error_message: ${data.error_message || 'No error message'}`);
+    const apiUrl = 'https://places.googleapis.com/v1/places:searchText';
+    const headers = {
+      'X-Goog-Api-Key': apiKey,
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.photos,places.priceLevel'
+    };
+    
+    let data;
+    try {
+      data = await makePostRequest(apiUrl, requestBody, headers);
+      console.log(`New Places API response received`);
+    } catch (apiError) {
+      console.log(`New Places API failed: ${apiError.message}, falling back to legacy API`);
       
-      // Instead of returning an error, return the actual response with the error
-      // This helps debugging while keeping the app running
-      console.log(`Nearby places response: status=${data.status}, results=${data.results ? data.results.length : 0}`);
-      return res.json(data);
+      // Fallback to legacy Text Search API with location parameter
+      const legacyUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&location=${centerLat},${centerLng}&radius=${radiusMeters}&key=${apiKey}`;
+      console.log(`Using legacy API: ${legacyUrl.replace(apiKey, 'API_KEY')}`);
+      
+      const legacyData = await makeRequest(legacyUrl);
+      
+      // Return legacy format directly
+      if (legacyData.results) {
+        legacyData.results.forEach(place => {
+          if (place.photos && place.photos.length > 0) {
+            place.photos = place.photos.map(photo => ({
+              ...photo,
+              url: `/api/photo?reference=${photo.photo_reference}&maxwidth=400&maxheight=200`
+            }));
+          }
+        });
+      }
+      
+      console.log(`Legacy API returned ${legacyData.results?.length || 0} places`);
+      return res.json(legacyData);
     }
     
-    // Helper function to calculate the actual distance between two points in meters
+    // Check for API errors
+    if (data.error) {
+      console.log(`API error: ${JSON.stringify(data.error)}`);
+      return res.json({ status: 'ERROR', results: [], error_message: data.error.message });
+    }
+    
+    // Transform New Places API response to match legacy format
+    const places = data.places || [];
+    console.log(`Found ${places.length} places from New Places API`);
+    
+    if (places.length > 0) {
+      const placeNames = places.map(p => `${p.displayName?.text || 'Unknown'} (${p.rating || 'No rating'})`).join(', ');
+      console.log(`Places found: ${placeNames}`);
+    }
+    
+    // Helper function for distance calculation
     function getDistanceInMeters(lat1, lng1, lat2, lng2) {
-      // Using Haversine formula to calculate the distance between two coordinates
-      const R = 6371000; // Earth's radius in meters
+      const R = 6371000;
       const φ1 = lat1 * Math.PI/180;
       const φ2 = lat2 * Math.PI/180;
       const Δφ = (lat2 - lat1) * Math.PI/180;
       const Δλ = (lng2 - lng1) * Math.PI/180;
-
       const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
                 Math.cos(φ1) * Math.cos(φ2) *
                 Math.sin(Δλ/2) * Math.sin(Δλ/2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-      return R * c; // Distance in meters
+      return R * c;
     }
     
-    // Process the response to filter results and include direct photo URLs
-    if (data.results) {
-      // Show detailed debug information about results
-      console.log(`Nearby places response: status=${data.status}, results=${data.results.length}`);
+    // Transform to legacy format for frontend compatibility
+    let results = places.map(place => {
+      const placeLat = place.location?.latitude;
+      const placeLng = place.location?.longitude;
+      const distance = (placeLat && placeLng) ? 
+        getDistanceInMeters(centerLat, centerLng, placeLat, placeLng) : null;
       
-      // Log the names of places found
-      const placeNames = data.results.map(p => `${p.name} (${p.rating || 'No rating'})`).join(', ');
-      console.log(`Places found: ${placeNames}`);
-      
-      // Apply distance filtering if a radius was specified
-      if (radius && !isNaN(parseInt(radius))) {
-        const requestedRadius = parseInt(radius);
-        const originalCount = data.results.length;
-        
-        // When using rankby=distance, we still need to filter by the actual distance
-        // since Google ignores the radius parameter when rankby=distance is used
-        data.results = data.results.filter(place => {
-          if (!place.geometry || !place.geometry.location) return false;
-          
-          const placeLat = place.geometry.location.lat;
-          const placeLng = place.geometry.location.lng;
-          const distance = getDistanceInMeters(parseFloat(lat), parseFloat(lng), placeLat, placeLng);
-          
-          // Add the calculated distance to the place object (useful for debugging)
-          place.distance_meters = Math.round(distance);
-          
-          return distance <= requestedRadius;
-        });
-        
-        console.log(`Distance filtering applied: ${data.results.length} of ${originalCount} places are within ${requestedRadius}m radius`);
-      }
-      
-      // Extra filtering for dessert places if the keyword is dessert
-      if (keyword === 'dessert') {
-        const dessertKeywords = ['dessert', 'cake', 'ice cream', 'gelato', 'pastry', 'bakery', 'patisserie', 'sweet', 'chocolate', 'coffee', 'café', 'cafe'];
-        console.log('Applying additional dessert filtering');
-        
-        const originalCount = data.results.length;
-        if (originalCount > 0) {
-          // Filter places that are more likely to be dessert places based on name or types
-          data.results = data.results.filter(place => {
-            const name = place.name.toLowerCase();
-            const types = place.types || [];
-            
-            // Check if name contains dessert-related keywords
-            const nameMatch = dessertKeywords.some(kw => name.includes(kw));
-            
-            // Check if place types include bakery, cafe, etc.
-            const typeMatch = types.some(t => 
-              ['bakery', 'cafe', 'meal_takeaway', 'restaurant', 'food'].includes(t)
-            );
-            
-            return nameMatch || typeMatch;
-          });
-        }
-        
-        console.log(`After dessert filtering: ${data.results.length} of ${originalCount} places remain`);
-      }
-      
-      // Filter out hotels from restaurant or bar searches
-      if (type === "restaurant" || type === "bar") {
-        const originalCount = data.results.length;
-        
-        // Make sure we get enough results even after filtering
-        if (originalCount > 0) {
-          data.results = data.results.filter(place => {
-            if (!place.types) return true; // Keep places with no types array
-            
-            // Keep places that don't have "lodging" in their types
-            return !place.types.includes("lodging");
-          });
-        }
-        
-        console.log(`Filtered out hotels, remaining places: ${data.results.length}`);
-      }
-
-      // Add direct photo URLs to each place
-      data.results.forEach(place => {
-        if (place.photos && place.photos.length > 0) {
-          place.photos = place.photos.map(photo => {
-            return {
-              ...photo,
-              url: `/api/photo?reference=${photo.photo_reference}&maxwidth=400&maxheight=200`
-            };
-          });
-        }
+      return {
+        place_id: place.id?.replace('places/', ''),
+        name: place.displayName?.text || 'Unknown',
+        formatted_address: place.formattedAddress,
+        vicinity: place.formattedAddress,
+        geometry: {
+          location: {
+            lat: placeLat,
+            lng: placeLng
+          }
+        },
+        rating: place.rating,
+        user_ratings_total: place.userRatingCount,
+        types: place.types || [],
+        price_level: place.priceLevel ? parseInt(place.priceLevel.replace('PRICE_LEVEL_', '')) : undefined,
+        distance_meters: distance ? Math.round(distance) : null,
+        photos: place.photos ? place.photos.map(photo => ({
+          photo_reference: photo.name?.split('/').pop(),
+          url: `/api/photo?reference=${photo.name?.split('/').pop()}&maxwidth=400&maxheight=200`
+        })) : []
+      };
+    });
+    
+    // Apply distance filtering
+    const originalCount = results.length;
+    results = results.filter(place => {
+      if (!place.distance_meters) return true;
+      return place.distance_meters <= radiusMeters;
+    });
+    console.log(`Distance filtering: ${results.length} of ${originalCount} places within ${radiusMeters}m`);
+    
+    // Extra filtering for dessert places
+    if (keyword === 'dessert') {
+      const dessertKeywords = ['dessert', 'cake', 'ice cream', 'gelato', 'pastry', 'bakery', 'patisserie', 'sweet', 'chocolate', 'coffee', 'café', 'cafe'];
+      const beforeCount = results.length;
+      results = results.filter(place => {
+        const name = place.name.toLowerCase();
+        const types = place.types || [];
+        const nameMatch = dessertKeywords.some(kw => name.includes(kw));
+        const typeMatch = types.some(t => ['bakery', 'cafe', 'meal_takeaway', 'restaurant', 'food'].includes(t));
+        return nameMatch || typeMatch;
       });
+      console.log(`Dessert filtering: ${results.length} of ${beforeCount} places remain`);
     }
     
-    console.log(`Found ${data.results ? data.results.length : 0} nearby places`);
-    res.json(data);
+    // Filter out hotels from restaurant/bar searches
+    if (type === "restaurant" || type === "bar") {
+      const beforeCount = results.length;
+      results = results.filter(place => {
+        if (!place.types) return true;
+        return !place.types.includes("lodging") && !place.types.includes("hotel");
+      });
+      console.log(`Hotel filtering: ${results.length} of ${beforeCount} places remain`);
+    }
+    
+    console.log(`Found ${results.length} nearby places`);
+    res.json({ status: 'OK', results, html_attributions: [] });
+    
   } catch (error) {
     console.error('Error fetching nearby places:', error);
     res.status(500).json({ 
