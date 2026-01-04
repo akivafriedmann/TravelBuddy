@@ -118,15 +118,18 @@ function createSkeletonCards(count = 6) {
 }
 
 // ==================== MARKER CLUSTERING ====================
-window.markerClusterer = null;
+window.clusterInstance = null;
 
 function initMarkerClusterer() {
-  if (window.markerClusterer) {
-    window.markerClusterer.clearMarkers();
+  // Check if the CDN library loaded the MarkerClusterer correctly
+  const MarkerClustererClass = window.markerClusterer?.MarkerClusterer;
+  
+  if (window.clusterInstance) {
+    window.clusterInstance.clearMarkers();
   }
   
-  if (typeof markerClusterer !== 'undefined' && window.markers && window.markers.length > 0) {
-    window.markerClusterer = new markerClusterer.MarkerClusterer({
+  if (MarkerClustererClass && window.markers && window.markers.length > 0) {
+    window.clusterInstance = new MarkerClustererClass({
       map: window.map,
       markers: window.markers
     });
@@ -134,10 +137,14 @@ function initMarkerClusterer() {
 }
 
 function updateMarkerClusterer() {
-  if (window.markerClusterer) {
-    window.markerClusterer.clearMarkers();
-    window.markerClusterer.addMarkers(window.markers);
-  } else {
+  const MarkerClustererClass = window.markerClusterer?.MarkerClusterer;
+  
+  if (window.clusterInstance) {
+    window.clusterInstance.clearMarkers();
+    if (window.markers && window.markers.length > 0) {
+      window.clusterInstance.addMarkers(window.markers);
+    }
+  } else if (MarkerClustererClass && window.markers && window.markers.length > 0) {
     initMarkerClusterer();
   }
 }
