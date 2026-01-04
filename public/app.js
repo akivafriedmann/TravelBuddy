@@ -1003,6 +1003,8 @@ async function showPlaceDetails(placeId) {
     
     if (data.status === 'OK' && data.result) {
       const place = data.result;
+      // Add place_id to the place object since it's not returned by the details API
+      place.place_id = placeId;
       console.log("Place details:", place);
       
       // Get TripAdvisor data if available
