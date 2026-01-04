@@ -1,0 +1,51 @@
+Context: I have a functional but monolithic script.js file for a Google Maps discovery app. It currently handles API calls, map logic, and UI rendering in one file.
+
+Goal: I want to refactor this into a professional, modular architecture and add advanced UX features to make it a "production-ready" MVP.
+
+Phase 1: Architecture & Security (Critical)
+
+Modularization: Split the code into ES6 modules:
+
+services/api.js: Handle all fetch requests. Crucial: Refactor the "Dessert" search to use Promise.all() for parallel fetching of restaurants, cafes, and bakeries.
+
+services/map.js: Handle Map init, markers, and the Transit Layer.
+
+services/storage.js: Handle localStorage logic (for Favorites).
+
+ui/renderer.js: Handle creating cards and modals.
+
+app.js: Main entry point.
+
+Security: In renderer.js, replace all instances of innerHTML for user content (names, reviews) with textContent or document.createElement to prevent XSS. Only use innerHTML for trusted icons/badges.
+
+Phase 2: Advanced UX & UI
+
+Marker Clustering: Implement the @googlemaps/markerclusterer library. Instead of dropping 50 individual pins, group them into clusters that expand on click.
+
+Skeleton Loading: Create a CSS class .skeleton. When data is loading, instead of a spinner, show 6 empty cards with gray pulsing backgrounds (@keyframes pulse) to mimic the layout.
+
+Glassmorphism: Update the CSS for the search bar, filter panel, and floating buttons. Give them a semi-transparent white background with backdrop-filter: blur(10px) and a subtle white border.
+
+Mobile Bottom Sheet: On screens smaller than 768px:
+
+Make the Map take up 100% of the screen height behind the UI.
+
+Move the results list (#places-container) into a "Bottom Sheet" that sits at the bottom of the screen (height: 40vh) and can scroll independently.
+
+Phase 3: Utility Features
+
+Shareable URLs:
+
+When a search happens, update the URL: /?lat=...&lng=...&type=cafe.
+
+On app.js init, check URLSearchParams. If params exist, automatically trigger that search so the view is restored.
+
+Favorites System:
+
+Add a "Heart" icon to every place card.
+
+On click, save the place data to localStorage.
+
+Add a "Show Favorites" filter button to the top UI that renders only saved places.
+
+Output: Please set up the folder structure, provide the CSS for the Glassmorphism/Skeleton UI, and write the JavaScript modules.
