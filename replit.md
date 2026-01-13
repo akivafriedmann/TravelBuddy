@@ -109,7 +109,18 @@ Preferred communication style: Simple, everyday language.
 - **Added Legacy API Fallback**: If the New Places API fails or returns an error, the system automatically falls back to the legacy Text Search API.
 - **Cleaned Up Workflows**: Removed unused/broken workflows (BasicServer, ModernPlacesApp).
 
-### Latest Updates (January 4, 2026)
+### Latest Updates (January 13, 2026)
+
+- **Restaurant Details Modal Redesign**: Complete mobile-app-style redesign:
+  - Hero image carousel at top, edge-to-edge, with overlay close (X) button
+  - Clean title section with restaurant name, rating badge, price level, and address
+  - Action buttons row with circular icons for Call, Website, Directions, Share
+  - Collapsible opening hours - shows today's status with accordion to expand full week
+  - Removed heavy table borders, using whitespace for cleaner layout
+  - Share button copies shareable URL to clipboard
+  - Full dark mode support for all modal elements
+
+### Previous Updates (January 4, 2026)
 
 - **Modern UI Overhaul**: Complete redesign inspired by Airbnb/Google Maps with:
   - Horizontal scrollable category pills (rounded, minimal icons)
