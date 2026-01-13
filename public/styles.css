@@ -1322,3 +1322,303 @@ body.dark-mode .place-card .favorite-btn {
   background: rgba(30, 30, 30, 0.95);
 }
 
+/* ============================================
+   MODERN MODAL STYLES - Airbnb/Google Maps inspired
+   ============================================ */
+
+/* Modern Modal Container */
+.modern-modal {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: none;
+}
+
+.modern-modal .modal-body {
+  padding: 24px;
+}
+
+/* Hero Section with Carousel */
+.hero-section {
+  position: relative;
+  background: #f0f0f0;
+}
+
+.hero-carousel {
+  margin: 0;
+}
+
+.hero-carousel .carousel-inner {
+  border-radius: 0;
+}
+
+.hero-img {
+  height: 280px;
+  object-fit: cover;
+}
+
+.hero-placeholder {
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+}
+
+/* Overlay Close Button */
+.btn-close-overlay {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 100;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s, background 0.2s;
+}
+
+.btn-close-overlay:hover {
+  background: #fff;
+  transform: scale(1.05);
+}
+
+.btn-close-overlay i {
+  font-size: 14px;
+  color: #222;
+}
+
+/* Photo Count Badge */
+.photo-count-badge {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Title Section */
+.title-section {
+  margin-bottom: 20px;
+}
+
+.place-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.place-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #FFF8E1;
+  color: #F57C00;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.rating-badge i {
+  font-size: 12px;
+}
+
+.review-count {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.price-badge {
+  color: #2E7D32;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.place-address {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Action Buttons Row */
+.action-buttons-row {
+  display: flex;
+  justify-content: space-around;
+  padding: 16px 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 16px;
+}
+
+.action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text-primary);
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  transition: background 0.2s;
+}
+
+.action-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.action-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.action-btn-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.action-btn:hover .action-btn-icon {
+  background: var(--border-color);
+  transform: scale(1.05);
+}
+
+.action-btn-icon i {
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.action-btn-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Collapsible Hours Section */
+.hours-section {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.hours-summary {
+  padding: 8px 0;
+}
+
+.hours-summary:hover {
+  opacity: 0.8;
+}
+
+.hours-chevron {
+  transition: transform 0.3s ease;
+}
+
+.hours-summary[aria-expanded="true"] .hours-chevron {
+  transform: rotate(180deg);
+}
+
+.hours-list {
+  padding: 0;
+}
+
+.hours-row {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.hours-row:last-child {
+  border-bottom: none;
+}
+
+/* Review Cards in Modal */
+.modern-modal .review-card {
+  background: var(--bg-secondary);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+  border: none;
+}
+
+.modern-modal .review-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* TripAdvisor Section in Modal */
+.modern-modal .tripadvisor-section .card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+
+/* Dark Mode for Modern Modal */
+body.dark-mode .modern-modal {
+  background: #1e1e1e;
+}
+
+body.dark-mode .btn-close-overlay {
+  background: rgba(40, 40, 40, 0.95);
+}
+
+body.dark-mode .btn-close-overlay i {
+  color: #fff;
+}
+
+body.dark-mode .rating-badge {
+  background: #3d3000;
+  color: #FFB74D;
+}
+
+body.dark-mode .price-badge {
+  color: #81C784;
+}
+
+body.dark-mode .action-btn-icon {
+  background: #2d2d2d;
+}
+
+body.dark-mode .action-btn:hover .action-btn-icon {
+  background: #3d3d3d;
+}
+
+body.dark-mode .action-btn-icon i {
+  color: #e0e0e0;
+}
+
+body.dark-mode .hero-placeholder {
+  background: linear-gradient(135deg, #2d2d2d 0%, #1e1e1e 100%);
+}
+
+body.dark-mode .modern-modal .review-card {
+  background: #2d2d2d;
+}
+

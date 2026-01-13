@@ -197,6 +197,19 @@ function showToast(message, type = 'info') {
   }, 3000);
 }
 
+// Share a specific place (from modal)
+function sharePlace(placeName, placeId) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('place', placeId);
+  const shareUrl = url.toString();
+  
+  navigator.clipboard.writeText(shareUrl).then(() => {
+    showToast(`Link to "${placeName}" copied!`, 'success');
+  }).catch(() => {
+    showToast('Failed to copy link', 'error');
+  });
+}
+
 // ==================== SKELETON LOADING ====================
 function createSkeletonCards(count = 6) {
   let html = '';
@@ -1542,14 +1555,54 @@ async function showPlaceDetails(placeId) {
         console.error("Error fetching TripAdvisor data:", tripadvisorError);
       }
       
-      // Format opening hours
+      // Format opening hours with collapsible accordion
       let hoursHtml = '';
       if (place.opening_hours && place.opening_hours.weekday_text) {
-        hoursHtml = '<h5 class="mt-3">Opening Hours</h5><ul class="list-group mb-3">';
-        place.opening_hours.weekday_text.forEach(day => {
-          hoursHtml += `<li class="list-group-item">${day}</li>`;
-        });
-        hoursHtml += '</ul>';
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const todayIndex = new Date().getDay();
+        const todayName = days[todayIndex];
+        
+        // Find today's hours from the weekday_text array
+        let todayHours = place.opening_hours.weekday_text.find(text => text.startsWith(todayName));
+        if (!todayHours) {
+          // Fallback - try matching partial day name
+          todayHours = place.opening_hours.weekday_text[todayIndex === 0 ? 6 : todayIndex - 1];
+        }
+        
+        const isOpenNow = place.opening_hours.open_now;
+        const statusClass = isOpenNow ? 'text-success' : 'text-danger';
+        const statusIcon = isOpenNow ? '🟢' : '🔴';
+        const statusText = isOpenNow ? 'Open' : 'Closed';
+        
+        // Extract just the hours part (after the day name and colon)
+        let hoursText = todayHours ? todayHours.replace(/^[A-Za-z]+:\s*/, '') : 'Hours not available';
+        
+        const accordionId = 'hoursAccordion-' + place.place_id.replace(/[^a-zA-Z0-9]/g, '');
+        
+        hoursHtml = `
+          <div class="hours-section mt-4">
+            <div class="hours-summary d-flex justify-content-between align-items-center" 
+                 data-bs-toggle="collapse" data-bs-target="#${accordionId}" 
+                 aria-expanded="false" style="cursor: pointer;">
+              <div>
+                <span class="${statusClass} fw-semibold">${statusIcon} ${statusText}</span>
+                <span class="text-muted ms-2">• ${hoursText}</span>
+              </div>
+              <i class="fas fa-chevron-down text-muted hours-chevron"></i>
+            </div>
+            <div class="collapse mt-3" id="${accordionId}">
+              <div class="hours-list">
+                ${place.opening_hours.weekday_text.map((day, i) => {
+                  const isToday = day.startsWith(todayName);
+                  return `<div class="hours-row d-flex justify-content-between py-2 ${isToday ? 'fw-bold' : ''}">
+                    <span>${day.split(':')[0]}</span>
+                    <span class="text-muted">${day.split(':').slice(1).join(':').trim()}</span>
+                  </div>`;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+        `;
       }
       
       // Format reviews
@@ -1577,20 +1630,20 @@ async function showPlaceDetails(placeId) {
         reviewsHtml += '</div>';
       }
       
-      // Format photos as Bootstrap carousel
-      let photosHtml = '';
+      // Format photos as Hero carousel (edge-to-edge at top)
+      let heroCarouselHtml = '';
+      const carouselId = 'photoCarousel-' + place.place_id.replace(/[^a-zA-Z0-9]/g, '');
+      
       if (place.photos && place.photos.length > 0) {
-        const carouselId = 'photoCarousel-' + place.place_id.replace(/[^a-zA-Z0-9]/g, '');
-        photosHtml = `
-          <h5 class="mt-3">Photos</h5>
-          <div id="${carouselId}" class="carousel slide mb-3" data-bs-ride="false">
+        heroCarouselHtml = `
+          <div id="${carouselId}" class="carousel slide hero-carousel" data-bs-ride="false">
             <div class="carousel-indicators">
               ${place.photos.map((_, i) => `
                 <button type="button" data-bs-target="#${carouselId}" data-bs-slide-to="${i}" 
                   ${i === 0 ? 'class="active" aria-current="true"' : ''} aria-label="Slide ${i + 1}"></button>
               `).join('')}
             </div>
-            <div class="carousel-inner rounded">
+            <div class="carousel-inner">
         `;
         
         place.photos.forEach((photo, index) => {
@@ -1598,19 +1651,19 @@ async function showPlaceDetails(placeId) {
           if (photo.url) {
             photoUrl = photo.url;
           } else if (photo.photo_reference) {
-            photoUrl = `/api/photo?photo_reference=${photo.photo_reference}&maxwidth=600`;
+            photoUrl = `/api/photo?photo_reference=${photo.photo_reference}&maxwidth=800`;
           } else {
-            photoUrl = 'https://via.placeholder.com/600x400?text=No+Image';
+            photoUrl = 'https://via.placeholder.com/800x400?text=No+Image';
           }
           
-          photosHtml += `
+          heroCarouselHtml += `
             <div class="carousel-item ${index === 0 ? 'active' : ''}">
-              <img src="${photoUrl}" class="d-block w-100" alt="${place.name}" style="height: 300px; object-fit: cover;">
+              <img src="${photoUrl}" class="d-block w-100 hero-img" alt="${place.name}">
             </div>
           `;
         });
         
-        photosHtml += `
+        heroCarouselHtml += `
             </div>
             <button class="carousel-control-prev" type="button" data-bs-target="#${carouselId}" data-bs-slide="prev">
               <span class="carousel-control-prev-icon" aria-hidden="true"></span>
@@ -1620,9 +1673,15 @@ async function showPlaceDetails(placeId) {
               <span class="carousel-control-next-icon" aria-hidden="true"></span>
               <span class="visually-hidden">Next</span>
             </button>
+            <div class="photo-count-badge">${place.photos.length} photos</div>
           </div>
-          <div class="text-center text-muted small mb-2">
-            <i class="fas fa-arrow-left me-2"></i> Swipe or use arrows to browse photos <i class="fas fa-arrow-right ms-2"></i>
+        `;
+      } else {
+        // Fallback placeholder hero
+        heroCarouselHtml = `
+          <div class="hero-placeholder">
+            <i class="fas fa-image fa-3x text-muted"></i>
+            <p class="text-muted mt-2 mb-0">No photos available</p>
           </div>
         `;
       }
@@ -1693,68 +1752,95 @@ async function showPlaceDetails(placeId) {
         </div>
       `;
       
-      // Create modal content
+      // Build action buttons row
+      const actionButtonsHtml = `
+        <div class="action-buttons-row">
+          ${place.formatted_phone_number ? `
+            <a href="tel:${place.formatted_phone_number}" class="action-btn" title="Call">
+              <div class="action-btn-icon"><i class="fas fa-phone"></i></div>
+              <span class="action-btn-label">Call</span>
+            </a>
+          ` : `
+            <div class="action-btn disabled" title="No phone available">
+              <div class="action-btn-icon"><i class="fas fa-phone"></i></div>
+              <span class="action-btn-label">Call</span>
+            </div>
+          `}
+          ${place.website ? `
+            <a href="${place.website}" target="_blank" class="action-btn" title="Website">
+              <div class="action-btn-icon"><i class="fas fa-globe"></i></div>
+              <span class="action-btn-label">Website</span>
+            </a>
+          ` : `
+            <div class="action-btn disabled" title="No website available">
+              <div class="action-btn-icon"><i class="fas fa-globe"></i></div>
+              <span class="action-btn-label">Website</span>
+            </div>
+          `}
+          ${place.url ? `
+            <a href="${place.url}" target="_blank" class="action-btn" title="Directions">
+              <div class="action-btn-icon"><i class="fas fa-directions"></i></div>
+              <span class="action-btn-label">Directions</span>
+            </a>
+          ` : `
+            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + (place.vicinity || ''))}" target="_blank" class="action-btn" title="Directions">
+              <div class="action-btn-icon"><i class="fas fa-directions"></i></div>
+              <span class="action-btn-label">Directions</span>
+            </a>
+          `}
+          <button class="action-btn share-place-btn" data-place-name="${encodeURIComponent(place.name)}" data-place-id="${place.place_id}" title="Share">
+            <div class="action-btn-icon"><i class="fas fa-share-alt"></i></div>
+            <span class="action-btn-label">Share</span>
+          </button>
+        </div>
+      `;
+      
+      // Format price level
+      const priceDisplay = place.price_level ? '$'.repeat(place.price_level) : '';
+      
+      // Create modal content with modern hero layout
       const modalHtml = `
         <div class="modal fade" id="placeDetailsModal" tabindex="-1" aria-labelledby="placeDetailsModalLabel" aria-hidden="true">
-          <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="placeDetailsModalLabel">${place.name}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content modern-modal">
+              <!-- Hero Image Section with Overlay Close Button -->
+              <div class="hero-section">
+                ${heroCarouselHtml}
+                <button type="button" class="btn-close-overlay" data-bs-dismiss="modal" aria-label="Close">
+                  <i class="fas fa-times"></i>
+                </button>
               </div>
+              
+              <!-- Clean Title Section -->
               <div class="modal-body">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                  <div>
-                    <p class="text-muted">${place.vicinity || place.formatted_address || ''}</p>
+                <div class="title-section">
+                  <h4 class="place-title">${place.name}</h4>
+                  <div class="place-meta">
                     ${place.rating ? `
-                      <div class="rating mb-2">
-                        ${Array(Math.round(place.rating)).fill('<i class="fas fa-star text-warning"></i>').join('')}
-                        <span class="ms-1">${place.rating}</span>
-                        <small class="text-muted ms-1">(${place.user_ratings_total} reviews)</small>
-                      </div>
+                      <span class="rating-badge">
+                        <i class="fas fa-star"></i> ${place.rating}
+                      </span>
+                      <span class="review-count">(${place.user_ratings_total || 0})</span>
                     ` : ''}
-                    ${place.price_level ? `
-                      <div class="price mb-2">
-                        <strong>${'$'.repeat(place.price_level)}</strong>
-                      </div>
-                    ` : ''}
-                    ${place.website ? `
-                      <div class="mb-2">
-                        <a href="${place.website}" target="_blank" class="btn btn-sm btn-outline-primary">
-                          <i class="fas fa-globe me-1"></i> Visit Website
-                        </a>
-                      </div>
-                    ` : ''}
+                    ${priceDisplay ? `<span class="price-badge">${priceDisplay}</span>` : ''}
                   </div>
-                  <div>
-                    ${place.formatted_phone_number ? `
-                      <div class="mb-2">
-                        <a href="tel:${place.formatted_phone_number}" class="btn btn-sm btn-outline-success">
-                          <i class="fas fa-phone me-1"></i> ${place.formatted_phone_number}
-                        </a>
-                      </div>
-                    ` : ''}
-                    ${place.url ? `
-                      <div>
-                        <a href="${place.url}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                          <i class="fas fa-map-marked-alt me-1"></i> Google Maps
-                        </a>
-                      </div>
-                    ` : ''}
-                  </div>
+                  <p class="place-address">${place.vicinity || place.formatted_address || ''}</p>
                 </div>
                 
-                ${photosHtml}
-                ${tripAdvisorHtml}
+                <!-- Action Buttons Row -->
+                ${actionButtonsHtml}
+                
+                <!-- Opening Hours (Collapsible) -->
                 ${hoursHtml}
+                
+                <!-- TripAdvisor Section -->
+                ${tripAdvisorHtml}
+                
+                <!-- Reviews Section -->
                 ${reviewsHtml}
+                
+                <!-- Nearby Recommendations -->
                 ${recommendationsHtml}
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" onclick="window.map.setCenter({lat: ${place.geometry.location.lat}, lng: ${place.geometry.location.lng}})">
-                  <i class="fas fa-map-marker-alt me-1"></i> Show on Map
-                </button>
               </div>
             </div>
           </div>
@@ -1780,6 +1866,21 @@ async function showPlaceDetails(placeId) {
         if (place.geometry && place.geometry.location) {
           loadNearbyRecommendations(place);
         }
+        
+        // Attach share button event listener (safe from XSS)
+        const shareBtn = document.querySelector('.share-place-btn');
+        if (shareBtn) {
+          shareBtn.addEventListener('click', function() {
+            const placeName = decodeURIComponent(this.dataset.placeName);
+            const placeId = this.dataset.placeId;
+            sharePlace(placeName, placeId);
+          });
+        }
+      });
+      
+      // Clean up modal when hidden
+      document.getElementById('placeDetailsModal').addEventListener('hidden.bs.modal', function () {
+        this.remove();
       });
     } else {
       alert("Could not load place details. Please try again.");
