@@ -1288,15 +1288,6 @@ function createPlaceCard(place, index) {
     }
   }
   
-  // Check if the place is open now
-  let openNowText = '';
-  if (place.opening_hours) {
-    if (place.opening_hours.open_now) {
-      openNowText = '<span class="badge bg-success ms-2">Open Now</span>';
-    } else if (place.opening_hours.open_now === false) {
-      openNowText = '<span class="badge bg-danger ms-2">Closed</span>';
-    }
-  }
   
   // Format the rating stars
   let ratingStars = '';
@@ -1324,62 +1315,65 @@ function createPlaceCard(place, index) {
   if (place.types && place.types.length > 0) {
     const displayTypes = place.types
       .filter(type => !['point_of_interest', 'establishment'].includes(type))
-      .slice(0, 3);
+      .slice(0, 2);
     
     displayTypes.forEach(type => {
-      typesBadges += `<span class="badge bg-secondary me-1">${formatPlaceType(type)}</span>`;
+      typesBadges += `<span class="type-badge">${formatPlaceType(type)}</span>`;
     });
   }
   
   // Check if this place is a favorite
   const isPlaceFavorite = isFavorite(place.place_id);
-  const favoriteClass = isPlaceFavorite ? 'btn-danger' : 'btn-outline-danger';
+  const favoriteClass = isPlaceFavorite ? 'btn-danger' : '';
   const favoriteIcon = isPlaceFavorite ? 'fas fa-heart' : 'far fa-heart';
   const favoriteTitle = isPlaceFavorite ? 'Remove from Favorites' : 'Add to Favorites';
   
-  // Create the card HTML
+  // Format open now badge
+  let openBadge = '';
+  if (place.opening_hours) {
+    if (place.opening_hours.open_now) {
+      openBadge = '<span class="badge badge-open ms-2">Open</span>';
+    } else if (place.opening_hours.open_now === false) {
+      openBadge = '<span class="badge badge-closed ms-2">Closed</span>';
+    }
+  }
+  
+  // Create the modern card HTML
   card.innerHTML = `
-    <div class="card h-100">
-      <div class="card-body">
-        <h5 class="card-title">
-          ${index + 1}. ${place.name}
-          ${openNowText}
-        </h5>
-        <p class="card-text">
-          <small class="text-muted">${place.vicinity || place.formatted_address || ''}</small>
-        </p>
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="rating">
-            ${ratingStars}
-            <span class="ms-1">${place.rating}</span>
-            <small class="text-muted ms-1">(${place.user_ratings_total})</small>
-            <span class="tripadvisor-badge ms-2" data-tripadvisor-id="${place.place_id}"></span>
-          </div>
-          <div class="price">
-            <strong>${priceLevel}</strong>
-          </div>
+    <div class="card h-100 place-card">
+      <!-- Floating Favorite Button -->
+      <button class="favorite-btn ${favoriteClass}" 
+        data-place-id="${place.place_id}"
+        title="${favoriteTitle}">
+        <i class="${favoriteIcon}"></i>
+      </button>
+      
+      <div class="card-body" onclick="showPlaceDetails('${place.place_id}')">
+        <h5 class="card-title">${place.name}${openBadge}</h5>
+        <p class="card-text">${place.vicinity || place.formatted_address || ''}</p>
+        
+        <div class="rating">
+          <span class="rating-stars">${ratingStars}</span>
+          <span class="rating-value">${place.rating}</span>
+          <span class="rating-count">(${place.user_ratings_total})</span>
+          <span class="tripadvisor-badge" data-tripadvisor-id="${place.place_id}"></span>
+          ${priceLevel ? `<span class="price-level ms-2">${priceLevel}</span>` : ''}
         </div>
-        <div class="mb-3">
-          ${typesBadges}
-        </div>
-        <div class="d-flex flex-wrap gap-1">
-          <button class="btn btn-primary btn-sm view-details-btn" 
-            data-place-id="${place.place_id}" 
-            onclick="showPlaceDetails('${place.place_id}')">
+        
+        <div class="type-badges">${typesBadges}</div>
+        
+        <div class="card-actions" onclick="event.stopPropagation()">
+          <button class="view-details-btn" onclick="showPlaceDetails('${place.place_id}')">
             View Details
           </button>
           <a href="https://www.google.com/maps/dir/?api=1&destination=${place.geometry.location.lat},${place.geometry.location.lng}" 
-            target="_blank" class="btn btn-outline-success btn-sm" title="Get Directions">
+            target="_blank" class="action-btn" title="Get Directions">
             <i class="fas fa-directions"></i>
           </a>
-          <button class="btn btn-outline-secondary btn-sm" 
-            onmouseover="updateHoverMarker({lat: ${place.geometry.location.lat}, lng: ${place.geometry.location.lng}})">
+          <button class="action-btn" 
+            onmouseover="updateHoverMarker({lat: ${place.geometry.location.lat}, lng: ${place.geometry.location.lng}})"
+            title="Show on map">
             <i class="fas fa-map-marker-alt"></i>
-          </button>
-          <button class="btn ${favoriteClass} btn-sm favorite-btn" 
-            data-place-id="${place.place_id}"
-            title="${favoriteTitle}">
-            <i class="${favoriteIcon}"></i>
           </button>
         </div>
       </div>
@@ -1388,9 +1382,10 @@ function createPlaceCard(place, index) {
   
   // Add click handler for favorite button
   const favoriteBtn = card.querySelector('.favorite-btn');
-  favoriteBtn.addEventListener('click', function() {
+  favoriteBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
     const nowFavorite = toggleFavorite(place);
-    this.className = `btn ${nowFavorite ? 'btn-danger' : 'btn-outline-danger'} btn-sm favorite-btn`;
+    this.className = `favorite-btn ${nowFavorite ? 'btn-danger' : ''}`;
     this.querySelector('i').className = nowFavorite ? 'fas fa-heart' : 'far fa-heart';
     this.title = nowFavorite ? 'Remove from Favorites' : 'Add to Favorites';
     
