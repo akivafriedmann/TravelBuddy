@@ -523,6 +523,56 @@ function filterAndSortPlaces(places, origin, options = {}) {
   });
 }
 
+// Sort places in place based on user selection
+function sortPlaces(places, sortBy, origin) {
+  places.sort((a, b) => {
+    switch (sortBy) {
+      case 'rating':
+        // Sort by rating (highest first), then by review count
+        if (b.rating !== a.rating) {
+          return b.rating - a.rating;
+        }
+        return (b.user_ratings_total || 0) - (a.user_ratings_total || 0);
+        
+      case 'reviews':
+        // Sort by number of reviews (most first)
+        return (b.user_ratings_total || 0) - (a.user_ratings_total || 0);
+        
+      case 'distance':
+        // Sort by distance (closest first)
+        const locA = a.geometry.location;
+        const locB = b.geometry.location;
+        const distA = getDistanceInMeters(origin.lat, origin.lng, locA.lat || locA.latitude, locA.lng || locA.longitude);
+        const distB = getDistanceInMeters(origin.lat, origin.lng, locB.lat || locB.latitude, locB.lng || locB.longitude);
+        return distA - distB;
+        
+      case 'name':
+        // Sort alphabetically by name
+        return a.name.localeCompare(b.name);
+        
+      default:
+        return 0;
+    }
+  });
+}
+
+// Initialize sort dropdown event listener
+function initSortDropdown() {
+  const sortSelect = document.getElementById('sort-select');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', function() {
+      // Don't re-render if showing favorites or other special views
+      if (window.showingFavorites) {
+        return;
+      }
+      // Re-render with new sort order
+      if (window.lastPlacesData && window.lastOrigin) {
+        renderPlaces(window.lastPlacesData, window.lastOrigin, window.currentPlaceType || 'restaurant', window.isDessertSearch || false);
+      }
+    });
+  }
+}
+
 function toggleDarkMode(enabled) {
   const body = document.body;
   
@@ -692,6 +742,7 @@ function initMap() {
   // Initialize favorites badge
   updateFavoritesBadge();
   initShareButton();
+  initSortDropdown();
   
   // Load places for the initial location
   loadNearbyPlaces(initialCenter);
@@ -1129,6 +1180,12 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       // For dessert places, we would normally use a lower minimum rating threshold
       // But this is handled in the renderPlaces function
       
+      // Store for re-sorting
+      window.lastPlacesData = places;
+      window.lastOrigin = location;
+      window.currentPlaceType = "restaurant";
+      window.isDessertSearch = true;
+      
       renderPlaces(places, location, "restaurant", true);
     } else {
       // Regular search for other place types
@@ -1160,6 +1217,12 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       console.log("Nearby places API response:", data);
       
       if (data.status === 'OK' && data.results && data.results.length > 0) {
+        // Store for re-sorting
+        window.lastPlacesData = data.results;
+        window.lastOrigin = location;
+        window.currentPlaceType = currentPlaceType;
+        window.isDessertSearch = false;
+        
         renderPlaces(data.results, location, currentPlaceType);
       } else if (data.status === 'REQUEST_DENIED') {
         // API key issue
@@ -1252,6 +1315,12 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false)
   clearMarkers();
   
   if (filteredPlaces.length === 0) {
+    // Hide results count when no results
+    const resultsCount = document.getElementById('results-count');
+    if (resultsCount) {
+      resultsCount.style.display = 'none';
+    }
+    
     // Show a message if no places meet the criteria
     const messageText = isDessertSearch ? 
       `No dessert places found matching your criteria` : 
@@ -1271,6 +1340,20 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false)
   
   // Update URL for shareable links
   updateURL(origin, isDessertSearch ? 'dessert' : currentPlaceType);
+  
+  // Apply user-selected sorting
+  const sortSelect = document.getElementById('sort-select');
+  const sortBy = sortSelect ? sortSelect.value : 'rating';
+  
+  sortPlaces(filteredPlaces, sortBy, origin);
+  
+  // Show results count
+  const resultsCount = document.getElementById('results-count');
+  const countNumber = document.getElementById('count-number');
+  if (resultsCount && countNumber) {
+    countNumber.textContent = filteredPlaces.length;
+    resultsCount.style.display = 'block';
+  }
   
   // Display filtered and sorted places
   filteredPlaces.forEach((place, index) => {
@@ -1351,7 +1434,18 @@ function createPlaceCard(place, index) {
     }
   }
   
-  // Create the modern card HTML
+  // Get thumbnail photo URL
+  let thumbnailUrl = '';
+  if (place.photos && place.photos.length > 0) {
+    const photo = place.photos[0];
+    if (photo.url) {
+      thumbnailUrl = photo.url;
+    } else if (photo.photo_reference) {
+      thumbnailUrl = `/api/photo?photo_reference=${photo.photo_reference}&maxwidth=400`;
+    }
+  }
+  
+  // Create the modern card HTML with thumbnail
   card.innerHTML = `
     <div class="card h-100 place-card">
       <!-- Floating Favorite Button -->
@@ -1360,6 +1454,16 @@ function createPlaceCard(place, index) {
         title="${favoriteTitle}">
         <i class="${favoriteIcon}"></i>
       </button>
+      
+      ${thumbnailUrl ? `
+        <div class="card-img-wrapper" onclick="showPlaceDetails('${place.place_id}')">
+          <img src="${thumbnailUrl}" class="card-img-top" alt="${place.name}" loading="lazy">
+        </div>
+      ` : `
+        <div class="card-img-placeholder" onclick="showPlaceDetails('${place.place_id}')">
+          <i class="fas fa-utensils"></i>
+        </div>
+      `}
       
       <div class="card-body" onclick="showPlaceDetails('${place.place_id}')">
         <h5 class="card-title">${place.name}${openBadge}</h5>

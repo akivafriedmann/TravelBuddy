@@ -111,6 +111,12 @@ Preferred communication style: Simple, everyday language.
 
 ### Latest Updates (January 13, 2026)
 
+- **Restaurant Card Photos**: Added thumbnail images to all restaurant cards with hover zoom effect
+- **Sorting Options**: New dropdown to sort by Rating (highest), Most Reviews, Distance, or Name (A-Z)
+- **Results Count**: Shows number of places found (e.g., "19 places found")
+- **New Cuisine Categories**: Added French, Thai, Chinese, and Fine Dining filter pills
+- **Default Sort**: Results are now sorted by rating (highest first) by default
+
 - **Restaurant Details Modal Redesign**: Complete mobile-app-style redesign:
   - Hero image carousel at top, edge-to-edge, with overlay close (X) button
   - Clean title section with restaurant name, rating badge, price level, and address

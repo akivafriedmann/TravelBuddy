@@ -162,6 +162,18 @@
           <button class="category-btn" data-type="restaurant" data-keyword="italian">
             Italian
           </button>
+          <button class="category-btn" data-type="restaurant" data-keyword="french">
+            French
+          </button>
+          <button class="category-btn" data-type="restaurant" data-keyword="thai">
+            Thai
+          </button>
+          <button class="category-btn" data-type="restaurant" data-keyword="chinese">
+            Chinese
+          </button>
+          <button class="category-btn" data-type="restaurant" data-keyword="fine dining">
+            Fine Dining
+          </button>
           <button id="attractions-button" class="category-btn" data-type="tourist_attraction">
             Attractions
           </button>
@@ -197,13 +209,21 @@
       }
     </style>
     
-    <div class="row mb-2">
-      <div class="col-12 text-end">
-        <div class="sort-indicator">
-          <small class="text-muted">
-            <i class="fas fa-info-circle"></i> 
-            Places are sorted by rating, prioritizing those with at least 20 reviews
-          </small>
+    <div class="row mb-3 align-items-center">
+      <div class="col-6">
+        <div id="results-count" class="results-count" style="display: none;">
+          <span class="fw-semibold" id="count-number">0</span> places found
+        </div>
+      </div>
+      <div class="col-6 text-end">
+        <div class="sort-controls d-inline-flex align-items-center gap-2">
+          <label for="sort-select" class="text-muted small mb-0">Sort by:</label>
+          <select id="sort-select" class="form-select form-select-sm" style="width: auto;">
+            <option value="rating" selected>Rating (highest)</option>
+            <option value="reviews">Most Reviews</option>
+            <option value="distance">Distance</option>
+            <option value="name">Name (A-Z)</option>
+          </select>
         </div>
       </div>
     </div>
