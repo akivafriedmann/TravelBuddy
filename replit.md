@@ -116,6 +116,10 @@ Preferred communication style: Simple, everyday language.
 - **Results Count**: Shows number of places found (e.g., "19 places found")
 - **New Cuisine Categories**: Added French, Thai, Chinese, and Fine Dining filter pills
 - **Default Sort**: Results are now sorted by rating (highest first) by default
+- **Restaurant Name Search**: Added search box to find specific restaurants by name (e.g., 'Nobu', 'Pizza Hut')
+- **My Lists Feature**: Create, rename, and delete custom restaurant lists stored in localStorage
+- **Add to List Button**: Purple (+) button on restaurant cards to save to personal lists
+- **List View**: Shows saved restaurants with thumbnail photos, addresses, map links, and details button
 
 - **Restaurant Details Modal Redesign**: Complete mobile-app-style redesign:
   - Hero image carousel at top, edge-to-edge, with overlay close (X) button
