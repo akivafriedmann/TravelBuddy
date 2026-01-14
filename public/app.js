@@ -1295,7 +1295,7 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
 }
 
 // Render place cards
-function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false) {
+function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false, filterRadius = searchRadius) {
   const container = document.getElementById('places-container');
   container.innerHTML = '';
   
@@ -1340,7 +1340,7 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false)
   
   // Use our shared utility function to filter and sort places
   const filteredPlaces = filterAndSortPlaces(places, origin, {
-    radius: 1500,
+    radius: filterRadius,
     minRating: MIN_RATING,
     minReviews: currentMinReviews,
     unwantedTypes: UNWANTED_TYPES
