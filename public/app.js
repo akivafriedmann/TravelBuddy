@@ -1,3 +1,7 @@
+// ==================== GLOBAL STATE ====================
+let searchRadius = 1500; // Default search radius in meters
+let currentKeyword = ''; // Track the current keyword filter
+
 // ==================== FAVORITES STORAGE ====================
 const FAVORITES_KEY = 'travelplanner_favorites';
 
@@ -155,7 +159,7 @@ window.addEventListener('popstate', function(event) {
     const typeSelect = document.getElementById('place-type-select');
     if (typeSelect) typeSelect.value = params.type;
     
-    loadNearbyPlaces(params.location, '', 1500);
+    loadNearbyPlaces(params.location, '', searchRadius);
   }
 });
 
@@ -744,8 +748,8 @@ function initMap() {
   initShareButton();
   initSortDropdown();
   
-  // Load places for the initial location
-  loadNearbyPlaces(initialCenter);
+  // Load places for the initial location (use default radius, no keyword)
+  loadNearbyPlaces(initialCenter, '', searchRadius);
   
   // Add click event to the map
   google.maps.event.addListener(window.map, "click", function(event) {
@@ -757,8 +761,8 @@ function initMap() {
     // Center the map on the clicked location
     window.map.setCenter(clickedLocation);
     
-    // Load nearby places for this location
-    loadNearbyPlaces(clickedLocation);
+    // Load nearby places for this location (use current radius, clear keyword)
+    loadNearbyPlaces(clickedLocation, '', searchRadius);
     
     // Hide the "Search This Area" button since we're already searching
     document.getElementById('search-this-area-btn').style.display = 'none';
@@ -800,8 +804,8 @@ function initMap() {
     // Hide the button
     this.style.display = 'none';
     
-    // Load places at new location
-    loadNearbyPlaces(location);
+    // Load places at new location with current keyword and radius
+    loadNearbyPlaces(location, currentKeyword, searchRadius);
   });
   
   // Transit layer toggle
@@ -852,9 +856,9 @@ function initMap() {
     
     // If there's a search term, use it as a keyword
     if (searchInput) {
-      loadNearbyPlaces(location, searchInput);
+      loadNearbyPlaces(location, searchInput, searchRadius);
     } else {
-      loadNearbyPlaces(location);
+      loadNearbyPlaces(location, '', searchRadius);
     }
   });
   
@@ -866,15 +870,10 @@ function initMap() {
       lng: currentLocation.lng()
     };
     
-    // Get the search input value
+    // Use current keyword, or fall back to search input value
     const searchInput = document.getElementById("search-input").value.trim();
-    
-    // If there's a search term, use it as a keyword
-    if (searchInput) {
-      loadNearbyPlaces(location, searchInput);
-    } else {
-      loadNearbyPlaces(location);
-    }
+    const keyword = currentKeyword || searchInput;
+    loadNearbyPlaces(location, keyword, searchRadius);
   });
   
   // Set up event listeners for category buttons
@@ -885,7 +884,7 @@ function initMap() {
       lat: currentLocation.lat(),
       lng: currentLocation.lng()
     };
-    loadNearbyPlaces(location);
+    loadNearbyPlaces(location, '', searchRadius);
   });
   
   document.getElementById("hotels-button").addEventListener("click", function() {
@@ -895,7 +894,7 @@ function initMap() {
       lat: currentLocation.lat(),
       lng: currentLocation.lng()
     };
-    loadNearbyPlaces(location);
+    loadNearbyPlaces(location, '', searchRadius);
   });
   
   document.getElementById("attractions-button").addEventListener("click", function() {
@@ -905,7 +904,7 @@ function initMap() {
       lat: currentLocation.lat(),
       lng: currentLocation.lng()
     };
-    loadNearbyPlaces(location);
+    loadNearbyPlaces(location, '', searchRadius);
   });
   
   document.getElementById("coffee-button").addEventListener("click", function() {
@@ -915,7 +914,7 @@ function initMap() {
       lat: currentLocation.lat(),
       lng: currentLocation.lng()
     };
-    loadNearbyPlaces(location);
+    loadNearbyPlaces(location, '', searchRadius);
   });
   
   document.getElementById("dessert-button").addEventListener("click", function() {
@@ -925,7 +924,7 @@ function initMap() {
       lng: currentLocation.lng()
     };
     // Pass 'dessert' as the keyword to trigger special dessert search behavior
-    loadNearbyPlaces(location, 'dessert');
+    loadNearbyPlaces(location, 'dessert', searchRadius);
   });
   
   document.getElementById("nightlife-button").addEventListener("click", function() {
@@ -935,7 +934,7 @@ function initMap() {
       lat: currentLocation.lat(),
       lng: currentLocation.lng()
     };
-    loadNearbyPlaces(location);
+    loadNearbyPlaces(location, '', searchRadius);
   });
   
   // Generic handler for all category buttons without specific IDs
@@ -960,14 +959,36 @@ function initMap() {
         lng: currentLocation.lng()
       };
       
-      // Load places with keyword if present
+      // Load places with keyword if present, using current radius
       if (keyword) {
-        loadNearbyPlaces(location, keyword);
+        loadNearbyPlaces(location, keyword, searchRadius);
       } else {
-        loadNearbyPlaces(location);
+        loadNearbyPlaces(location, '', searchRadius);
       }
     });
   });
+  
+  // Radius slider handler
+  const radiusSlider = document.getElementById('radius-slider');
+  if (radiusSlider) {
+    radiusSlider.addEventListener('input', function() {
+      searchRadius = parseInt(this.value);
+      // Update display label if exists
+      const label = document.querySelector('.search-radius-value');
+      if (label) {
+        label.textContent = searchRadius >= 1000 ? (searchRadius / 1000) + ' km' : searchRadius + 'm';
+      }
+    });
+    
+    // Also trigger search when slider is released
+    radiusSlider.addEventListener('change', function() {
+      const currentLocation = window.map.getCenter();
+      loadNearbyPlaces({
+        lat: currentLocation.lat(),
+        lng: currentLocation.lng()
+      }, currentKeyword, searchRadius);
+    });
+  }
   
   // Favorites button handler
   const favoritesBtn = document.getElementById('favorites-button');
@@ -983,7 +1004,7 @@ function initMap() {
         loadNearbyPlaces({
           lat: currentLocation.lat(),
           lng: currentLocation.lng()
-        });
+        }, currentKeyword, searchRadius);
       }
     });
   }
@@ -1020,8 +1041,8 @@ function useMyLocation() {
           title: "Your Location",
         });
         
-        // Load nearby places
-        loadNearbyPlaces(userLocation);
+        // Load nearby places (use current radius, clear keyword for new location)
+        loadNearbyPlaces(userLocation, '', searchRadius);
       },
       (error) => {
         console.error("Error getting user location:", error);
@@ -1048,7 +1069,7 @@ function useMyLocation() {
     window.map.setCenter(defaultLocation);
     
     // Load nearby places for the default location
-    loadNearbyPlaces(defaultLocation);
+    loadNearbyPlaces(defaultLocation, '', searchRadius);
   }
 }
 
@@ -1079,7 +1100,7 @@ async function searchLocation() {
       window.map.setZoom(16); // Closer zoom for a specific place
       
       // Load nearby places around this specific place
-      loadNearbyPlaces(placeLocation);
+      loadNearbyPlaces(placeLocation, '', searchRadius);
       
       // Show this place's details
       if (specificPlaceResult.place_id) {
@@ -1112,7 +1133,7 @@ async function searchLocation() {
       }
       
       // Load nearby places for this location
-      loadNearbyPlaces(location);
+      loadNearbyPlaces(location, '', searchRadius);
     } else {
       alert("Location not found. Please try a different search term.");
       hideLoading();
@@ -1127,6 +1148,9 @@ async function searchLocation() {
 async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
   showLoading();
   window.showingFavorites = false;
+  
+  // Track current keyword for re-searching when radius changes
+  currentKeyword = keyword;
   
   // Show skeleton loading cards
   const container = document.getElementById('places-container');
@@ -1237,10 +1261,23 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
           </div>
         `;
       } else {
-        // No results
+        // No results - show message with keyword if used
+        const keywordText = keyword ? ` matching "${keyword}"` : '';
+        const radiusText = radius >= 1000 ? `${radius / 1000}km` : `${radius}m`;
+        
+        // Hide results count when no results
+        const resultsCount = document.getElementById('results-count');
+        if (resultsCount) {
+          resultsCount.style.display = 'none';
+        }
+        
         document.getElementById('places-container').innerHTML = `
           <div class="col-12">
-            <div class="alert alert-info">No ${formatPlaceType(currentPlaceType)} found in this area. Try another location or category.</div>
+            <div class="alert alert-info">
+              <strong>No ${formatPlaceType(currentPlaceType)}${keywordText} found</strong>
+              <p>No results within ${radiusText} of this location.</p>
+              <p>Try expanding your search radius, moving the map, or choosing a different category.</p>
+            </div>
           </div>
         `;
       }
@@ -2232,7 +2269,7 @@ function searchNearbyOnHover(location) {
   window.hoverSearchTimeout = setTimeout(() => {
     // Only search if the hover marker is still visible
     if (window.hoverMarker && window.hoverMarker.getMap()) {
-      loadNearbyPlaces(location);
+      loadNearbyPlaces(location, '', searchRadius);
     }
   }, 1000);
 }
