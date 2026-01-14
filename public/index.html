@@ -21,11 +21,21 @@
           <input type="text" id="location-input" class="form-control" placeholder="Enter a location (e.g., New York, Paris)">
           <button class="btn btn-primary" id="search-button">Search</button>
         </div>
+        <div class="input-group mb-2">
+          <span class="input-group-text"><i class="fas fa-utensils"></i></span>
+          <input type="text" id="restaurant-search-input" class="form-control" placeholder="Search for a specific restaurant (e.g., 'Nobu', 'Pizza Hut')">
+          <button class="btn btn-success" id="restaurant-search-button">
+            <i class="fas fa-search"></i> Find
+          </button>
+        </div>
         <div class="text-center">
           <button id="use-location-button" class="btn btn-outline-success mt-2">
             <i class="fas fa-location-arrow"></i> Use My Location
           </button>
-          <!-- Dessert mode toggle removed - now handled by category button -->
+          <button id="my-lists-button" class="btn btn-outline-primary mt-2 ms-2">
+            <i class="fas fa-list"></i> My Lists
+            <span id="lists-count" class="badge bg-primary" style="display: none;">0</span>
+          </button>
           <div class="form-check form-switch d-inline-block ms-3">
             <input class="form-check-input" type="checkbox" id="dark-mode-toggle">
             <label class="form-check-label" for="dark-mode-toggle">Dark Mode</label>
@@ -256,6 +266,57 @@
             <div class="spinner-border text-primary" role="status">
               <span class="visually-hidden">Loading...</span>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- My Lists Modal -->
+  <div class="modal fade" id="lists-modal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-list me-2"></i>My Restaurant Lists</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="lists-modal-body">
+          <div class="mb-3">
+            <div class="input-group">
+              <input type="text" id="new-list-name" class="form-control" placeholder="New list name (e.g., 'Date Night Spots')">
+              <button class="btn btn-primary" id="create-list-btn">
+                <i class="fas fa-plus"></i> Create List
+              </button>
+            </div>
+          </div>
+          <hr>
+          <div id="lists-container">
+            <p class="text-muted text-center">No lists yet. Create one above!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Add to List Modal -->
+  <div class="modal fade" id="add-to-list-modal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Add to List</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body" id="add-to-list-body">
+          <p class="mb-3">Select a list for <strong id="add-to-list-place-name"></strong>:</p>
+          <div id="add-to-list-options">
+            <!-- List options will be populated here -->
+          </div>
+          <hr>
+          <div class="input-group">
+            <input type="text" id="quick-create-list-name" class="form-control" placeholder="Or create a new list...">
+            <button class="btn btn-outline-primary" id="quick-create-list-btn">
+              <i class="fas fa-plus"></i>
+            </button>
           </div>
         </div>
       </div>

@@ -1685,3 +1685,113 @@ body.dark-mode .modern-modal .review-card {
   background: #2d2d2d;
 }
 
+/* ==================== RESTAURANT LISTS STYLES ==================== */
+
+/* Toast notification animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* List modal styling */
+.list-item.card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: box-shadow 0.2s ease;
+}
+
+.list-item.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Restaurant list items */
+.restaurant-list-item {
+  background: var(--bg-secondary);
+  transition: background-color 0.2s ease;
+}
+
+.restaurant-list-item:hover {
+  background: var(--bg-primary);
+}
+
+.restaurant-list-item img {
+  border: 1px solid var(--border-color);
+}
+
+/* Add to list button styling */
+.add-to-list-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.add-to-list-btn:hover {
+  background: linear-gradient(135deg, #5a6fd6 0%, #6a4391 100%) !important;
+  transform: scale(1.05);
+}
+
+/* My Lists button styling */
+#my-lists-button {
+  position: relative;
+}
+
+#my-lists-button .badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  font-size: 10px;
+  padding: 4px 6px;
+  border-radius: var(--radius-full);
+}
+
+/* Add to list modal */
+#add-to-list-options .btn {
+  text-align: left;
+}
+
+/* Dark mode for lists */
+body.dark-mode .list-item.card {
+  background: #2d2d2d;
+  border-color: #444;
+}
+
+body.dark-mode .restaurant-list-item {
+  background: #1e1e1e;
+  border-color: #444;
+}
+
+body.dark-mode .restaurant-list-item:hover {
+  background: #2d2d2d;
+}
+
+/* Restaurant search input styling */
+#restaurant-search-input {
+  border-left: none;
+}
+
+.input-group-text {
+  background: var(--bg-primary);
+  border-right: none;
+}
+
+body.dark-mode .input-group-text {
+  background: #2d2d2d;
+  border-color: #444;
+  color: #e0e0e0;
+}
+

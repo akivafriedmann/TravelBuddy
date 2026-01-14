@@ -71,6 +71,301 @@ function updateFavoritesBadge() {
   }
 }
 
+// ==================== RESTAURANT LISTS STORAGE ====================
+const LISTS_KEY = 'travelplanner_lists';
+
+function getLists() {
+  try {
+    const stored = localStorage.getItem(LISTS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Error reading lists from storage:', error);
+    return [];
+  }
+}
+
+function saveLists(lists) {
+  localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
+  updateListsBadge();
+}
+
+function createList(name) {
+  const lists = getLists();
+  const newList = {
+    id: Date.now().toString(),
+    name: name.trim(),
+    restaurants: [],
+    createdAt: Date.now()
+  };
+  lists.push(newList);
+  saveLists(lists);
+  return newList;
+}
+
+function deleteList(listId) {
+  const lists = getLists();
+  const filtered = lists.filter(l => l.id !== listId);
+  saveLists(filtered);
+  return filtered;
+}
+
+function renameList(listId, newName) {
+  const lists = getLists();
+  const list = lists.find(l => l.id === listId);
+  if (list) {
+    list.name = newName.trim();
+    saveLists(lists);
+  }
+  return lists;
+}
+
+function addRestaurantToList(listId, restaurant) {
+  const lists = getLists();
+  const list = lists.find(l => l.id === listId);
+  if (list) {
+    if (!list.restaurants.find(r => r.place_id === restaurant.place_id)) {
+      // Extract lat/lng as plain numbers (handle both function and property formats)
+      const loc = restaurant.geometry?.location;
+      const lat = typeof loc?.lat === 'function' ? loc.lat() : loc?.lat;
+      const lng = typeof loc?.lng === 'function' ? loc.lng() : loc?.lng;
+      
+      // Build photo URL for storage (use the existing working endpoint)
+      let photoUrl = '';
+      if (restaurant.photos && restaurant.photos.length > 0) {
+        const photo = restaurant.photos[0];
+        if (photo.url) {
+          photoUrl = photo.url;
+        } else if (photo.photo_reference) {
+          photoUrl = `/api/photo?photo_reference=${photo.photo_reference}&maxwidth=100`;
+        }
+      }
+      
+      const restaurantData = {
+        place_id: restaurant.place_id,
+        name: restaurant.name,
+        rating: restaurant.rating,
+        user_ratings_total: restaurant.user_ratings_total,
+        address: restaurant.vicinity || restaurant.formatted_address,
+        lat: lat,
+        lng: lng,
+        photoUrl: photoUrl,
+        website: restaurant.website,
+        price_level: restaurant.price_level,
+        addedAt: Date.now()
+      };
+      list.restaurants.push(restaurantData);
+      saveLists(lists);
+      return true;
+    }
+  }
+  return false;
+}
+
+function removeRestaurantFromList(listId, placeId) {
+  const lists = getLists();
+  const list = lists.find(l => l.id === listId);
+  if (list) {
+    list.restaurants = list.restaurants.filter(r => r.place_id !== placeId);
+    saveLists(lists);
+  }
+  return lists;
+}
+
+function updateListsBadge() {
+  const badge = document.getElementById('lists-count');
+  if (badge) {
+    const lists = getLists();
+    const totalRestaurants = lists.reduce((sum, list) => sum + list.restaurants.length, 0);
+    badge.textContent = totalRestaurants;
+    badge.style.display = totalRestaurants > 0 ? 'inline-flex' : 'none';
+  }
+}
+
+function renderListsModal() {
+  const container = document.getElementById('lists-container');
+  const lists = getLists();
+  
+  if (lists.length === 0) {
+    container.innerHTML = '<p class="text-muted text-center">No lists yet. Create one above!</p>';
+    return;
+  }
+  
+  container.innerHTML = lists.map(list => `
+    <div class="list-item card mb-3" data-list-id="${list.id}">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="card-title mb-0">${list.name}</h5>
+          <div>
+            <button class="btn btn-sm btn-outline-secondary me-1 rename-list-btn" data-list-id="${list.id}">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger delete-list-btn" data-list-id="${list.id}">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+        <p class="text-muted small mb-2">${list.restaurants.length} restaurant${list.restaurants.length !== 1 ? 's' : ''}</p>
+        <div class="list-restaurants">
+          ${list.restaurants.length === 0 ? 
+            '<p class="text-muted small">No restaurants in this list yet.</p>' :
+            list.restaurants.map(r => renderListRestaurantItem(r, list.id)).join('')
+          }
+        </div>
+      </div>
+    </div>
+  `).join('');
+  
+  container.querySelectorAll('.delete-list-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const listId = this.dataset.listId;
+      if (confirm('Are you sure you want to delete this list?')) {
+        deleteList(listId);
+        renderListsModal();
+      }
+    });
+  });
+  
+  container.querySelectorAll('.rename-list-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const listId = this.dataset.listId;
+      const list = getLists().find(l => l.id === listId);
+      const newName = prompt('Enter new name for this list:', list.name);
+      if (newName && newName.trim()) {
+        renameList(listId, newName);
+        renderListsModal();
+      }
+    });
+  });
+  
+  container.querySelectorAll('.remove-from-list-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const listId = this.dataset.listId;
+      const placeId = this.dataset.placeId;
+      removeRestaurantFromList(listId, placeId);
+      renderListsModal();
+    });
+  });
+}
+
+function renderListRestaurantItem(restaurant, listId) {
+  // Use stored photoUrl or fallback to placeholder
+  const photoUrl = restaurant.photoUrl || 'https://via.placeholder.com/100x100?text=No+Image';
+  
+  // Use stored lat/lng values directly
+  const lat = restaurant.lat;
+  const lng = restaurant.lng;
+  const mapsLink = lat && lng ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}` : '#';
+  
+  // Build a view details link using place_id for getting website
+  const detailsOnClick = `onclick="showPlaceDetails('${restaurant.place_id}')"`;
+  
+  return `
+    <div class="restaurant-list-item d-flex align-items-start mb-3 p-2 border rounded">
+      <img src="${photoUrl}" alt="${restaurant.name}" class="rounded me-3" style="width: 80px; height: 80px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/100x100?text=No+Image'">
+      <div class="flex-grow-1">
+        <h6 class="mb-1" style="cursor: pointer;" ${detailsOnClick}>${restaurant.name}</h6>
+        <p class="text-muted small mb-1">
+          <i class="fas fa-map-marker-alt"></i> ${restaurant.address || 'Address not available'}
+        </p>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="${mapsLink}" target="_blank" class="btn btn-sm btn-outline-primary" ${!lat || !lng ? 'style="display:none;"' : ''}>
+            <i class="fas fa-map"></i> Map
+          </a>
+          <button class="btn btn-sm btn-outline-info" ${detailsOnClick}>
+            <i class="fas fa-info-circle"></i> Details
+          </button>
+          <button class="btn btn-sm btn-outline-danger remove-from-list-btn" data-list-id="${listId}" data-place-id="${restaurant.place_id}">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function showAddToListModal(place) {
+  const lists = getLists();
+  const modal = new bootstrap.Modal(document.getElementById('add-to-list-modal'));
+  
+  document.getElementById('add-to-list-place-name').textContent = place.name;
+  
+  const optionsContainer = document.getElementById('add-to-list-options');
+  
+  if (lists.length === 0) {
+    optionsContainer.innerHTML = '<p class="text-muted">No lists yet. Create one below!</p>';
+  } else {
+    optionsContainer.innerHTML = lists.map(list => {
+      const alreadyInList = list.restaurants.some(r => r.place_id === place.place_id);
+      return `
+        <button class="btn ${alreadyInList ? 'btn-success' : 'btn-outline-primary'} w-100 mb-2 add-to-specific-list" 
+                data-list-id="${list.id}" ${alreadyInList ? 'disabled' : ''}>
+          <i class="fas ${alreadyInList ? 'fa-check' : 'fa-plus'}"></i> 
+          ${list.name} ${alreadyInList ? '(Already added)' : ''}
+        </button>
+      `;
+    }).join('');
+    
+    optionsContainer.querySelectorAll('.add-to-specific-list:not([disabled])').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const listId = this.dataset.listId;
+        if (addRestaurantToList(listId, place)) {
+          showToast(`Added "${place.name}" to your list!`);
+          modal.hide();
+        }
+      });
+    });
+  }
+  
+  const quickCreateInput = document.getElementById('quick-create-list-name');
+  const quickCreateBtn = document.getElementById('quick-create-list-btn');
+  
+  quickCreateInput.value = '';
+  
+  const newQuickCreateBtn = quickCreateBtn.cloneNode(true);
+  quickCreateBtn.parentNode.replaceChild(newQuickCreateBtn, quickCreateBtn);
+  
+  newQuickCreateBtn.addEventListener('click', function() {
+    const name = quickCreateInput.value.trim();
+    if (name) {
+      const newList = createList(name);
+      addRestaurantToList(newList.id, place);
+      showToast(`Created list "${name}" and added "${place.name}"!`);
+      modal.hide();
+    }
+  });
+  
+  window.currentPlaceForList = place;
+  modal.show();
+}
+
+function showToast(message) {
+  const existingToast = document.querySelector('.custom-toast');
+  if (existingToast) existingToast.remove();
+  
+  const toast = document.createElement('div');
+  toast.className = 'custom-toast';
+  toast.innerHTML = `<i class="fas fa-check-circle me-2"></i>${message}`;
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #28a745;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 9999;
+    animation: fadeInUp 0.3s ease;
+  `;
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.animation = 'fadeOut 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
 // ==================== TRIPADVISOR INTEGRATION ====================
 const tripAdvisorCache = new Map();
 
@@ -577,6 +872,173 @@ function initSortDropdown() {
   }
 }
 
+// Initialize restaurant search functionality
+function initRestaurantSearch() {
+  const searchInput = document.getElementById('restaurant-search-input');
+  const searchButton = document.getElementById('restaurant-search-button');
+  
+  if (searchButton && searchInput) {
+    searchButton.addEventListener('click', function() {
+      searchForRestaurantByName();
+    });
+    
+    searchInput.addEventListener('keyup', function(event) {
+      if (event.key === 'Enter') {
+        searchForRestaurantByName();
+      }
+    });
+  }
+}
+
+// Search for a specific restaurant by name
+async function searchForRestaurantByName() {
+  const searchInput = document.getElementById('restaurant-search-input');
+  const query = searchInput.value.trim();
+  
+  if (!query) {
+    alert('Please enter a restaurant name to search');
+    return;
+  }
+  
+  showLoading();
+  
+  try {
+    // Get current map center for location bias
+    const center = window.map.getCenter();
+    const location = {
+      lat: center.lat(),
+      lng: center.lng()
+    };
+    
+    // Search using keyword as the restaurant name
+    const apiUrl = `/api/nearby?lat=${location.lat}&lng=${location.lng}&type=restaurant&radius=${searchRadius}&keyword=${encodeURIComponent(query)}`;
+    
+    console.log('Searching for restaurant:', query);
+    console.log('Fetching URL:', apiUrl);
+    
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+    
+    console.log('Restaurant search response:', data);
+    
+    if (data.status === 'OK' && data.results && data.results.length > 0) {
+      // Store for re-sorting
+      window.lastPlacesData = data.results;
+      window.lastOrigin = location;
+      window.currentPlaceType = 'restaurant';
+      window.isDessertSearch = false;
+      
+      // Render the results without strict filtering for specific searches
+      renderSearchResults(data.results, location, query);
+    } else {
+      // No results found
+      hideLoading();
+      const radiusText = searchRadius >= 1000 ? `${searchRadius / 1000}km` : `${searchRadius}m`;
+      document.getElementById('places-container').innerHTML = `
+        <div class="col-12">
+          <div class="alert alert-info">
+            <strong>No restaurants matching "${query}" found</strong>
+            <p>No results within ${radiusText} of this location.</p>
+            <p>Try expanding your search radius or modifying your search term.</p>
+          </div>
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.error('Error searching for restaurant:', error);
+    hideLoading();
+    alert('Error searching for restaurant. Please try again.');
+  }
+}
+
+// Render search results with less strict filtering (for specific restaurant searches)
+function renderSearchResults(places, origin, searchQuery) {
+  const container = document.getElementById('places-container');
+  container.innerHTML = '';
+  
+  // Clear existing markers
+  clearMarkers();
+  
+  hideLoading();
+  
+  if (places.length === 0) {
+    container.innerHTML = `
+      <div class="col-12">
+        <div class="alert alert-info">
+          <strong>No restaurants matching "${searchQuery}" found</strong>
+          <p>Try a different search term or expand your search radius.</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
+  // Update URL for shareable links
+  updateURL(origin, 'restaurant');
+  
+  // Apply user-selected sorting
+  const sortSelect = document.getElementById('sort-select');
+  const sortBy = sortSelect ? sortSelect.value : 'rating';
+  
+  sortPlaces(places, sortBy, origin);
+  
+  // Show results count
+  const resultsCount = document.getElementById('results-count');
+  const countNumber = document.getElementById('count-number');
+  if (resultsCount && countNumber) {
+    countNumber.textContent = places.length;
+    resultsCount.style.display = 'block';
+  }
+  
+  // Display places
+  places.forEach((place, index) => {
+    const card = createPlaceCard(place, index);
+    container.appendChild(card);
+    addMarker(place, index);
+  });
+  
+  // Initialize/update marker clustering
+  updateMarkerClusterer();
+  
+  // Load TripAdvisor ratings for displayed places
+  loadTripAdvisorForPlaces(places);
+}
+
+// Initialize My Lists modal
+function initListsModal() {
+  const listsButton = document.getElementById('my-lists-button');
+  const createListBtn = document.getElementById('create-list-btn');
+  const newListInput = document.getElementById('new-list-name');
+  
+  if (listsButton) {
+    listsButton.addEventListener('click', function() {
+      renderListsModal();
+      const modal = new bootstrap.Modal(document.getElementById('lists-modal'));
+      modal.show();
+    });
+  }
+  
+  if (createListBtn && newListInput) {
+    createListBtn.addEventListener('click', function() {
+      const name = newListInput.value.trim();
+      if (name) {
+        createList(name);
+        newListInput.value = '';
+        renderListsModal();
+        showToast(`List "${name}" created!`);
+      } else {
+        alert('Please enter a list name');
+      }
+    });
+    
+    newListInput.addEventListener('keyup', function(event) {
+      if (event.key === 'Enter') {
+        createListBtn.click();
+      }
+    });
+  }
+}
+
 function toggleDarkMode(enabled) {
   const body = document.body;
   
@@ -743,10 +1205,13 @@ function initMap() {
   
   console.log("Map created successfully!");
   
-  // Initialize favorites badge
+  // Initialize favorites badge and lists badge
   updateFavoritesBadge();
+  updateListsBadge();
   initShareButton();
   initSortDropdown();
+  initRestaurantSearch();
+  initListsModal();
   
   // Load places for the initial location (use default radius, no keyword)
   loadNearbyPlaces(initialCenter, '', searchRadius);
@@ -1520,6 +1985,11 @@ function createPlaceCard(place, index) {
           <button class="view-details-btn" onclick="showPlaceDetails('${place.place_id}')">
             View Details
           </button>
+          <button class="action-btn add-to-list-btn" 
+            data-place-id="${place.place_id}"
+            title="Add to List">
+            <i class="fas fa-plus"></i>
+          </button>
           <a href="https://www.google.com/maps/dir/?api=1&destination=${place.geometry.location.lat},${place.geometry.location.lng}" 
             target="_blank" class="action-btn" title="Get Directions">
             <i class="fas fa-directions"></i>
@@ -1548,6 +2018,15 @@ function createPlaceCard(place, index) {
       setTimeout(showFavoritesView, 100);
     }
   });
+  
+  // Add click handler for add to list button
+  const addToListBtn = card.querySelector('.add-to-list-btn');
+  if (addToListBtn) {
+    addToListBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      showAddToListModal(place);
+    });
+  }
   
   return card;
 }
