@@ -1715,58 +1715,8 @@ async function searchLocation() {
   showLoading();
   
   try {
-    // First try to use the search term as a direct place search
-    const specificPlaceResult = await searchForSpecificPlace(searchInput);
-    
-    if (specificPlaceResult && specificPlaceResult.geometry) {
-      // We found a specific place!
-      const placeLocation = {
-        lat: specificPlaceResult.geometry.location.lat,
-        lng: specificPlaceResult.geometry.location.lng
-      };
-      
-      // Check if this is a geographic location (city, village, region) or an attraction/POI
-      const placeTypes = specificPlaceResult.types || [];
-      const geographicTypes = [
-        'locality', 'sublocality', 'sublocality_level_1', 'sublocality_level_2',
-        'administrative_area_level_1', 'administrative_area_level_2', 
-        'administrative_area_level_3', 'administrative_area_level_4',
-        'country', 'neighborhood', 'political', 'colloquial_area',
-        'continent', 'postal_code', 'postal_town', 'route', 'street_address'
-      ];
-      
-      // Check if the place is a geographic location
-      const isGeographicLocation = placeTypes.some(type => geographicTypes.includes(type)) &&
-        !placeTypes.some(type => ['tourist_attraction', 'point_of_interest', 'establishment', 
-          'restaurant', 'cafe', 'bar', 'museum', 'art_gallery', 'lodging', 'hotel', 
-          'shopping_mall', 'store', 'park', 'zoo', 'aquarium', 'amusement_park',
-          'night_club', 'spa', 'movie_theater', 'stadium', 'church', 'synagogue', 
-          'mosque', 'hindu_temple', 'casino', 'bowling_alley', 'gym'].includes(type));
-      
-      // Center the map on this place
-      window.map.setCenter(placeLocation);
-      
-      if (isGeographicLocation) {
-        // For cities/villages/regions, just zoom appropriately and search nearby
-        window.map.setZoom(14);
-        console.log('Geographic location detected, not showing card:', placeTypes);
-      } else {
-        // For attractions/POIs, zoom closer
-        window.map.setZoom(16);
-      }
-      
-      // Load nearby places around this location
-      loadNearbyPlaces(placeLocation, '', searchRadius);
-      
-      // Only show place details card for attractions/POIs, not geographic locations
-      if (!isGeographicLocation && specificPlaceResult.place_id) {
-        showPlaceDetails(specificPlaceResult.place_id);
-      }
-      
-      return;
-    }
-    
-    // If no specific place found, try geocoding the search term as an address/location
+    // Location search only does geocoding (cities, addresses, regions)
+    // For restaurants/attractions, use the restaurant search bar instead
     const response = await fetch(`/api/geocoding?address=${encodeURIComponent(searchInput)}`);
     const data = await response.json();
     
