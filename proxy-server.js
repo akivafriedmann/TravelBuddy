@@ -391,9 +391,10 @@ app.get('/api/tripadvisor', async (req, res) => {
     console.log(`TripAdvisor API request for: "${place_name}"`);
     
     // Headers required by TripAdvisor API for domain-restricted keys
+    // Must use the registered domain (craving.life) for API authentication
     const tripAdvisorHeaders = {
-      'Referer': req.headers.referer || req.headers.origin || 'https://replit.com',
-      'Origin': req.headers.origin || 'https://replit.com'
+      'Referer': 'https://craving.life/',
+      'Origin': 'https://craving.life'
     };
     
     // Build search URL
