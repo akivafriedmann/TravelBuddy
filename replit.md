@@ -111,6 +111,13 @@ Preferred communication style: Simple, everyday language.
 
 ### Latest Updates (January 16, 2026)
 
+- **Bug Fixes and Code Quality Improvements**:
+  - Added new `/api/search` endpoint for place search by name using Google Places Text Search API
+  - Fixed TripAdvisor API error handling - gracefully handles 403/unavailable responses without console spam
+  - Fixed JSON parse errors when TripAdvisor returns non-JSON responses
+  - Migrated from deprecated `google.maps.Marker` to `google.maps.marker.AdvancedMarkerElement`
+  - Added proper response validation (status codes, content-type) before parsing API responses
+
 - **"Crave" Luxury Minimalist Redesign**: Complete UI transformation from Travel Planner to premium "Crave" brand:
   - Playfair Display serif font for headings, Inter for body text
   - Premium color palette: off-white (#F9F9F9), dark charcoal (#1A1A1A), deep teal accent (#1B4D3E)
