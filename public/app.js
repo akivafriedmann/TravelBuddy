@@ -2690,8 +2690,9 @@ async function showPlaceDetails(placeId) {
       } else {
         tripAdvisorHtml = `
           <div class="tripadvisor-section mt-3">
-            <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn btn-outline-secondary w-100">
-              <i class="fas fa-external-link-alt me-2"></i> Check Reviews on TripAdvisor
+            <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn-tripadvisor-link">
+              <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_logomark_solid_green.svg" alt="TripAdvisor" class="ta-owl">
+              Check Reviews on TripAdvisor
             </a>
           </div>
         `;
