@@ -2201,7 +2201,7 @@ body.dark-mode .place-card .favorite-btn {
 .modern-modal,
 .modal-content.modern-modal {
   padding: 0 !important;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 16px;
   border: none;
 }
@@ -2255,6 +2255,8 @@ body.dark-mode .place-card .favorite-btn {
 /* Modal body - Add padding back for text content */
 .modern-modal .modal-body {
   padding: 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 450px);
 }
 
 /* Hero Section with Carousel */

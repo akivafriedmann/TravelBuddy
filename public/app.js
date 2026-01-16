@@ -1917,26 +1917,26 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false,
   container.innerHTML = '';
   
   // Minimum required reviews for statistical significance
-  // Different minimum reviews based on place type
+  // Lower thresholds to show more results
   const MIN_REVIEWS = {
-    restaurant: 20,
-    lodging: 8,
-    night_club: 10,
-    supermarket: 5,
-    default: 10
+    restaurant: 5,
+    lodging: 3,
+    night_club: 3,
+    supermarket: 2,
+    default: 3
   };
   const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
   
-  // Minimum rating to show (different minimum ratings based on place type)
+  // Minimum rating to show (lower thresholds to show more results)
   let MIN_RATING;
   if (currentPlaceType === 'restaurant') {
-    MIN_RATING = 4.0;
+    MIN_RATING = 3.5;
   } else if (currentPlaceType === 'night_club') {
-    MIN_RATING = 3.7; // Lower threshold for nightclubs
+    MIN_RATING = 3.0; // Lower threshold for nightclubs
   } else if (currentPlaceType === 'supermarket') {
-    MIN_RATING = 3.5; // Lower threshold for supermarkets
+    MIN_RATING = 3.0; // Lower threshold for supermarkets
   } else {
-    MIN_RATING = 3.8; // Default threshold for other places
+    MIN_RATING = 3.0; // Default threshold for other places
   }
   
   // For dessert searches, lower the threshold slightly
