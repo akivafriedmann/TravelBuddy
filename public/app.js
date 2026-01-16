@@ -2930,39 +2930,6 @@ function displayWeatherData(data) {
     
     weatherPill.style.display = 'flex';
   }
-  const cityName = data.name || '';
-  
-  // Current weather HTML
-  const weatherHtml = `
-    <div class="col-12">
-      <div class="card">
-        <div class="card-body">
-          <div class="d-flex align-items-center">
-            <img src="${iconUrl}" alt="${description}" class="weather-icon" style="width: 50px; height: 50px;">
-            <div class="ms-3">
-              <div class="h4 mb-0">${temp}°C</div>
-              <div class="text-capitalize">${description}</div>
-              ${cityName ? `<small class="text-muted">${cityName}</small>` : ''}
-            </div>
-            <div class="ms-auto text-end">
-              <div><i class="fas fa-tint"></i> ${humidity}%</div>
-              <div><i class="fas fa-wind"></i> ${windSpeed} m/s</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  
-  weatherContainer.innerHTML = weatherHtml;
-  weatherContainer.style.display = 'flex';
-  
-  // Add a dark mode class if dark mode is enabled
-  if (document.body.classList.contains('dark-mode')) {
-    weatherContainer.classList.add('dark-mode');
-  } else {
-    weatherContainer.classList.remove('dark-mode');
-  }
 }
 
 function initReviewsCarousel() {
