@@ -2166,14 +2166,18 @@ function createPlaceCard(place, index) {
         
         <div class="type-badges">${typesBadges}</div>
         
+        <!-- TripAdvisor On-Demand Rating -->
+        <div class="ta-rating-container" data-place-id="${place.place_id}" data-place-name="${escapeHTML(place.name)}" data-place-address="${escapeHTML(place.vicinity || place.formatted_address || '')}">
+          <button class="ta-show-rating-btn" title="Load TripAdvisor rating">
+            <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_logomark_solid_green.svg" alt="TripAdvisor" class="ta-owl-icon">
+            <span>Show Rating</span>
+          </button>
+        </div>
+        
         <div class="card-actions">
           <button class="view-details-btn clickable-place" data-place-id="${place.place_id}">
             View Details
           </button>
-          <a href="https://www.tripadvisor.com/Search?q=${encodeURIComponent(place.name + ' ' + (window.currentCity || ''))}" 
-            target="_blank" class="check-reviews-btn" title="Check reviews on TripAdvisor">
-            <i class="fas fa-external-link-alt"></i> Reviews
-          </a>
           <button class="action-btn add-to-list-btn" 
             data-place-id="${place.place_id}"
             title="Add to List">
@@ -2215,6 +2219,84 @@ function createPlaceCard(place, index) {
     addToListBtn.addEventListener('click', function(e) {
       e.stopPropagation();
       showAddToListModal(place);
+    });
+  }
+  
+  // Add click handler for TripAdvisor "Show Rating" button
+  const taShowRatingBtn = card.querySelector('.ta-show-rating-btn');
+  if (taShowRatingBtn) {
+    taShowRatingBtn.addEventListener('click', async function(e) {
+      e.stopPropagation();
+      const container = this.closest('.ta-rating-container');
+      const placeName = container.dataset.placeName;
+      const placeAddress = container.dataset.placeAddress;
+      
+      // Show loading state
+      this.innerHTML = '<span class="ta-loading-spinner"></span> Loading...';
+      this.disabled = true;
+      
+      try {
+        // Fetch TripAdvisor data
+        const response = await fetch(`/api/tripadvisor?place_name=${encodeURIComponent(placeName)}&location=${encodeURIComponent(placeAddress)}`);
+        const data = await response.json();
+        
+        if (data.status === 'OK' && data.result?.tripadvisor_data) {
+          const taData = data.result.tripadvisor_data;
+          
+          // Build the rating display HTML
+          let ratingHtml = '';
+          if (taData.rating_image_url) {
+            ratingHtml = `
+              <a href="${taData.web_url || 'https://www.tripadvisor.com/Search?q=' + encodeURIComponent(placeName)}" 
+                 target="_blank" class="ta-rating-display" title="View on TripAdvisor">
+                <img src="${taData.rating_image_url}" alt="${taData.rating} rating" class="ta-bubbles-img">
+                <span class="ta-review-count">${taData.num_reviews || 0} reviews</span>
+                <span class="ta-attribution">TripAdvisor</span>
+              </a>
+            `;
+          } else if (taData.rating) {
+            // Fallback if no image URL - show text rating with proper branding
+            ratingHtml = `
+              <a href="${taData.web_url || 'https://www.tripadvisor.com/Search?q=' + encodeURIComponent(placeName)}" 
+                 target="_blank" class="ta-rating-display" title="View on TripAdvisor">
+                <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_logomark_solid_green.svg" alt="TripAdvisor" class="ta-owl-icon">
+                <span class="ta-rating-text">${taData.rating}</span>
+                <span class="ta-review-count">(${taData.num_reviews || 0})</span>
+              </a>
+            `;
+          } else {
+            // No rating data - show link to TripAdvisor
+            ratingHtml = `
+              <a href="https://www.tripadvisor.com/Search?q=${encodeURIComponent(placeName + ' ' + (window.currentCity || ''))}" 
+                 target="_blank" class="ta-rating-display ta-no-data" title="Search on TripAdvisor">
+                <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_logomark_solid_green.svg" alt="TripAdvisor" class="ta-owl-icon">
+                <span>View on TripAdvisor</span>
+              </a>
+            `;
+          }
+          
+          container.innerHTML = sanitizeHTML(ratingHtml);
+        } else {
+          // API error or no data - show fallback link
+          container.innerHTML = sanitizeHTML(`
+            <a href="https://www.tripadvisor.com/Search?q=${encodeURIComponent(placeName + ' ' + (window.currentCity || ''))}" 
+               target="_blank" class="ta-rating-display ta-no-data" title="Search on TripAdvisor">
+              <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_logomark_solid_green.svg" alt="TripAdvisor" class="ta-owl-icon">
+              <span>View on TripAdvisor</span>
+            </a>
+          `);
+        }
+      } catch (error) {
+        console.error('Error fetching TripAdvisor rating:', error);
+        // Show fallback link on error
+        container.innerHTML = sanitizeHTML(`
+          <a href="https://www.tripadvisor.com/Search?q=${encodeURIComponent(placeName + ' ' + (window.currentCity || ''))}" 
+             target="_blank" class="ta-rating-display ta-no-data" title="Search on TripAdvisor">
+            <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_logomark_solid_green.svg" alt="TripAdvisor" class="ta-owl-icon">
+            <span>View on TripAdvisor</span>
+          </a>
+        `);
+      }
     });
   }
   

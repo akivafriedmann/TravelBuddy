@@ -441,6 +441,7 @@ app.get('/api/tripadvisor', async (req, res) => {
           location_id: location.location_id,
           name: detailsData.name || location.name,
           rating: detailsData.rating ? parseFloat(detailsData.rating) : null,
+          rating_image_url: detailsData.rating_image_url || null,
           num_reviews: detailsData.num_reviews ? parseInt(detailsData.num_reviews) : null,
           ranking_string: detailsData.ranking_data?.ranking_string || null,
           price_level: detailsData.price_level || null,

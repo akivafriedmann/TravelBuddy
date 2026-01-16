@@ -1679,42 +1679,130 @@ body.dark-mode #share-btn:hover {
   transform: translateY(-1px);
 }
 
-/* Check Reviews Button (TripAdvisor link) */
-.place-card .check-reviews-btn {
+/* TripAdvisor On-Demand Rating Section */
+.ta-rating-container {
+  margin: 8px 0;
+}
+
+.ta-show-rating-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 12px;
-  border-radius: var(--radius-full);
-  background: #00aa6c;
-  color: #fff;
-  border: none;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: #fff;
+  color: #555;
+  border: 1px solid #ddd;
   font-size: 12px;
-  font-weight: 500;
-  text-decoration: none;
+  font-weight: 400;
+  cursor: pointer;
   transition: all 0.2s ease;
-  white-space: nowrap;
 }
 
-.place-card .check-reviews-btn:hover {
-  background: #008c59;
-  color: #fff;
+.ta-show-rating-btn:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.ta-show-rating-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.ta-owl-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.ta-loading-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ddd;
+  border-top-color: #00aa6c;
+  border-radius: 50%;
+  animation: ta-spin 0.8s linear infinite;
+}
+
+@keyframes ta-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ta-rating-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
   text-decoration: none;
-  transform: translateY(-1px);
+  color: #333;
+  font-size: 12px;
+  transition: all 0.2s ease;
 }
 
-.place-card .check-reviews-btn i {
+.ta-rating-display:hover {
+  background: #f9f9f9;
+  border-color: #00aa6c;
+  text-decoration: none;
+  color: #333;
+}
+
+.ta-bubbles-img {
+  height: 14px;
+  width: auto;
+}
+
+.ta-rating-text {
+  font-weight: 600;
+  color: #00aa6c;
+}
+
+.ta-review-count {
+  color: #666;
+  font-size: 11px;
+}
+
+.ta-attribution {
   font-size: 10px;
+  color: #999;
+  margin-left: 4px;
 }
 
-body.dark-mode .place-card .check-reviews-btn {
-  background: #00aa6c;
-  color: #fff;
+.ta-no-data .ta-owl-icon {
+  opacity: 0.7;
 }
 
-body.dark-mode .place-card .check-reviews-btn:hover {
-  background: #008c59;
-  color: #fff;
+/* Dark mode TripAdvisor styles */
+body.dark-mode .ta-show-rating-btn {
+  background: #2d2d2d;
+  border-color: #444;
+  color: #aaa;
+}
+
+body.dark-mode .ta-show-rating-btn:hover {
+  background: #3d3d3d;
+  border-color: #555;
+}
+
+body.dark-mode .ta-rating-display {
+  background: #2d2d2d;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+body.dark-mode .ta-rating-display:hover {
+  background: #3d3d3d;
+  border-color: #00aa6c;
+}
+
+body.dark-mode .ta-review-count {
+  color: #aaa;
+}
+
+body.dark-mode .ta-attribution {
+  color: #777;
 }
 
 /* Open Now Badge */
