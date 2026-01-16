@@ -118,6 +118,13 @@ Preferred communication style: Simple, everyday language.
   - Details modal carousel shows photo attribution on each slide
   - CSS styling for attribution overlays with semi-transparent backgrounds
 
+- **TripAdvisor Cost Optimization**:
+  - Replaced automatic TripAdvisor API calls with external link buttons (zero API cost)
+  - "Reviews" button on restaurant cards opens TripAdvisor search in new tab
+  - Details modal includes "Check Reviews on TripAdvisor" button
+  - Links use restaurant name + city for accurate search results
+  - Users can read full reviews directly on TripAdvisor site
+
 - **Security Improvements**:
   - Added DOMPurify library for XSS protection on all innerHTML operations
   - Wrapped critical innerHTML usages with sanitizeHTML() to prevent cross-site scripting attacks
