@@ -2,6 +2,21 @@
 let searchRadius = 1500; // Default search radius in meters
 let currentKeyword = ''; // Track the current keyword filter
 
+// ==================== SECURITY: HTML SANITIZATION ====================
+function sanitizeHTML(html) {
+  if (typeof DOMPurify !== 'undefined') {
+    return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+  }
+  return html;
+}
+
+function escapeHTML(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 // ==================== FAVORITES STORAGE ====================
 const FAVORITES_KEY = 'travelplanner_favorites';
 
@@ -190,7 +205,7 @@ function renderListsModal() {
     return;
   }
   
-  container.innerHTML = lists.map(list => `
+  container.innerHTML = sanitizeHTML(lists.map(list => `
     <div class="list-item card mb-3" data-list-id="${list.id}">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -213,7 +228,7 @@ function renderListsModal() {
         </div>
       </div>
     </div>
-  `).join('');
+  `).join(''));
   
   container.querySelectorAll('.delete-list-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -294,7 +309,7 @@ function showAddToListModal(place) {
   if (lists.length === 0) {
     optionsContainer.innerHTML = '<p class="text-muted">No lists yet. Create one below!</p>';
   } else {
-    optionsContainer.innerHTML = lists.map(list => {
+    optionsContainer.innerHTML = sanitizeHTML(lists.map(list => {
       const alreadyInList = list.restaurants.some(r => r.place_id === place.place_id);
       return `
         <button class="btn ${alreadyInList ? 'btn-success' : 'btn-outline-primary'} w-100 mb-2 add-to-specific-list" 
@@ -303,7 +318,7 @@ function showAddToListModal(place) {
           ${list.name} ${alreadyInList ? '(Already added)' : ''}
         </button>
       `;
-    }).join('');
+    }).join(''));
     
     optionsContainer.querySelectorAll('.add-to-specific-list:not([disabled])').forEach(btn => {
       btn.addEventListener('click', function() {
@@ -654,7 +669,7 @@ function showClusterPlacesModal(places, position) {
   }
   
   const listContainer = document.getElementById('cluster-places-list');
-  listContainer.innerHTML = places.map((place, i) => `
+  listContainer.innerHTML = sanitizeHTML(places.map((place, i) => `
     <div class="cluster-place-item d-flex align-items-center p-2 border-bottom" style="cursor: pointer" 
          onclick="showPlaceDetails('${place.place_id}'); bootstrap.Modal.getInstance(document.getElementById('cluster-places-modal')).hide();">
       <div class="flex-grow-1">
@@ -666,7 +681,7 @@ function showClusterPlacesModal(places, position) {
       </div>
       <i class="fas fa-chevron-right text-muted"></i>
     </div>
-  `).join('');
+  `).join(''));
   
   const zoomBtn = document.getElementById('zoom-to-cluster');
   zoomBtn.onclick = function() {
@@ -2074,7 +2089,7 @@ function createPlaceCard(place, index) {
   }
   
   // Create the modern card HTML with thumbnail
-  card.innerHTML = `
+  card.innerHTML = sanitizeHTML(`
     <div class="card h-100 place-card">
       <!-- Floating Favorite Button -->
       <button class="favorite-btn ${favoriteClass}" 
@@ -2128,7 +2143,7 @@ function createPlaceCard(place, index) {
         </div>
       </div>
     </div>
-  `;
+  `);
   
   // Add click handler for favorite button
   const favoriteBtn = card.querySelector('.favorite-btn');
@@ -2663,7 +2678,7 @@ async function showPlaceDetails(placeId) {
       }
       
       // Add modal to the document
-      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      document.body.insertAdjacentHTML('beforeend', sanitizeHTML(modalHtml));
       
       // Show the modal
       const modal = new bootstrap.Modal(document.getElementById('placeDetailsModal'));
