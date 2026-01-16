@@ -141,6 +141,12 @@ Preferred communication style: Simple, everyday language.
   - Migrated from deprecated `google.maps.Marker` to `google.maps.marker.AdvancedMarkerElement`
   - Added proper response validation (status codes, content-type) before parsing API responses
 
+- **Soft Premium Map Style**: Updated light mode map style with subtle natural colors:
+  - Water areas now display with soft blue-gray (#cbd5e0) instead of plain gray
+  - Parks show with soft green tint (#e6f3d6) for a more refined, natural look
+  - Desaturated roads with simplified highway visibility
+  - Hidden POI icons and transit markers for cleaner aesthetic
+
 - **Premium Charcoal Dark Mode Enhancements**:
   - Deep charcoal background (#121212) for body in dark mode
   - Card backgrounds set to #1E1E1E for subtle contrast
