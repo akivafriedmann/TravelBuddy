@@ -734,7 +734,7 @@ app.get('/api/nearby', async (req, res) => {
           }
         }
       },
-      maxResultCount: 20,
+      maxResultCount: 40,
       languageCode: "en"
     };
     

@@ -1031,6 +1031,51 @@ body.dark-mode #loading-indicator {
 .reviews-carousel {
   position: relative;
   margin-bottom: 20px;
+  padding: 0 30px;
+}
+
+.reviews-carousel .slick-prev,
+.reviews-carousel .slick-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #1B4D3E;
+  color: white;
+  border: none;
+  cursor: pointer;
+  z-index: 10;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.reviews-carousel .slick-prev:hover,
+.reviews-carousel .slick-next:hover {
+  background: #143D31;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.reviews-carousel .slick-prev {
+  left: -5px;
+}
+
+.reviews-carousel .slick-next {
+  right: -5px;
+}
+
+body.dark-mode .reviews-carousel .slick-prev,
+body.dark-mode .reviews-carousel .slick-next {
+  background: #1B4D3E;
+}
+
+body.dark-mode .reviews-carousel .slick-prev:hover,
+body.dark-mode .reviews-carousel .slick-next:hover {
+  background: #2a6b54;
 }
 
 .reviews-container {
