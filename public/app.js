@@ -570,7 +570,7 @@ window.clusterInstance = null;
 function createCustomClusterRenderer() {
   return {
     render: function({ count, position }, stats) {
-      // Minimalist luxury design - pure black with white border
+      // Brand green cluster markers for cohesive design
       const marker = new google.maps.Marker({
         position,
         zIndex: 1000 + count,
@@ -584,7 +584,7 @@ function createCustomClusterRenderer() {
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: 18,
-          fillColor: '#000000',
+          fillColor: '#00AA6C',
           fillOpacity: 1,
           strokeColor: '#FFFFFF',
           strokeWeight: 2
@@ -2122,14 +2122,6 @@ function createPlaceCard(place, index) {
         </div>
         
         <div class="type-badges">${typesBadges}</div>
-        
-        <!-- TripAdvisor On-Demand Rating -->
-        <div class="ta-rating-container" data-place-id="${place.place_id}" data-place-name="${escapeHTML(place.name)}" data-place-address="${escapeHTML(place.vicinity || place.formatted_address || '')}">
-          <button class="ta-show-rating-btn" title="Load TripAdvisor rating">
-            <i class="fab fa-tripadvisor ta-icon"></i>
-            <span>Show Tripadvisor Rating</span>
-          </button>
-        </div>
         
         <div class="card-actions">
           <button class="action-btn add-to-list-btn" 
