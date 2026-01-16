@@ -3,118 +3,81 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Travel Planner</title>
+  <title>Crave - Discover Exceptional Dining</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/solid.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/brands.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container mt-4">
-    <h1 class="text-center mb-3">Travel Planner</h1>
-    <p class="text-center text-muted mb-4">Find great places to visit on your next trip</p>
+    <!-- Premium Header -->
+    <header class="crave-header text-center mb-4">
+      <h1 class="brand-title">Crave</h1>
+      <p class="brand-tagline">Discover exceptional dining experiences</p>
+    </header>
     
+    <!-- Unified Search Bar -->
     <div class="row mb-4">
-      <div class="col-md-6 offset-md-3">
-        <div class="input-group mb-2">
-          <input type="text" id="location-input" class="form-control" placeholder="Enter a location (e.g., New York, Paris)">
-          <button class="btn btn-primary" id="search-button">Search</button>
+      <div class="col-lg-8 offset-lg-2">
+        <div class="unified-search-bar">
+          <div class="search-inputs">
+            <div class="search-field location-field">
+              <i class="fas fa-map-marker-alt"></i>
+              <input type="text" id="location-input" placeholder="Location (e.g., Paris, Tokyo)">
+            </div>
+            <div class="search-divider"></div>
+            <div class="search-field restaurant-field">
+              <i class="fas fa-utensils"></i>
+              <input type="text" id="restaurant-search-input" placeholder="Restaurant name (optional)">
+            </div>
+            <button class="search-btn" id="search-button">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
         </div>
-        <div class="input-group mb-2">
-          <span class="input-group-text"><i class="fas fa-utensils"></i></span>
-          <input type="text" id="restaurant-search-input" class="form-control" placeholder="Search for a specific restaurant (e.g., 'Nobu', 'Pizza Hut')">
-          <button class="btn btn-success" id="restaurant-search-button">
-            <i class="fas fa-search"></i> Find
+        
+        <!-- Action Buttons Row -->
+        <div class="action-buttons-row">
+          <button id="use-location-button" class="action-btn">
+            <i class="fas fa-location-arrow"></i> Near Me
           </button>
-        </div>
-        <div class="text-center">
-          <button id="use-location-button" class="btn btn-outline-success mt-2">
-            <i class="fas fa-location-arrow"></i> Use My Location
+          <button id="my-lists-button" class="action-btn">
+            <i class="fas fa-bookmark"></i> Saved
+            <span id="lists-count" class="count-badge" style="display: none;">0</span>
           </button>
-          <button id="my-lists-button" class="btn btn-outline-primary mt-2 ms-2">
-            <i class="fas fa-list"></i> My Lists
-            <span id="lists-count" class="badge bg-primary" style="display: none;">0</span>
+          <button id="filters-toggle" class="action-btn">
+            <i class="fas fa-sliders-h"></i> Filters
           </button>
-          <div class="form-check form-switch d-inline-block ms-3">
-            <input class="form-check-input" type="checkbox" id="dark-mode-toggle">
-            <label class="form-check-label" for="dark-mode-toggle">Dark Mode</label>
+          <div class="dark-mode-toggle">
+            <input type="checkbox" id="dark-mode-toggle">
+            <label for="dark-mode-toggle"><i class="fas fa-moon"></i></label>
           </div>
         </div>
       </div>
     </div>
     
-    <!-- Search Radius Control -->
-    <div class="row mb-4">
-      <div class="col-md-6 offset-md-3">
-        <div class="search-radius-control">
-          <label for="radius-slider" class="form-label d-flex justify-content-between">
-            <span>Search Radius: <span id="radius-value">1.5</span> km</span>
-            <span class="text-muted small">
-              <i class="fas fa-info-circle"></i> 
-              Adjust to search in a larger or smaller area
-            </span>
-          </label>
-          <input type="range" class="form-range" id="radius-slider" min="500" max="5000" step="100" value="1500">
-          <div class="d-flex justify-content-between small text-muted">
-            <span>500m</span>
-            <span>1km</span>
-            <span>2km</span>
-            <span>3km</span>
-            <span>4km</span>
-            <span>5km</span>
+    <!-- Collapsible Filters Panel -->
+    <div class="row mb-4" id="filters-panel" style="display: none;">
+      <div class="col-lg-6 offset-lg-3">
+        <div class="filters-card">
+          <div class="filter-group">
+            <label class="filter-label">Search Radius: <span id="radius-value">1.5</span> km</label>
+            <input type="range" class="premium-slider" id="radius-slider" min="500" max="5000" step="100" value="1500">
+            <div class="slider-labels">
+              <span>500m</span>
+              <span>2.5km</span>
+              <span>5km</span>
+            </div>
           </div>
-          <!-- Open Now Filter -->
-          <div class="form-check mt-3">
-            <input class="form-check-input" type="checkbox" id="open-now-checkbox">
-            <label class="form-check-label" for="open-now-checkbox">
-              <i class="fas fa-clock text-success"></i> Show only places open now
+          <div class="filter-group">
+            <label class="filter-checkbox">
+              <input type="checkbox" id="open-now-checkbox">
+              <span class="checkmark"></span>
+              Open now only
             </label>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Weather Information Section -->
-    <div class="row mb-4" id="weather-container" style="display: none;">
-      <div class="col-md-8 offset-md-2">
-        <div class="card bg-gradient">
-          <div class="card-body p-3">
-            <div class="d-flex align-items-center justify-content-between">
-              <div class="d-flex align-items-center">
-                <div id="weather-icon" class="me-3">
-                  <!-- Weather icon will be inserted here -->
-                </div>
-                <div>
-                  <h5 class="mb-0" id="weather-location">Weather</h5>
-                  <p class="mb-0" id="weather-description">Loading weather data...</p>
-                </div>
-              </div>
-              <div class="text-end">
-                <h3 class="mb-0" id="weather-temp">--°C</h3>
-                <p class="mb-0 small" id="weather-feels-like">Feels like --°C</p>
-              </div>
-            </div>
-            <div class="row mt-3 text-center" id="weather-details">
-              <div class="col-4">
-                <div class="mb-1"><i class="fas fa-wind"></i></div>
-                <div class="small" id="weather-wind">-- m/s</div>
-              </div>
-              <div class="col-4">
-                <div class="mb-1"><i class="fas fa-tint"></i></div>
-                <div class="small" id="weather-humidity">--%</div>
-              </div>
-              <div class="col-4">
-                <div class="mb-1"><i class="fas fa-sun"></i>/<i class="fas fa-moon"></i></div>
-                <div class="small" id="weather-sun-times">--:-- / --:--</div>
-              </div>
-            </div>
-            <div class="mt-3">
-              <p class="small text-muted mb-0">Forecast:</p>
-              <div class="d-flex justify-content-between flex-wrap" id="weather-forecast">
-                <!-- Forecast items will be inserted here -->
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -124,20 +87,40 @@
       <div class="col-12">
         <div id="map-container">
           <div id="map" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;"></div>
+          
+          <!-- Weather Pill (Glassmorphism) -->
+          <div id="weather-pill" class="weather-pill" style="display: none;">
+            <div id="weather-icon-mini"></div>
+            <span id="weather-temp-mini">--°</span>
+            <span id="weather-desc-mini">--</span>
+          </div>
+          
           <!-- Share Button -->
-          <button id="share-btn" class="btn btn-light btn-sm position-absolute" style="top: 10px; left: 10px; z-index: 5; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">
-            <i class="fas fa-share-alt"></i> Share
+          <button id="share-btn" class="map-float-btn" style="top: 60px; left: 16px;">
+            <i class="fas fa-share-alt"></i>
           </button>
           <!-- Search This Area Button -->
-          <button id="search-this-area-btn" class="btn btn-primary search-area-btn" style="display: none;">
-            <i class="fas fa-redo-alt me-1"></i> Search This Area
+          <button id="search-this-area-btn" class="search-area-btn" style="display: none;">
+            <i class="fas fa-redo-alt"></i> Search This Area
           </button>
           <!-- Transit Layer Toggle -->
-          <button id="transit-layer-btn" class="btn btn-light map-control-btn" title="Toggle Transit Layer">
+          <button id="transit-layer-btn" class="map-float-btn" style="bottom: 16px; left: 16px;" title="Transit">
             <i class="fas fa-subway"></i>
           </button>
         </div>
       </div>
+    </div>
+    
+    <!-- Hidden Weather Container for data fetching -->
+    <div id="weather-container" style="display: none;">
+      <span id="weather-location"></span>
+      <span id="weather-description"></span>
+      <span id="weather-feels-like"></span>
+      <span id="weather-wind"></span>
+      <span id="weather-humidity"></span>
+      <span id="weather-sun-times"></span>
+      <div id="weather-details"></div>
+      <div id="weather-forecast"></div>
     </div>
     
     <div class="row mt-4">
@@ -207,17 +190,6 @@
       </div>
     </div>
     
-    <style>
-      .btn-outline-purple {
-        color: #8e44ad;
-        border-color: #8e44ad;
-      }
-      .btn-outline-purple:hover, .btn-outline-purple.active {
-        color: white;
-        background-color: #8e44ad;
-        border-color: #8e44ad;
-      }
-    </style>
     
     <div class="row mb-3 align-items-center">
       <div class="col-6">

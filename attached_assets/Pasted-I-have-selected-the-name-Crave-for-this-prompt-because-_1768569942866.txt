@@ -1,0 +1,41 @@
+I have selected the name "Crave" for this prompt because it is short, modern, and fits the "premium" vibe perfectly.
+
+Copy and paste this into Replit:
+
+Refactor the frontend design of this application to transform it from a functional prototype into a premium, high-end product called "Crave". Please modify the HTML, CSS, and JavaScript as needed to implement the following "Luxury Minimalist" design system:
+
+Global Typography & Colors:
+
+Import 'Playfair Display' from Google Fonts for all Headings (h1, h2, h3, brand names) to give it an editorial magazine look.
+
+Import 'Inter' for all body text and UI elements.
+
+Change the color palette: Use a clean Off-White background (#F9F9F9), Dark Charcoal text (#1A1A1A), and remove the generic "link blue." Use a muted Gold or Deep Teal for primary buttons.
+
+Card Component Redesign (Major Priority):
+
+Rewrite the restaurant listing cards. Remove the heavy "View Details" and "+" buttons.
+
+Make the entire card clickable.
+
+Increase the image height to roughly 200px and ensure it uses object-fit: cover.
+
+Add a soft, premium shadow: box-shadow: 0 10px 40px rgba(0,0,0,0.08) and increase border-radius to 16px.
+
+Add a subtle hover lift effect (transform: translateY(-5px)).
+
+Header & Controls Cleanup:
+
+Rename the app: Change the main header text from "Travel Planner" to "Crave".
+
+Compact the Inputs: Align the search inputs (Location and Restaurant) horizontally in a clean, unified search bar.
+
+Hide Complexity: Hide the "Search Radius" slider behind a small "Filters" icon/toggle so it doesn't clutter the UI.
+
+Redesign Weather: Remove the large purple weather bar. Re-implement the weather as a small, elegant "pill" or badge (glassmorphism style) floating in the top-right corner of the map or header.
+
+Map Polish:
+
+Update the Google Maps initialization code. Add a styles array to apply a "Silver" or "Desaturated" map style (to match the premium white theme).
+
+In the map styles, set featureType: "poi", stylers: [{ visibility: "off" }] to hide generic business icons so the map looks clean and only shows our search results.

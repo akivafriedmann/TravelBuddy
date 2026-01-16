@@ -875,16 +875,18 @@ function initSortDropdown() {
 // Initialize restaurant search functionality
 function initRestaurantSearch() {
   const searchInput = document.getElementById('restaurant-search-input');
-  const searchButton = document.getElementById('restaurant-search-button');
   
-  if (searchButton && searchInput) {
-    searchButton.addEventListener('click', function() {
-      searchForRestaurantByName();
-    });
-    
+  // Bind Enter key listener for restaurant search input
+  if (searchInput) {
     searchInput.addEventListener('keyup', function(event) {
       if (event.key === 'Enter') {
-        searchForRestaurantByName();
+        // If restaurant name is provided, search for restaurant
+        if (searchInput.value.trim()) {
+          searchForRestaurantByName();
+        } else {
+          // Otherwise, trigger location search
+          searchLocation();
+        }
       }
     });
   }
@@ -1176,14 +1178,83 @@ function initMap() {
     return;
   }
   
+  // Premium silver/desaturated map style
+  const silverMapStyle = [
+    {
+      "elementType": "geometry",
+      "stylers": [{ "color": "#f5f5f5" }]
+    },
+    {
+      "elementType": "labels.icon",
+      "stylers": [{ "visibility": "off" }]
+    },
+    {
+      "elementType": "labels.text.fill",
+      "stylers": [{ "color": "#616161" }]
+    },
+    {
+      "elementType": "labels.text.stroke",
+      "stylers": [{ "color": "#f5f5f5" }]
+    },
+    {
+      "featureType": "administrative.land_parcel",
+      "elementType": "labels.text.fill",
+      "stylers": [{ "color": "#bdbdbd" }]
+    },
+    {
+      "featureType": "poi",
+      "stylers": [{ "visibility": "off" }]
+    },
+    {
+      "featureType": "poi.park",
+      "elementType": "geometry",
+      "stylers": [{ "color": "#e5e5e5" }]
+    },
+    {
+      "featureType": "road",
+      "elementType": "geometry",
+      "stylers": [{ "color": "#ffffff" }]
+    },
+    {
+      "featureType": "road.arterial",
+      "elementType": "labels.text.fill",
+      "stylers": [{ "color": "#757575" }]
+    },
+    {
+      "featureType": "road.highway",
+      "elementType": "geometry",
+      "stylers": [{ "color": "#dadada" }]
+    },
+    {
+      "featureType": "road.highway",
+      "elementType": "labels.text.fill",
+      "stylers": [{ "color": "#616161" }]
+    },
+    {
+      "featureType": "transit",
+      "stylers": [{ "visibility": "off" }]
+    },
+    {
+      "featureType": "water",
+      "elementType": "geometry",
+      "stylers": [{ "color": "#c9c9c9" }]
+    },
+    {
+      "featureType": "water",
+      "elementType": "labels.text.fill",
+      "stylers": [{ "color": "#9e9e9e" }]
+    }
+  ];
+
   // Create the map with explicit configuration to ensure it displays
   window.map = new google.maps.Map(mapElement, {
     zoom: 13,
     center: initialCenter,
     mapTypeId: google.maps.MapTypeId.ROADMAP,
+    styles: silverMapStyle,
     gestureHandling: 'greedy',
     zoomControl: true,
-    mapTypeControl: true,
+    mapTypeControl: false,
     scaleControl: true,
     streetViewControl: true,
     rotateControl: true,
@@ -1301,12 +1372,48 @@ function initMap() {
   
   // Set up event listeners for UI elements
   document.getElementById("use-location-button").addEventListener("click", useMyLocation);
-  document.getElementById("search-button").addEventListener("click", searchLocation);
-  document.getElementById("location-input").addEventListener("keyup", function(event) {
-    if (event.key === "Enter") {
+  
+  // Main search button - handles both location and restaurant search
+  document.getElementById("search-button").addEventListener("click", function() {
+    const restaurantInput = document.getElementById('restaurant-search-input');
+    const restaurantName = restaurantInput ? restaurantInput.value.trim() : '';
+    
+    if (restaurantName) {
+      // If restaurant name provided, search for that restaurant
+      searchForRestaurantByName();
+    } else {
+      // Otherwise do location search
       searchLocation();
     }
   });
+  
+  document.getElementById("location-input").addEventListener("keyup", function(event) {
+    if (event.key === "Enter") {
+      const restaurantInput = document.getElementById('restaurant-search-input');
+      const restaurantName = restaurantInput ? restaurantInput.value.trim() : '';
+      
+      if (restaurantName) {
+        searchForRestaurantByName();
+      } else {
+        searchLocation();
+      }
+    }
+  });
+  
+  // Filters toggle functionality
+  const filtersToggle = document.getElementById('filters-toggle');
+  const filtersPanel = document.getElementById('filters-panel');
+  if (filtersToggle && filtersPanel) {
+    filtersToggle.addEventListener('click', function() {
+      if (filtersPanel.style.display === 'none') {
+        filtersPanel.style.display = 'block';
+        filtersToggle.classList.add('active');
+      } else {
+        filtersPanel.style.display = 'none';
+        filtersToggle.classList.remove('active');
+      }
+    });
+  }
   
   // Set up place type filter events
   document.getElementById("place-type-select").addEventListener("change", function() {
@@ -2795,11 +2902,11 @@ async function fetchWeatherData(location) {
  */
 function displayWeatherData(data) {
   const weatherContainer = document.getElementById('weather-container');
-  
-  if (!weatherContainer) return;
+  const weatherPill = document.getElementById('weather-pill');
   
   if (!data || !data.main) {
-    weatherContainer.style.display = 'none';
+    if (weatherContainer) weatherContainer.style.display = 'none';
+    if (weatherPill) weatherPill.style.display = 'none';
     return;
   }
   
@@ -2810,6 +2917,19 @@ function displayWeatherData(data) {
   const description = data.weather && data.weather[0] ? data.weather[0].description : '';
   const iconCode = data.weather && data.weather[0] ? data.weather[0].icon : '01d';
   const iconUrl = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+  
+  // Update the weather pill (glassmorphism style on map)
+  if (weatherPill) {
+    const iconMini = document.getElementById('weather-icon-mini');
+    const tempMini = document.getElementById('weather-temp-mini');
+    const descMini = document.getElementById('weather-desc-mini');
+    
+    if (iconMini) iconMini.innerHTML = `<img src="${iconUrl}" alt="${description}">`;
+    if (tempMini) tempMini.textContent = `${temp}°`;
+    if (descMini) descMini.textContent = description.charAt(0).toUpperCase() + description.slice(1);
+    
+    weatherPill.style.display = 'flex';
+  }
   const cityName = data.name || '';
   
   // Current weather HTML

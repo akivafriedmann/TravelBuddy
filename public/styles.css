@@ -1,27 +1,45 @@
-/* Modern UI - Clean, Airbnb-inspired design */
+/* Crave - Luxury Minimalist Design System */
 :root {
-  --brand-color: #FF385C;
-  --brand-hover: #E31C5F;
-  --text-primary: #222222;
-  --text-secondary: #717171;
-  --text-muted: #B0B0B0;
+  /* Premium Color Palette */
+  --brand-color: #1B4D3E;
+  --brand-hover: #143D31;
+  --accent-gold: #C5A572;
+  --accent-gold-hover: #B39460;
+  --text-primary: #1A1A1A;
+  --text-secondary: #4A4A4A;
+  --text-muted: #8A8A8A;
   --bg-primary: #FFFFFF;
-  --bg-secondary: #F7F7F7;
-  --border-color: #EBEBEB;
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.12);
-  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.15);
+  --bg-secondary: #F9F9F9;
+  --bg-tertiary: #F0F0F0;
+  --border-color: #E5E5E5;
+  
+  /* Premium Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.12);
+  --shadow-hover: 0 15px 50px rgba(0, 0, 0, 0.1);
+  
+  /* Border Radius */
   --radius-sm: 8px;
   --radius-md: 16px;
   --radius-lg: 24px;
   --radius-full: 9999px;
 }
 
+/* Typography */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 400;
   transition: background-color 0.3s ease, color 0.3s ease;
   background-color: var(--bg-secondary);
   color: var(--text-primary);
+  line-height: 1.6;
+}
+
+h1, h2, h3, .brand-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 /* Dark Mode Styles */
@@ -63,6 +81,343 @@ body.dark-mode .btn-outline-dark,
 body.dark-mode .btn-outline-purple {
   color: #e0e0e0;
   border-color: #606060;
+}
+
+/* ==================== CRAVE HEADER ==================== */
+.crave-header {
+  padding: 24px 0 16px;
+}
+
+.brand-title {
+  font-size: 3.5rem;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  letter-spacing: -0.03em;
+}
+
+.brand-tagline {
+  font-size: 1rem;
+  color: var(--text-muted);
+  font-weight: 300;
+  letter-spacing: 0.02em;
+}
+
+body.dark-mode .brand-title {
+  color: #fff;
+}
+
+/* ==================== UNIFIED SEARCH BAR ==================== */
+.unified-search-bar {
+  background: var(--bg-primary);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-md);
+  padding: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.search-inputs {
+  display: flex;
+  align-items: center;
+}
+
+.search-field {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  flex: 1;
+}
+
+.search-field i {
+  color: var(--text-muted);
+  margin-right: 12px;
+  font-size: 14px;
+}
+
+.search-field input {
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  color: var(--text-primary);
+  width: 100%;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+}
+
+.search-field input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border-color);
+}
+
+.search-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--brand-color);
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+}
+
+.search-btn:hover {
+  background: var(--brand-hover);
+  transform: scale(1.05);
+}
+
+body.dark-mode .unified-search-bar {
+  background: #1e1e1e;
+  border-color: #333;
+}
+
+body.dark-mode .search-field input {
+  color: #e0e0e0;
+}
+
+/* ==================== ACTION BUTTONS ==================== */
+.action-buttons-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.action-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--text-primary);
+}
+
+.action-btn i {
+  font-size: 14px;
+}
+
+.count-badge {
+  background: var(--brand-color);
+  color: white;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  margin-left: 4px;
+}
+
+.dark-mode-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.dark-mode-toggle input {
+  display: none;
+}
+
+.dark-mode-toggle label {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dark-mode-toggle label:hover {
+  background: var(--bg-tertiary);
+}
+
+.dark-mode-toggle label i {
+  color: var(--text-secondary);
+}
+
+body.dark-mode .action-btn {
+  background: #1e1e1e;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+body.dark-mode .dark-mode-toggle label {
+  background: #1e1e1e;
+  border-color: #444;
+}
+
+body.dark-mode .dark-mode-toggle label i {
+  color: #ffc107;
+}
+
+/* ==================== FILTERS PANEL ==================== */
+.filters-card {
+  background: var(--bg-primary);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+}
+
+.filter-group {
+  margin-bottom: 20px;
+}
+
+.filter-group:last-child {
+  margin-bottom: 0;
+}
+
+.filter-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  display: block;
+}
+
+.premium-slider {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-tertiary);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.premium-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--brand-color);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.filter-checkbox input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--brand-color);
+}
+
+body.dark-mode .filters-card {
+  background: #1e1e1e;
+}
+
+/* ==================== WEATHER PILL (Glassmorphism) ==================== */
+.weather-pill {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-sm);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.weather-pill img {
+  width: 24px;
+  height: 24px;
+}
+
+#weather-desc-mini {
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+body.dark-mode .weather-pill {
+  background: rgba(30, 30, 30, 0.85);
+  color: #e0e0e0;
+}
+
+/* ==================== MAP FLOATING BUTTONS ==================== */
+.map-float-btn {
+  position: absolute;
+  z-index: 5;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  border: none;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-secondary);
+}
+
+.map-float-btn:hover {
+  background: var(--bg-tertiary);
+  transform: scale(1.05);
+}
+
+.search-area-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  padding: 12px 24px;
+  border-radius: var(--radius-full);
+  background: var(--brand-color);
+  border: none;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-area-btn:hover {
+  background: var(--brand-hover);
 }
 
 /* Modern Map Container */
@@ -148,22 +503,22 @@ body.dark-mode .btn-outline-purple {
   margin-right: 0;
 }
 
-/* Modern Place Cards - Clean, Elevated Design */
+/* ==================== PREMIUM PLACE CARDS ==================== */
 .place-card {
-  margin-bottom: 24px;
-  transition: all 0.25s ease;
+  margin-bottom: 28px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--bg-primary);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   cursor: pointer;
   position: relative;
   border: none;
 }
 
 .place-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-hover);
 }
 
 .place-card .card {
@@ -173,7 +528,7 @@ body.dark-mode .btn-outline-purple {
 }
 
 .place-card .card-body {
-  padding: 20px;
+  padding: 20px 24px;
 }
 
 /* Floating Favorite Heart Button */
@@ -214,9 +569,14 @@ body.dark-mode .btn-outline-purple {
 }
 
 .place-image {
-  height: 180px;
+  height: 200px;
   object-fit: cover;
   width: 100%;
+  transition: transform 0.4s ease;
+}
+
+.place-card:hover .place-image {
+  transform: scale(1.02);
 }
 
 /* Card Image Wrapper and Thumbnail */
