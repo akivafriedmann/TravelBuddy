@@ -26,7 +26,8 @@ args = "node proxy-server.js"
 waitForPort = 5000
 
 [deployment]
-run = ["sh", "-c", "cd server && npm install && node index.js"]
+run = ["node", "proxy-server.js"]
+deploymentTarget = "autoscale"
 
 [[ports]]
 localPort = 5000
