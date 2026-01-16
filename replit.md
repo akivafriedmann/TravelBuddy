@@ -111,6 +111,13 @@ Preferred communication style: Simple, everyday language.
 
 ### Latest Updates (January 16, 2026)
 
+- **Security Improvements**:
+  - Added DOMPurify library for XSS protection on all innerHTML operations
+  - Wrapped critical innerHTML usages with sanitizeHTML() to prevent cross-site scripting attacks
+  - Updated axios from 1.8.4 to 1.13.2 to fix security vulnerabilities
+  - Updated urllib3 from 2.4.0 to 2.6.3 for Python dependencies
+  - Removed backup files containing hardcoded API keys
+
 - **Bug Fixes and Code Quality Improvements**:
   - Added new `/api/search` endpoint for place search by name using Google Places Text Search API
   - Fixed TripAdvisor API error handling - gracefully handles 403/unavailable responses without console spam
