@@ -630,9 +630,9 @@ body.dark-mode .legal-modal .modal-body p {
 }
 
 .category-btn.active {
-  background: #000;
+  background: #1B4D3E;
   color: #fff;
-  border-color: #000;
+  border-color: #1B4D3E;
 }
 
 .category-btn i {
@@ -683,7 +683,7 @@ body.dark-mode .legal-modal .modal-body p {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #000;
+  background: #1B4D3E;
   color: #fff;
   font-size: 12px;
   font-weight: 700;
@@ -2130,9 +2130,9 @@ body.dark-mode .category-btn:hover {
 }
 
 body.dark-mode .category-btn.active {
-  background: #fff;
-  color: #000;
-  border-color: #fff;
+  background: #1B4D3E;
+  color: #fff;
+  border-color: #1B4D3E;
 }
 
 body.dark-mode .content-container.results-section {
