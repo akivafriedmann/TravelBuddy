@@ -756,7 +756,7 @@ app.get('/api/nearby', async (req, res) => {
     const apiUrl = 'https://places.googleapis.com/v1/places:searchText';
     const headers = {
       'X-Goog-Api-Key': apiKey,
-      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.photos,places.priceLevel'
+      'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.photos.name,places.photos.authorAttributions,places.priceLevel'
     };
     
     // Helper function for legacy API fallback
@@ -846,9 +846,19 @@ app.get('/api/nearby', async (req, res) => {
         // photo.name format: "places/PLACE_ID/photos/PHOTO_NAME"
         // We need to extract a usable reference for our proxy
         const photoName = photo.name || '';
+        // Extract author attributions for copyright compliance
+        let htmlAttributions = [];
+        if (photo.authorAttributions && photo.authorAttributions.length > 0) {
+          htmlAttributions = photo.authorAttributions.map(attr => {
+            const displayName = attr.displayName || 'Unknown';
+            const uri = attr.uri || '';
+            return uri ? `<a href="${uri}">${displayName}</a>` : displayName;
+          });
+        }
         return {
           photo_reference: photoName,
-          url: `/api/photo-v2?name=${encodeURIComponent(photoName)}&maxwidth=400&maxheight=200`
+          url: `/api/photo-v2?name=${encodeURIComponent(photoName)}&maxwidth=400&maxheight=200`,
+          html_attributions: htmlAttributions
         };
       }) : [];
       
