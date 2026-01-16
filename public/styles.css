@@ -120,6 +120,15 @@ body.dark-mode .brand-title {
   color: #fff;
 }
 
+body.dark-mode .crave-header {
+  background: #121212;
+  border-bottom-color: #333;
+}
+
+body.dark-mode .brand-tagline {
+  color: #888;
+}
+
 /* ==================== UNIFIED SEARCH BAR ==================== */
 .unified-search-bar {
   background: var(--bg-primary);
@@ -193,7 +202,16 @@ body.dark-mode .unified-search-bar {
 }
 
 body.dark-mode .search-field input {
+  background: #2c2c2c;
   color: #e0e0e0;
+}
+
+body.dark-mode .search-field input::placeholder {
+  color: #888;
+}
+
+body.dark-mode .search-btn {
+  background: var(--brand-accent);
 }
 
 /* ==================== ACTION BUTTONS ==================== */

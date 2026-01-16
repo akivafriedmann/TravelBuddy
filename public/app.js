@@ -1177,10 +1177,21 @@ function toggleDarkMode(enabled) {
     }
   } else {
     body.classList.remove('dark-mode');
-    // Reset to default map style
+    // Reset to premium silver map style
     if (window.map) {
       window.map.setOptions({
-        styles: []
+        styles: [
+          { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
+          { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#f5f5f5" }] },
+          { featureType: "poi", stylers: [{ visibility: "off" }] },
+          { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#e5e5e5" }] },
+          { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+          { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#dadada" }] },
+          { featureType: "transit", stylers: [{ visibility: "off" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#c9c9c9" }] }
+        ]
       });
     }
     
@@ -1284,9 +1295,30 @@ function initMap() {
     }
   ];
 
-  // Create the map with explicit configuration to ensure it displays
-  // mapId is required for AdvancedMarkerElement
-  // Note: When using mapId, styles must be configured in Google Cloud Console
+  // Premium dark mode map style
+  const darkMapStyle = [
+    { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+    { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+    { featureType: "poi", stylers: [{ visibility: "off" }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
+    { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
+    { featureType: "transit", stylers: [{ visibility: "off" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] }
+  ];
+  
+  // Check if dark mode is preferred at init time
+  const isDarkModePreferred = window.matchMedia('(prefers-color-scheme: dark)').matches || 
+                              document.body.classList.contains('dark-mode');
+  
+  // Create the map with explicit configuration
+  // Note: mapId enables AdvancedMarkerElement but prevents JavaScript style overrides
+  // For dark mode, styles are applied but may be ignored when mapId is present
   window.map = new google.maps.Map(mapElement, {
     zoom: 13,
     center: initialCenter,
@@ -1298,7 +1330,8 @@ function initMap() {
     streetViewControl: true,
     rotateControl: true,
     fullscreenControl: true,
-    mapId: 'DEMO_MAP_ID'
+    mapId: 'DEMO_MAP_ID',
+    styles: isDarkModePreferred ? darkMapStyle : silverMapStyle
   });
   
   // Force map to resize after creation
