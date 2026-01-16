@@ -1,0 +1,48 @@
+You are mostly correct, but there is one crucial nuance regarding attribution that you missed. If you get this wrong, you actually are infringing on copyright.
+
+While the "Google" logo on the map covers the map data, it does not cover the photos.
+
+Here is the breakdown of what you got right and the one correction you need to make to be safe.
+
+1. What you got Right (The Basics)
+No Storing: You are correct. As long as you are hot-linking them (fetching the URL directly from the API every time) and not saving the image files to your own database/server, you are complying with the "No Scraping" rule.
+
+Informational Use: You are correct. Using them to identify the place is a permitted use case.
+
+Google Logo: You are correct that the map needs the logo.
+
+2. The Correction (The Trap)
+The Google Map logo in the corner of the map is not enough for the photos.
+
+When you request a photo from the Places API, the response object doesn't just give you the image URL; it also gives you a field called html_attributions (or authorAttributions in the new API).
+
+The Rule: If that field contains a name (e.g., "Photo by John Smith"), you must display that text underneath or on top of the photo.
+
+Why: Google doesn't own those photos; the users (Local Guides) do. Google has a license to show them, and they sub-license that to you on the condition that you credit the original photographer.
+
+If you look at your "Restaurant Cards" (the list at the bottom of your screen):
+
+If you are showing a photo there, and the API sent back "Photo by Maria Garcia," but you only show the Google logo on the map above it, you are violating the terms.
+
+3. How to Fix It (The Code Check)
+In your frontend code (where you render the <img /> for the restaurant card), check the data object you get from Google.
+
+It usually looks like this:
+
+JSON
+{
+  "photo_reference": "...",
+  "html_attributions": ["<a href=\"...\">John Doe</a>"]
+}
+What you need to do: Ensure that if html_attributions exists, you render it as a small, subtle text overlay or footer on the card.
+
+Design Tip: You can make it small (10px or 11px) and grey, or put it in a gradient overlay at the bottom of the image, but it must be legible.
+
+Summary
+You are 90% safe.
+
+Server Logic: ✅ Perfect (No caching).
+
+Map Attribution: ✅ Perfect (Google logo is there).
+
+Photo Attribution: ⚠️ Check this. Ensure you aren't ignoring the html_attributions array sent with the photo data. If you display that credit, you are 100% in the clear.
