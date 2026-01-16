@@ -99,6 +99,7 @@ body.dark-mode .btn-outline-purple {
   padding: 24px 0 16px;
   width: 100%;
   background: var(--bg-secondary);
+  border-bottom: 1px solid #eaeaea;
 }
 
 .brand-title {
@@ -305,7 +306,7 @@ body.dark-mode .dark-mode-toggle label i {
 
 /* Results section below map */
 .content-container.results-section {
-  padding-top: 40px;
+  padding-top: 30px;
   background: #FAFAFA;
 }
 
@@ -386,14 +387,14 @@ body.dark-mode .filters-card {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.9);
+  padding: 12px 18px;
+  background: #ffffff;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 50px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  font-size: 14px;
-  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -459,11 +460,11 @@ body.dark-mode .weather-pill {
 
 /* Modern Map Container */
 #map {
-  height: 500px !important;
-  width: 100% !important;
-  border-radius: var(--radius-md);
-  margin-bottom: 20px;
-  box-shadow: var(--shadow-sm);
+  height: 100%;
+  width: 100%;
+  border-radius: 0;
+  margin-bottom: 0;
+  box-shadow: none;
   position: absolute !important;
   top: 0;
   left: 0;
@@ -475,7 +476,8 @@ body.dark-mode .weather-pill {
 
 #map-container {
   width: 100%;
-  height: 500px !important;
+  height: 60vh;
+  min-height: 500px;
   position: relative;
   margin-bottom: 0;
   border: none;
@@ -618,7 +620,7 @@ body.dark-mode .weather-pill {
 .card-img-wrapper {
   position: relative;
   width: 100%;
-  height: 160px;
+  height: 220px;
   overflow: hidden;
   cursor: pointer;
 }
@@ -636,7 +638,7 @@ body.dark-mode .weather-pill {
 
 .card-img-placeholder {
   width: 100%;
-  height: 120px;
+  height: 220px;
   background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
   display: flex;
   align-items: center;
