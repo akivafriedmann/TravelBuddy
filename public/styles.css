@@ -1639,6 +1639,7 @@ body.dark-mode #share-btn:hover {
 /* Modern Action Buttons */
 .place-card .card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: auto;
 }
@@ -1663,7 +1664,6 @@ body.dark-mode #share-btn:hover {
 }
 
 .place-card .view-details-btn {
-  flex: 1;
   padding: 10px 16px;
   border-radius: var(--radius-sm);
   background: var(--text-primary);
@@ -1686,9 +1686,9 @@ body.dark-mode #share-btn:hover {
   gap: 4px;
   padding: 8px 12px;
   border-radius: var(--radius-full);
-  background: var(--bg-primary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
+  background: #00aa6c;
+  color: #fff;
+  border: none;
   font-size: 12px;
   font-weight: 500;
   text-decoration: none;
@@ -1697,10 +1697,10 @@ body.dark-mode #share-btn:hover {
 }
 
 .place-card .check-reviews-btn:hover {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border-color: var(--text-muted);
+  background: #008c59;
+  color: #fff;
   text-decoration: none;
+  transform: translateY(-1px);
 }
 
 .place-card .check-reviews-btn i {
@@ -1708,14 +1708,13 @@ body.dark-mode #share-btn:hover {
 }
 
 body.dark-mode .place-card .check-reviews-btn {
-  background: #2d2d2d;
-  border-color: #444;
-  color: #aaa;
+  background: #00aa6c;
+  color: #fff;
 }
 
 body.dark-mode .place-card .check-reviews-btn:hover {
-  background: #3d3d3d;
-  color: #e0e0e0;
+  background: #008c59;
+  color: #fff;
 }
 
 /* Open Now Badge */
