@@ -1624,6 +1624,11 @@ function initMap() {
   // Event delegation for clickable place elements (cards, buttons)
   // This replaces inline onclick handlers which are stripped by DOMPurify for security
   document.addEventListener('click', function(e) {
+    // Ignore clicks on action buttons that have their own handlers
+    if (e.target.closest('.action-btn, .ta-show-rating-btn, .favorite-btn, .add-to-list-btn')) {
+      return;
+    }
+    
     const clickablePlace = e.target.closest('.clickable-place');
     if (clickablePlace) {
       const placeId = clickablePlace.dataset.placeId;
@@ -2169,15 +2174,12 @@ function createPlaceCard(place, index) {
         <!-- TripAdvisor On-Demand Rating -->
         <div class="ta-rating-container" data-place-id="${place.place_id}" data-place-name="${escapeHTML(place.name)}" data-place-address="${escapeHTML(place.vicinity || place.formatted_address || '')}">
           <button class="ta-show-rating-btn" title="Load TripAdvisor rating">
-            <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_logomark_solid_green.svg" alt="TripAdvisor" class="ta-owl-icon">
+            <i class="fab fa-tripadvisor ta-icon"></i>
             <span>Show Rating</span>
           </button>
         </div>
         
         <div class="card-actions">
-          <button class="view-details-btn clickable-place" data-place-id="${place.place_id}">
-            View Details
-          </button>
           <button class="action-btn add-to-list-btn" 
             data-place-id="${place.place_id}"
             title="Add to List">

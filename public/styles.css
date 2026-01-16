@@ -1714,6 +1714,11 @@ body.dark-mode #share-btn:hover {
   height: 16px;
 }
 
+.ta-icon {
+  font-size: 16px;
+  color: #00AA6C;
+}
+
 .ta-loading-spinner {
   display: inline-block;
   width: 12px;
