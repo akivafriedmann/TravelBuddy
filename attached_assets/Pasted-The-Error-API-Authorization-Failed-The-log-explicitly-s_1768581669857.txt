@@ -1,0 +1,39 @@
+The Error: "API Authorization Failed"
+The log explicitly says:
+
+Error: API authorization failed Domain being used: f121b68b-d9ea-4b66...janeway.replit.dev
+
+What this means: You configured your TripAdvisor API key to only accept requests from specific websites (like craving.life). However, when you run the app inside the Replit Editor, it uses a temporary development address (...janeway.replit.dev). TripAdvisor sees this "stranger" address, checks its list, sees it's not allowed, and blocks the request.
+
+The Solution: "Spoofing" the Origin
+You are running a backend proxy (node proxy-server.js). This is great! It gives us a superpower. Instead of adding every single temporary Replit URL to TripAdvisor (which is impossible because they change), we can tell your proxy server to pretend it is craving.life when it talks to TripAdvisor.
+
+This is the most robust fix. It forces the API to accept the request regardless of whether you are testing in the editor or on the live site.
+
+Replit Prompt to Fix It
+Copy and paste this prompt into Replit. It will update your backend proxy to send the correct "Referer" header that matches your TripAdvisor whitelist.
+
+Copy and paste this into Replit:
+
+Update proxy-server.js to fix the TripAdvisor API authorization error.
+
+The Issue: The TripAdvisor API key is domain-restricted. When running in the Replit editor or via the proxy, the API call fails because the Referer header doesn't match the allowed domains (e.g., craving.life or ucrave.replit.app).
+
+The Fix: In the function where you make the request to api.content.tripadvisor.com, manually set the Referer header in the axios/fetch config.
+
+Code Change: Update the axios request configuration to look like this:
+
+JavaScript
+headers: {
+  'Referer': 'https://ucrave.replit.app', // Forces TripAdvisor to see the whitelisted domain
+  'Origin': 'https://ucrave.replit.app',
+  'X-TripAdvisor-API-Key': process.env.TRIPADVISOR_API_KEY
+}
+This ensures that even when testing in the dev environment, the API call looks authorized.
+
+Quick Note on the Security Logs
+You also have a lot of "Auth Token exposed to Standard Output" warnings in your logs.
+
+What it is: Your code is currently printing your secrets (API keys) to the console log for debugging.
+
+Action: Once the API is working, ask the AI to "Remove console logs that print sensitive API keys" to clean up those warnings. It's not breaking your app, but it is bad security practice.

@@ -1770,8 +1770,30 @@ body.dark-mode #share-btn:hover {
   margin-left: 4px;
 }
 
+.ta-no-data {
+  background: linear-gradient(135deg, #00aa6c 0%, #00795c 100%);
+  border: none;
+  color: #fff;
+  padding: 8px 14px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 170, 108, 0.2);
+}
+
+.ta-no-data:hover {
+  background: linear-gradient(135deg, #00c47d 0%, #00aa6c 100%);
+  color: #fff;
+  border: none;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 170, 108, 0.3);
+}
+
 .ta-no-data .ta-owl-icon {
-  opacity: 0.7;
+  filter: brightness(0) invert(1);
+  opacity: 1;
+}
+
+.ta-no-data span {
+  color: #fff;
 }
 
 /* Dark mode TripAdvisor styles */
@@ -1795,6 +1817,14 @@ body.dark-mode .ta-rating-display {
 body.dark-mode .ta-rating-display:hover {
   background: #3d3d3d;
   border-color: #00aa6c;
+}
+
+body.dark-mode .ta-no-data {
+  background: linear-gradient(135deg, #00aa6c 0%, #007a5c 100%);
+}
+
+body.dark-mode .ta-no-data:hover {
+  background: linear-gradient(135deg, #00c47d 0%, #00aa6c 100%);
 }
 
 body.dark-mode .ta-review-count {
