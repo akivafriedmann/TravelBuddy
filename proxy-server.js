@@ -391,10 +391,12 @@ app.get('/api/tripadvisor', async (req, res) => {
     console.log(`TripAdvisor API request for: "${place_name}"`);
     
     // Headers required by TripAdvisor API for domain-restricted keys
-    // Must use the registered domain (craving.life) for API authentication
+    // Use the Replit deployment domain since that's where the server runs
+    const replitDomain = process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN || 'replit.app';
+    console.log(`TripAdvisor using domain: ${replitDomain}`);
     const tripAdvisorHeaders = {
-      'Referer': 'https://craving.life/',
-      'Origin': 'https://craving.life'
+      'Referer': `https://${replitDomain}/`,
+      'Origin': `https://${replitDomain}`
     };
     
     // Build search URL
@@ -460,10 +462,8 @@ app.get('/api/tripadvisor', async (req, res) => {
     return res.json(result);
     
   } catch (error) {
-    // Only log non-auth errors (403/401 are expected when API key is invalid or missing)
-    if (!error.isAuthError) {
-      console.error('Error in TripAdvisor route:', error.message);
-    }
+    // Log all errors for debugging
+    console.error('TripAdvisor API error:', error.message);
     // Cache failed results to avoid repeated API calls (use req.query values)
     const { place_name: placeName, lat: latitude, lng: longitude } = req.query;
     if (placeName) {
