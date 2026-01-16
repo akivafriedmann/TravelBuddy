@@ -1316,8 +1316,15 @@ function initMap() {
     document.getElementById('search-this-area-btn').style.display = 'none';
   });
   
-  // Track the last searched location
+  // Track the last searched location and zoom level
   window.lastSearchedCenter = defaultCenter;
+  window.lastSearchedZoom = window.map.getZoom();
+  window.mapUserInteracting = false;
+  
+  // Detect when user starts interacting with the map
+  google.maps.event.addListener(window.map, "dragstart", function() {
+    window.mapUserInteracting = true;
+  });
   
   // Show "Search This Area" button when map is dragged
   google.maps.event.addListener(window.map, "dragend", function() {
@@ -1336,6 +1343,21 @@ function initMap() {
     if (distance > 200) {
       document.getElementById('search-this-area-btn').style.display = 'block';
     }
+    window.mapUserInteracting = false;
+  });
+  
+  // Show "Search This Area" button when map is zoomed by user
+  google.maps.event.addListener(window.map, "zoom_changed", function() {
+    // Only show if user has interacted AND zoom actually changed from last search
+    const currentZoom = window.map.getZoom();
+    if (window.mapUserInteracting || currentZoom !== window.lastSearchedZoom) {
+      // Delay slightly to distinguish from programmatic zooms
+      setTimeout(function() {
+        if (currentZoom !== window.lastSearchedZoom) {
+          document.getElementById('search-this-area-btn').style.display = 'block';
+        }
+      }, 100);
+    }
   });
   
   // "Search This Area" button click handler
@@ -1346,8 +1368,9 @@ function initMap() {
       lng: newCenter.lng()
     };
     
-    // Update last searched center
+    // Update last searched center and zoom
     window.lastSearchedCenter = location;
+    window.lastSearchedZoom = window.map.getZoom();
     
     // Hide the button
     this.style.display = 'none';

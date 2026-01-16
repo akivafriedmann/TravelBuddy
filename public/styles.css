@@ -533,27 +533,6 @@ body.dark-mode .legal-modal .modal-body p {
   color: #bbb;
 }
 
-.search-area-btn {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 5;
-  padding: 12px 24px;
-  border-radius: var(--radius-full);
-  background: var(--brand-color);
-  border: none;
-  color: white;
-  font-size: 14px;
-  font-weight: 500;
-  box-shadow: var(--shadow-md);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.search-area-btn:hover {
-  background: var(--brand-hover);
-}
 
 /* Modern Map Container */
 #map {
@@ -1404,28 +1383,35 @@ body.dark-mode .reviews-carousel .slick-next:hover {
   }
 }
 
-/* Search This Area Button */
+/* Search This Area Button - White pill with brand green text */
 .search-area-btn {
   position: absolute;
   top: 15px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
-  background: rgba(13, 110, 253, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  font-weight: 500;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-weight: 600;
+  font-size: 14px;
   padding: 10px 20px;
   border-radius: 25px;
-  transition: all 0.3s ease;
+  color: #1B4D3E;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .search-area-btn:hover {
-  background: rgba(13, 110, 253, 1);
-  transform: translateX(-50%) scale(1.05);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  background: #ffffff;
+  transform: translateX(-50%) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.search-area-btn i {
+  margin-right: 6px;
 }
 
 /* Map Control Buttons */
@@ -1476,7 +1462,13 @@ body.dark-mode .search-radius-control {
 }
 
 body.dark-mode .search-area-btn {
-  background: rgba(13, 110, 253, 0.9);
+  background: rgba(45, 45, 45, 0.95);
+  color: #4CAF50;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .search-area-btn:hover {
+  background: rgba(55, 55, 55, 0.98);
 }
 
 body.dark-mode .map-control-btn {

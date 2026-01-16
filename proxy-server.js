@@ -761,55 +761,73 @@ app.get('/api/nearby', async (req, res) => {
       'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.types,places.photos.name,places.photos.authorAttributions,places.priceLevel'
     };
     
-    // Helper function for legacy API fallback
+    // Helper function for legacy API with auto-pagination (up to 60 results)
     async function useLegacyApi(reason) {
-      console.log(`${reason}, falling back to legacy API`);
+      console.log(`${reason}, using legacy API with pagination`);
       const legacyUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchQuery)}&location=${centerLat},${centerLng}&radius=${radiusMeters}&key=${apiKey}`;
       console.log(`Using legacy API: ${legacyUrl.replace(apiKey, 'API_KEY')}`);
       
-      const legacyData = await makeRequest(legacyUrl);
+      let allResults = [];
+      let pageToken = null;
+      let pageCount = 0;
+      const maxPages = 3;
       
-      if (legacyData.results) {
-        legacyData.results.forEach(place => {
-          if (place.photos && place.photos.length > 0) {
-            place.photos = place.photos.map(photo => ({
-              ...photo,
-              url: `/api/photo?reference=${photo.photo_reference}&maxwidth=800&maxheight=600`
-            }));
+      // Helper to delay between page requests (Google requires ~2 seconds)
+      const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+      
+      // Fetch first page
+      const firstPageData = await makeRequest(legacyUrl);
+      if (firstPageData.results) {
+        allResults = allResults.concat(firstPageData.results);
+        pageToken = firstPageData.next_page_token;
+        pageCount++;
+        console.log(`Page 1: ${firstPageData.results.length} results`);
+      }
+      
+      // Fetch additional pages if available
+      while (pageToken && pageCount < maxPages) {
+        console.log(`Waiting 2 seconds before fetching page ${pageCount + 1}...`);
+        await delay(2000);
+        
+        const nextPageUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?pagetoken=${pageToken}&key=${apiKey}`;
+        try {
+          const pageData = await makeRequest(nextPageUrl);
+          if (pageData.results && pageData.results.length > 0) {
+            allResults = allResults.concat(pageData.results);
+            pageToken = pageData.next_page_token;
+            pageCount++;
+            console.log(`Page ${pageCount}: ${pageData.results.length} results (total: ${allResults.length})`);
+          } else {
+            console.log(`Page ${pageCount + 1} returned no results, stopping pagination`);
+            break;
           }
-        });
+        } catch (pageError) {
+          console.log(`Error fetching page ${pageCount + 1}: ${pageError.message}`);
+          break;
+        }
       }
       
-      console.log(`Legacy API returned ${legacyData.results?.length || 0} places`);
-      return legacyData;
-    }
-    
-    let data;
-    try {
-      data = await makePostRequest(apiUrl, requestBody, headers);
-      console.log(`New Places API response received`);
+      console.log(`Legacy API returned ${allResults.length} total places across ${pageCount} pages`);
       
-      // Check for API errors in response body and trigger fallback
-      if (data.error) {
-        console.log(`New Places API returned error: ${JSON.stringify(data.error)}`);
-        const legacyData = await useLegacyApi('API error in response');
-        return res.json(legacyData);
-      }
-    } catch (apiError) {
-      const legacyData = await useLegacyApi(`New Places API failed: ${apiError.message}`);
-      return res.json(legacyData);
+      // Process photos for all results
+      allResults.forEach(place => {
+        if (place.photos && place.photos.length > 0) {
+          place.photos = place.photos.map(photo => ({
+            ...photo,
+            url: `/api/photo?reference=${photo.photo_reference}&maxwidth=800&maxheight=600`
+          }));
+        }
+      });
+      
+      return { status: 'OK', results: allResults, html_attributions: [] };
     }
     
-    // Transform New Places API response to match legacy format
-    const places = data.places || [];
-    console.log(`Found ${places.length} places from New Places API`);
+    // Use legacy API with pagination for maximum results (up to 60)
+    // The new Places API (v1) only returns max 20 results without pagination
+    console.log('Using legacy API with pagination to maximize results (up to 60)');
+    const legacyData = await useLegacyApi('Preferring legacy API for pagination support');
     
-    if (places.length > 0) {
-      const placeNames = places.map(p => `${p.displayName?.text || 'Unknown'} (${p.rating || 'No rating'})`).join(', ');
-      console.log(`Places found: ${placeNames}`);
-    }
-    
-    // Helper function for distance calculation
+    // Apply distance calculation and filtering to legacy results
     function getDistanceInMeters(lat1, lng1, lat2, lng2) {
       const R = 6371000;
       const φ1 = lat1 * Math.PI/180;
@@ -823,101 +841,54 @@ app.get('/api/nearby', async (req, res) => {
       return R * c;
     }
     
-    // Map price level strings to numeric values (0-4)
-    function mapPriceLevel(priceLevel) {
-      if (!priceLevel) return undefined;
-      const mapping = {
-        'PRICE_LEVEL_FREE': 0,
-        'PRICE_LEVEL_INEXPENSIVE': 1,
-        'PRICE_LEVEL_MODERATE': 2,
-        'PRICE_LEVEL_EXPENSIVE': 3,
-        'PRICE_LEVEL_VERY_EXPENSIVE': 4
-      };
-      return mapping[priceLevel] !== undefined ? mapping[priceLevel] : undefined;
-    }
-    
-    // Transform to legacy format for frontend compatibility
-    let results = places.map(place => {
-      const placeLat = place.location?.latitude;
-      const placeLng = place.location?.longitude;
-      const distance = (placeLat && placeLng) ? 
-        getDistanceInMeters(centerLat, centerLng, placeLat, placeLng) : null;
-      
-      // Process photos - use full photo name for v1 API photos endpoint
-      const photos = place.photos ? place.photos.map(photo => {
-        // photo.name format: "places/PLACE_ID/photos/PHOTO_NAME"
-        // We need to extract a usable reference for our proxy
-        const photoName = photo.name || '';
-        // Extract author attributions for copyright compliance
-        let htmlAttributions = [];
-        if (photo.authorAttributions && photo.authorAttributions.length > 0) {
-          htmlAttributions = photo.authorAttributions.map(attr => {
-            const displayName = attr.displayName || 'Unknown';
-            const uri = attr.uri || '';
-            return uri ? `<a href="${uri}">${displayName}</a>` : displayName;
-          });
-        }
+    // Add distance to each result
+    if (legacyData.results) {
+      legacyData.results = legacyData.results.map(place => {
+        const placeLat = place.geometry?.location?.lat;
+        const placeLng = place.geometry?.location?.lng;
+        const distance = (placeLat && placeLng) ? 
+          getDistanceInMeters(centerLat, centerLng, placeLat, placeLng) : null;
         return {
-          photo_reference: photoName,
-          url: `/api/photo-v2?name=${encodeURIComponent(photoName)}&maxwidth=800&maxheight=600`,
-          html_attributions: htmlAttributions
+          ...place,
+          distance_meters: distance ? Math.round(distance) : null
         };
-      }) : [];
+      });
       
-      return {
-        place_id: place.id?.replace('places/', ''),
-        name: place.displayName?.text || 'Unknown',
-        formatted_address: place.formattedAddress,
-        vicinity: place.formattedAddress,
-        geometry: {
-          location: {
-            lat: placeLat,
-            lng: placeLng
-          }
-        },
-        rating: place.rating,
-        user_ratings_total: place.userRatingCount,
-        types: place.types || [],
-        price_level: mapPriceLevel(place.priceLevel),
-        distance_meters: distance ? Math.round(distance) : null,
-        photos: photos
-      };
-    });
-    
-    // Apply distance filtering
-    const originalCount = results.length;
-    results = results.filter(place => {
-      if (!place.distance_meters) return true;
-      return place.distance_meters <= radiusMeters;
-    });
-    console.log(`Distance filtering: ${results.length} of ${originalCount} places within ${radiusMeters}m`);
-    
-    // Extra filtering for dessert places
-    if (keyword === 'dessert') {
-      const dessertKeywords = ['dessert', 'cake', 'ice cream', 'gelato', 'pastry', 'bakery', 'patisserie', 'sweet', 'chocolate', 'coffee', 'café', 'cafe'];
-      const beforeCount = results.length;
-      results = results.filter(place => {
-        const name = place.name.toLowerCase();
-        const types = place.types || [];
-        const nameMatch = dessertKeywords.some(kw => name.includes(kw));
-        const typeMatch = types.some(t => ['bakery', 'cafe', 'meal_takeaway', 'restaurant', 'food'].includes(t));
-        return nameMatch || typeMatch;
+      // Apply distance filtering
+      const originalCount = legacyData.results.length;
+      legacyData.results = legacyData.results.filter(place => {
+        if (!place.distance_meters) return true;
+        return place.distance_meters <= radiusMeters;
       });
-      console.log(`Dessert filtering: ${results.length} of ${beforeCount} places remain`);
+      console.log(`Distance filtering: ${legacyData.results.length} of ${originalCount} places within ${radiusMeters}m`);
+      
+      // Extra filtering for dessert places
+      if (keyword === 'dessert') {
+        const dessertKeywords = ['dessert', 'cake', 'ice cream', 'gelato', 'pastry', 'bakery', 'patisserie', 'sweet', 'chocolate', 'coffee', 'café', 'cafe'];
+        const beforeCount = legacyData.results.length;
+        legacyData.results = legacyData.results.filter(place => {
+          const name = place.name.toLowerCase();
+          const types = place.types || [];
+          const nameMatch = dessertKeywords.some(kw => name.includes(kw));
+          const typeMatch = types.some(t => ['bakery', 'cafe', 'meal_takeaway', 'restaurant', 'food'].includes(t));
+          return nameMatch || typeMatch;
+        });
+        console.log(`Dessert filtering: ${legacyData.results.length} of ${beforeCount} places remain`);
+      }
+      
+      // Filter out hotels from restaurant/bar searches
+      if (type === "restaurant" || type === "bar") {
+        const beforeCount = legacyData.results.length;
+        legacyData.results = legacyData.results.filter(place => {
+          if (!place.types) return true;
+          return !place.types.includes("lodging") && !place.types.includes("hotel");
+        });
+        console.log(`Hotel filtering: ${legacyData.results.length} of ${beforeCount} places remain`);
+      }
     }
     
-    // Filter out hotels from restaurant/bar searches
-    if (type === "restaurant" || type === "bar") {
-      const beforeCount = results.length;
-      results = results.filter(place => {
-        if (!place.types) return true;
-        return !place.types.includes("lodging") && !place.types.includes("hotel");
-      });
-      console.log(`Hotel filtering: ${results.length} of ${beforeCount} places remain`);
-    }
-    
-    console.log(`Found ${results.length} nearby places`);
-    res.json({ status: 'OK', results, html_attributions: [] });
+    console.log(`Final result count: ${legacyData.results?.length || 0}`);
+    return res.json(legacyData);
     
   } catch (error) {
     console.error('Error fetching nearby places:', error);
