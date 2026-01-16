@@ -595,31 +595,41 @@ body.dark-mode .legal-modal .modal-body p {
 
 .category-select {
   display: flex;
+  flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: hidden;
   gap: 10px;
-  padding: 8px 0;
+  padding: 8px 0 12px 0;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
-  scrollbar-color: #1B4D3E #f0f0f0;
+  scrollbar-color: #1B4D3E transparent;
 }
 
 .category-select::-webkit-scrollbar {
-  height: 4px;
+  height: 6px;
 }
 
 .category-select::-webkit-scrollbar-track {
-  background: #f0f0f0;
-  border-radius: 4px;
+  background: transparent;
+  border-radius: 10px;
 }
 
 .category-select::-webkit-scrollbar-thumb {
   background: #1B4D3E;
-  border-radius: 4px;
+  border-radius: 10px;
+}
+
+.category-select::-webkit-scrollbar-thumb:hover {
+  background: #143D31;
+}
+
+body.dark-mode .category-select {
+  scrollbar-color: #1B4D3E transparent;
 }
 
 body.dark-mode .category-select::-webkit-scrollbar-track {
-  background: #333;
+  background: transparent;
 }
 
 body.dark-mode .category-select::-webkit-scrollbar-thumb {
@@ -627,6 +637,7 @@ body.dark-mode .category-select::-webkit-scrollbar-thumb {
 }
 
 .category-btn {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
