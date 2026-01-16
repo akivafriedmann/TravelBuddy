@@ -121,6 +121,8 @@ Preferred communication style: Simple, everyday language.
   - Silver/desaturated Google Maps style with hidden POI icons
   - Premium card styling with 200px images, soft shadows, hover lift effect
   - Clean map floating buttons
+  - Full-width header and map sections (edge-to-edge)
+  - Centered content container (max-width 1300px, 20px side padding) for search, filters, and cards
 
 ### Previous Updates (January 13, 2026)
 
