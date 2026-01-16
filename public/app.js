@@ -570,27 +570,24 @@ window.clusterInstance = null;
 function createCustomClusterRenderer() {
   return {
     render: function({ count, position }, stats) {
-      const color = count > 10 ? '#e74c3c' : count > 5 ? '#f39c12' : '#3498db';
-      const scale = count > 10 ? 18 : count > 5 ? 15 : 12;
-      
-      // Create regular Marker for cluster (no mapId required)
+      // Minimalist luxury design - pure black with white border
       const marker = new google.maps.Marker({
         position,
         zIndex: 1000 + count,
         title: `${count} places in this area - click to see them`,
         label: {
           text: String(count),
-          color: 'white',
+          color: '#FFFFFF',
           fontWeight: 'bold',
-          fontSize: '14px'
+          fontSize: '12px'
         },
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          scale: scale,
-          fillColor: color,
-          fillOpacity: 0.9,
-          strokeColor: 'white',
-          strokeWeight: 3
+          scale: 18,
+          fillColor: '#000000',
+          fillOpacity: 1,
+          strokeColor: '#FFFFFF',
+          strokeWeight: 2
         }
       });
       
@@ -1168,28 +1165,25 @@ function toggleDarkMode(enabled) {
     }
   } else {
     body.classList.remove('dark-mode');
-    // Reset to High-Contrast Premium style - no saturation filters
+    // Reset to Minimalist "Architectural" style - desaturated, clean, luxury feel
     if (window.map) {
       window.map.setOptions({
         styles: [
           { featureType: "all", elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
-          { featureType: "all", elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+          { featureType: "all", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
           { featureType: "all", elementType: "labels.text.stroke", stylers: [{ color: "#f5f5f5" }] },
           { featureType: "all", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
           { featureType: "administrative.land_parcel", elementType: "labels.text.fill", stylers: [{ color: "#bdbdbd" }] },
-          { featureType: "poi", elementType: "geometry", stylers: [{ color: "#eeeeee" }] },
-          { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-          { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#90EE90" }, { visibility: "on" }] },
-          { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#228B22" }] },
+          { featureType: "poi", stylers: [{ visibility: "off" }] },
+          { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#e8f5e9" }, { visibility: "on" }] },
           { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-          { featureType: "road.arterial", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-          { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#dadada" }] },
-          { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
-          { featureType: "road.local", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] },
-          { featureType: "transit.line", elementType: "geometry", stylers: [{ color: "#e5e5e5" }] },
-          { featureType: "transit.station", elementType: "geometry", stylers: [{ color: "#eeeeee" }] },
-          { featureType: "water", elementType: "geometry", stylers: [{ color: "#4FC3F7" }, { visibility: "on" }] },
-          { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#0288D1" }] }
+          { featureType: "road.arterial", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] },
+          { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#e0e0e0" }] },
+          { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+          { featureType: "road.local", elementType: "labels.text.fill", stylers: [{ color: "#bdbdbd" }] },
+          { featureType: "transit", stylers: [{ visibility: "off" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#e9eff2" }] },
+          { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] }
         ]
       });
     }
@@ -1226,26 +1220,23 @@ function initMap() {
     return;
   }
   
-  // High-Contrast Premium style - no saturation filters, explicit colors
+  // Minimalist "Architectural" style - desaturated, clean, luxury feel
   const silverMapStyle = [
     { featureType: "all", elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
-    { featureType: "all", elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
+    { featureType: "all", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
     { featureType: "all", elementType: "labels.text.stroke", stylers: [{ color: "#f5f5f5" }] },
     { featureType: "all", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
     { featureType: "administrative.land_parcel", elementType: "labels.text.fill", stylers: [{ color: "#bdbdbd" }] },
-    { featureType: "poi", elementType: "geometry", stylers: [{ color: "#eeeeee" }] },
-    { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#90EE90" }, { visibility: "on" }] },
-    { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#228B22" }] },
+    { featureType: "poi", stylers: [{ visibility: "off" }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#e8f5e9" }, { visibility: "on" }] },
     { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-    { featureType: "road.arterial", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
-    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#dadada" }] },
-    { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
-    { featureType: "road.local", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] },
-    { featureType: "transit.line", elementType: "geometry", stylers: [{ color: "#e5e5e5" }] },
-    { featureType: "transit.station", elementType: "geometry", stylers: [{ color: "#eeeeee" }] },
-    { featureType: "water", elementType: "geometry", stylers: [{ color: "#4FC3F7" }, { visibility: "on" }] },
-    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#0288D1" }] }
+    { featureType: "road.arterial", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] },
+    { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#e0e0e0" }] },
+    { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
+    { featureType: "road.local", elementType: "labels.text.fill", stylers: [{ color: "#bdbdbd" }] },
+    { featureType: "transit", stylers: [{ visibility: "off" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#e9eff2" }] },
+    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] }
   ];
 
   // Premium dark mode map style
@@ -2339,7 +2330,8 @@ window.markers = [];
 
 // Helper function to create a regular Marker (no mapId required)
 function createAdvancedMarker(options) {
-  const { position, map, title, label, color = '#EA4335', isUserLocation = false, onClick } = options;
+  // Deep emerald green for luxury branding, matching Crave theme
+  const { position, map, title, label, color = '#1B4D3E', isUserLocation = false, onClick } = options;
   
   let markerOptions = {
     position,
@@ -2348,11 +2340,11 @@ function createAdvancedMarker(options) {
   };
   
   if (isUserLocation) {
-    // User location marker - blue circle icon
+    // User location marker - distinctive blue circle icon (keeps original blue for visibility)
     markerOptions.icon = {
       path: google.maps.SymbolPath.CIRCLE,
       scale: 10,
-      fillColor: color,
+      fillColor: '#4285F4',
       fillOpacity: 1,
       strokeColor: 'white',
       strokeWeight: 3
