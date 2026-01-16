@@ -505,12 +505,22 @@ body.dark-mode .weather-pill {
 }
 
 /* Modern Category Pills - Horizontal Scrollable */
+.categories-section {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-primary);
+  padding: 12px 0;
+  margin-top: 0 !important;
+}
+
 .category-select {
-  width: 100%;
-  margin-bottom: 20px;
+  display: flex;
   overflow-x: auto;
+  gap: 10px;
+  padding: 8px 0;
   white-space: nowrap;
-  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -523,27 +533,27 @@ body.dark-mode .weather-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 20px;
+  padding: 10px 18px;
   border-radius: 50px;
   font-size: 14px;
   font-weight: 500;
-  border: none;
-  background: #f0f0f0;
-  color: var(--text-primary);
+  border: 1px solid #e0e0e0;
+  background: #fff;
+  color: #333;
   transition: all 0.2s ease;
   white-space: nowrap;
-  margin-right: 8px;
+  flex-shrink: 0;
 }
 
 .category-btn:hover {
-  background: #e5e5e5;
-  color: var(--text-primary);
+  background: #f5f5f5;
+  border-color: #ccc;
 }
 
-.category-btn.active,
-.category-btn:active {
-  background: var(--brand-color);
-  color: white;
+.category-btn.active {
+  background: #000;
+  color: #fff;
+  border-color: #000;
 }
 
 .category-btn i {
@@ -1362,8 +1372,8 @@ body.dark-mode .map-control-btn.active {
 }
 
 body.dark-mode .category-select {
-  background: rgba(30, 30, 30, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
+  border: none;
 }
 
 /* Skeleton Loading */
@@ -1778,21 +1788,21 @@ body.dark-mode #share-btn:hover {
 .ta-show-rating-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  gap: 4px;
+  padding: 4px 8px;
   border-radius: 4px;
-  background: #00AA6C;
-  color: #fff;
+  background: transparent;
+  color: #00AA6C;
   border: 1px solid #00AA6C;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .ta-show-rating-btn:hover {
-  background: #008f5b;
-  border-color: #008f5b;
+  background: #00AA6C;
+  color: #fff;
 }
 
 .ta-show-rating-btn:disabled {
@@ -1892,16 +1902,16 @@ body.dark-mode #share-btn:hover {
   color: #fff;
 }
 
-/* Dark mode TripAdvisor styles */
+/* Dark mode TripAdvisor styles - outline style matching light mode */
 body.dark-mode .ta-show-rating-btn {
-  background: #00AA6C;
+  background: transparent;
   border-color: #00AA6C;
-  color: #fff;
+  color: #00AA6C;
 }
 
 body.dark-mode .ta-show-rating-btn:hover {
-  background: #008f5b;
-  border-color: #008f5b;
+  background: #00AA6C;
+  color: #fff;
 }
 
 body.dark-mode .ta-rating-display {
@@ -2025,18 +2035,25 @@ body.dark-mode .place-card {
   background: #1e1e1e;
 }
 
+body.dark-mode .categories-section {
+  background: #121212;
+}
+
 body.dark-mode .category-btn {
   background: #2d2d2d;
   color: #e0e0e0;
+  border-color: #444;
 }
 
 body.dark-mode .category-btn:hover {
   background: #3d3d3d;
+  border-color: #555;
 }
 
 body.dark-mode .category-btn.active {
-  background: var(--brand-color);
-  color: white;
+  background: #fff;
+  color: #000;
+  border-color: #fff;
 }
 
 body.dark-mode .content-container.results-section {
