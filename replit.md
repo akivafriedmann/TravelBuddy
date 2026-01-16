@@ -111,6 +111,13 @@ Preferred communication style: Simple, everyday language.
 
 ### Latest Updates (January 16, 2026)
 
+- **Google Photos API Attribution Compliance**:
+  - Backend now extracts authorAttributions from Places API v1 responses
+  - Photo objects include html_attributions array with clickable contributor links
+  - Restaurant cards display photo credits as overlay on thumbnail images
+  - Details modal carousel shows photo attribution on each slide
+  - CSS styling for attribution overlays with semi-transparent backgrounds
+
 - **Security Improvements**:
   - Added DOMPurify library for XSS protection on all innerHTML operations
   - Wrapped critical innerHTML usages with sanitizeHTML() to prevent cross-site scripting attacks
