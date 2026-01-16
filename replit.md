@@ -141,12 +141,17 @@ Preferred communication style: Simple, everyday language.
   - Migrated from deprecated `google.maps.Marker` to `google.maps.marker.AdvancedMarkerElement`
   - Added proper response validation (status codes, content-type) before parsing API responses
 
+- **Smart Search Behavior**: Location search now distinguishes between geographic locations and attractions:
+  - Searching for cities/villages/regions (e.g., "Amsterdam", "Paris") just centers the map without showing a card
+  - Searching for attractions/POIs (e.g., "Anne Frank House", "Nobu restaurant") shows the details card
+  - Uses Google Places type detection to intelligently differentiate
+
 - **Soft Premium Map Style**: Updated light mode map style with vivid natural colors:
-  - Water areas display with clear blue (#7ab8d4) - canals and rivers are clearly visible
-  - Parks show with fresh green (#98d489) - Vondelpark, Oosterpark visible on map
+  - Water areas display with bright sky blue (#4FC3F7) - canals and rivers are clearly visible
+  - Parks show with light green (#90EE90) - Vondelpark, Oosterpark visible on map
   - Fixed both initMap and toggleDarkMode to use consistent styling
-  - Selectively hide POIs while keeping parks visible
-  - Desaturated roads with simplified highway visibility
+  - No saturation filters - explicit colors for maximum visibility
+  - Clean white roads with simplified highway visibility
 
 - **Premium Charcoal Dark Mode Enhancements**:
   - Deep charcoal background (#121212) for body in dark mode
