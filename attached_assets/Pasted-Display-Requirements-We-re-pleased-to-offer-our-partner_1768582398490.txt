@@ -1,0 +1,92 @@
+Display Requirements
+We're pleased to offer our partners the use of our content and branding to showcase property ratings, reviews, and awards from the world's largest travel site.
+
+To ensure proper attribution of the Tripadvisor brand and use of Tripadvisor content, follow all guidelines in this document.
+
+Logos
+❗️
+Our logo and lockups are to be displayed prominently and in close proximity to our content.
+
+Primary Logo for light backgrounds
+Our logo should ideally appear in black against a background of either our light brand colors or light parts of images which allow enough contrast for clear logo visibility.
+
+489
+Logo for light background; needs to be at least 20 pixels high
+
+❗️
+Never invert the logo
+
+For circumstances where a dark background is required, we have a secondary logo which superimposes the Ollie logo over a circle of TripGreen (see below) or white.
+
+866
+Never invert the logo; Instead, place Ollie logo on white or green background
+
+Secondary Logo for dark backgrounds
+If your background is too dark for our primary logo, please use our secondary logo. Always place Ollie logo on the circle white or Tripadvisor Green #34E0A1 (please note, Tripadvisor Green is different from Tripadvisor Moss #00AA6C, which is used for the bubble ratings) background.
+
+489
+Logo for dark background; needs to be at least 20 pixels high
+
+Ratings & Reviews
+❗️
+Always use the bubble ratings that are provided in the API response. Do not use your own rating icons.
+
+For an individual business or property
+When displaying an aggregate Tripadvisor bubble rating, be sure to include the Ollie logo to the left of the bubble rating
+The Ollie logo should be at least 20 pixels in height
+Bubble ratings graphic should be at least 55 pixels wide
+Bubble ratings should be standard Tripadvisor Moss #00AA6C (or #84E9BD in dark mode)
+Bubble ratings should have white as a background - the page background should not show through
+Ensure information is left-aligned
+258
+Correct integration of our aggregate bubble ratings for a hotel
+
+523
+Correct integration of our aggregate bubble ratings for a hotel with a photo
+
+✅ Content is left-aligned
+✅ Aggregate bubble rating is displayed with Ollie logo
+✅ Bubble ratings are placed on white background
+
+For a single traveler’s individual rating
+Use the bubble ratings alone without the Ollie logo
+You may only quote from a rave review – a review accompanied by a 5-bubble rating – if the overall property rating is at least a 4 out of 5 and you MUST include the date of the quoted review
+Content from traveler reviews must appear within quotation marks
+It must be clear that the quoted review was from a traveler on Tripadvisor. Please accompany quotes with phrases like “A Tripadvisor traveler review” or “Reviewed by a Tripadvisor traveler”
+-You may use a traveler’s Tripadvisor member name as long as Tripadvisor is acknowledged, e.g. “Tripadvisor traveler ”
+If review content is accompanied by a photo, the photo must be directly related to the review
+bubble ratings should be standard Tripadvisor Moss #00AA6C (or #84E9BD in dark mode)
+Ensure information is left-aligned
+258
+Correct implementation of a traveler review with bubble ratings.
+
+185
+Correct implementation of a traveler review with bubble ratings in conjunction with a photo
+
+✅ Content is left-aligned
+✅ It is clear that the reviews came from Tripadvisor traveler
+✅ Bubble ratings are placed on white background
+
+Ranking
+❗️
+Whenever referencing a property’s popularity ranking on Tripadvisor, you MUST cite the specific month and year for that reference.
+
+The Tripadvisor popularity index ranks individual listings based largely on the quality, quantity, and freshness of traveler reviews, and is subject to change without notice.
+You must cite the specific month and year for the ranking reference. Example: If you want to claim a property that is the “#1 Hotel in New York City,” you must include the phrase “according to Tripadvisor travelers as of March 2020.”
+Dark Mode
+Bubble ratings should always be placed over a white background in Tripadvisor Moss #00AA6C. Dark mode is the only permissible scenario where the bubbles are not placed on white background. Please use color code #84E9BD in dark mode to provide more contrast. An unfilled or partially filled bubble is transparent (never white) with a green outline.
+
+212
+Display of bubble ratings in dark mode
+
+Notice and Takedown Guidelines
+Copyright Complaint Policy
+If you receive a copyright notice regarding content on your website that was served via Tripadvisor’s API, please expeditiously send the notice as you received it to ta-copyright@tripadvisor.com.
+
+Tripadvisor’s full Copyright Complaint Policy can be found here.
+
+Updated over 3 years ago
+
+Review Implementation Policy
+API Security
+Did this page help you?

@@ -1990,6 +1990,8 @@ body.dark-mode .place-card .favorite-btn {
 .hero-section {
   position: relative;
   background: #f0f0f0;
+  border-radius: 16px 16px 0 0;
+  overflow: hidden;
 }
 
 .hero-carousel {
@@ -1998,9 +2000,10 @@ body.dark-mode .place-card .favorite-btn {
 }
 
 .hero-carousel .carousel-inner {
-  border-radius: 0;
+  border-radius: 16px 16px 0 0;
   margin: 0;
   padding: 0;
+  overflow: hidden;
 }
 
 .hero-carousel .carousel-item {
@@ -2348,6 +2351,12 @@ body.dark-mode .modern-modal .review-card {
 .tripadvisor-section .btn-tripadvisor-link .ta-owl {
   width: 20px;
   height: 20px;
+}
+
+.tripadvisor-section .btn-tripadvisor-link .fa-tripadvisor,
+.tripadvisor-section .btn-tripadvisor-link .fab.fa-tripadvisor {
+  font-size: 18px;
+  color: #00AA6C;
 }
 
 body.dark-mode .tripadvisor-section .btn-tripadvisor-link {

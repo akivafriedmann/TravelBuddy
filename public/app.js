@@ -2691,7 +2691,7 @@ async function showPlaceDetails(placeId) {
         tripAdvisorHtml = `
           <div class="tripadvisor-section mt-3">
             <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn-tripadvisor-link">
-              <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_logomark_solid_green.svg" alt="TripAdvisor" class="ta-owl">
+              <i class="fab fa-tripadvisor"></i>
               Check Reviews on TripAdvisor
             </a>
           </div>
@@ -2932,20 +2932,15 @@ async function loadNearbyRecommendations(place) {
           }
           
           card.innerHTML = sanitizeHTML(`
-            <div class="card h-100">
+            <div class="card h-100 recommendation-card clickable-place" data-place-id="${recommendation.place_id}" style="cursor: pointer;">
               <div class="card-body">
-                <h6 class="card-title">${escapeHTML(recommendation.name)}</h6>
-                <small class="text-muted">${escapeHTML(recommendation.vicinity || '')}</small>
-                <div class="mt-2">
-                  ${ratingStars}
-                  <small class="ms-1">${recommendation.rating || 'No rating'}</small>
+                <h6 class="card-title mb-1">${escapeHTML(recommendation.name)}</h6>
+                <small class="text-muted d-block mb-2">${escapeHTML(recommendation.vicinity || '')}</small>
+                <div class="d-flex align-items-center gap-2">
+                  <span>${ratingStars}</span>
+                  <small class="text-muted">${recommendation.rating || 'No rating'}</small>
+                  ${priceLevel ? `<strong class="text-success ms-auto">${priceLevel}</strong>` : ''}
                 </div>
-                <div class="mt-2">
-                  <strong>${priceLevel}</strong>
-                </div>
-                <button class="btn btn-outline-primary btn-sm mt-2 clickable-place" data-place-id="${recommendation.place_id}">
-                  View Details
-                </button>
               </div>
             </div>
           `);
