@@ -1291,7 +1291,7 @@ function initMap() {
     zoom: 13,
     center: initialCenter,
     mapTypeId: google.maps.MapTypeId.ROADMAP,
-    gestureHandling: 'greedy',
+    gestureHandling: 'cooperative',
     zoomControl: true,
     mapTypeControl: false,
     scaleControl: true,

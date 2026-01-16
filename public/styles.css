@@ -1983,7 +1983,8 @@ body.dark-mode .place-card .favorite-btn {
 /* Hero section full-width, no padding */
 .modern-modal .hero-section {
   margin: 0;
-  padding: 0;
+  padding: 0 !important;
+  width: 100%;
 }
 
 /* Hero Section with Carousel */
@@ -1995,26 +1996,29 @@ body.dark-mode .place-card .favorite-btn {
 }
 
 .hero-carousel {
-  margin: 0;
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
 }
 
 .hero-carousel .carousel-inner {
   border-radius: 16px 16px 0 0;
-  margin: 0;
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
   overflow: hidden;
+  width: 100%;
 }
 
 .hero-carousel .carousel-item {
-  margin: 0;
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .hero-carousel .carousel-item img {
-  margin: 0;
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
   width: 100%;
+  display: block;
 }
 
 .hero-img {
