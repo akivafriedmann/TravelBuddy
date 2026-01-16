@@ -647,7 +647,7 @@ function showClusterPlacesModal(places, position) {
           <div class="modal-body" id="cluster-places-list"></div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="button" class="btn" id="zoom-to-cluster" style="background-color: #00AA6C; color: white; border: none;">
+            <button type="button" class="btn" id="zoom-to-cluster" style="background-color: #0E2F23; color: white; border: none;">
               <i class="fas fa-search-plus me-1"></i>Zoom to Area
             </button>
           </div>
@@ -1359,6 +1359,13 @@ function initMap() {
   // Transit layer toggle
   window.transitLayer = new google.maps.TransitLayer();
   window.transitLayerVisible = false;
+  
+  // Legal modal link
+  document.getElementById('legal-link').addEventListener('click', function(e) {
+    e.preventDefault();
+    const legalModal = new bootstrap.Modal(document.getElementById('legalModal'));
+    legalModal.show();
+  });
   
   document.getElementById('transit-layer-btn').addEventListener('click', function() {
     if (window.transitLayerVisible) {

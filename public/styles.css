@@ -454,6 +454,85 @@ body.dark-mode .weather-pill {
   transform: scale(1.05);
 }
 
+/* Legal Link on Map */
+.legal-link {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  z-index: 5;
+  font-size: 11px;
+  color: #888;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: color 0.2s ease;
+}
+
+.legal-link:hover {
+  color: #555;
+  text-decoration: underline;
+}
+
+body.dark-mode .legal-link {
+  background: rgba(30, 30, 30, 0.85);
+  color: #999;
+}
+
+body.dark-mode .legal-link:hover {
+  color: #ccc;
+}
+
+/* Legal Modal */
+.legal-modal {
+  background: #fff;
+  color: #333;
+}
+
+.legal-modal .modal-header {
+  border-bottom: 1px solid #eee;
+}
+
+.legal-modal .modal-body h6 {
+  font-weight: 600;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  color: #222;
+}
+
+.legal-modal .modal-body h6:first-child {
+  margin-top: 0;
+}
+
+.legal-modal .modal-body p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #555;
+  margin-bottom: 12px;
+}
+
+.legal-modal .modal-footer {
+  border-top: 1px solid #eee;
+}
+
+body.dark-mode .legal-modal {
+  background: #1e1e1e;
+  color: #e0e0e0;
+}
+
+body.dark-mode .legal-modal .modal-header,
+body.dark-mode .legal-modal .modal-footer {
+  border-color: #333;
+}
+
+body.dark-mode .legal-modal .modal-body h6 {
+  color: #e0e0e0;
+}
+
+body.dark-mode .legal-modal .modal-body p {
+  color: #bbb;
+}
+
 .search-area-btn {
   position: absolute;
   top: 50%;
