@@ -2385,12 +2385,18 @@ function addMarker(place, index) {
     lng: place.geometry.location.lng
   };
   
+  // Determine marker color based on place type
+  // Hotels get purple, everything else gets deep forest green
+  const isHotel = place.types && (place.types.includes('lodging') || place.types.includes('hotel'));
+  const markerColor = isHotel ? '#5B3B8C' : '#0E2F23'; // Purple for hotels, forest green for others
+  
   // Create marker with label using AdvancedMarkerElement
   const marker = createAdvancedMarker({
     position: position,
     map: window.map,
     title: place.name,
     label: (index + 1).toString(),
+    color: markerColor,
     onClick: () => {
       window.map.setCenter(position);
       window.map.setZoom(16);
@@ -2649,6 +2655,23 @@ async function showPlaceDetails(placeId) {
         </div>
       `;
       
+      // Check if this is a hotel/lodging
+      const isHotel = place.types && (place.types.includes('lodging') || place.types.includes('hotel'));
+      
+      // Booking button for hotels
+      let hotelBookingHtml = '';
+      if (isHotel) {
+        const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(place.name + ' ' + (place.vicinity || place.formatted_address || ''))}`;
+        hotelBookingHtml = `
+          <div class="hotel-booking-section mt-4">
+            <a href="${bookingUrl}" target="_blank" class="btn btn-booking-cta w-100">
+              <i class="fas fa-calendar-check me-2"></i>Check Rates & Availability
+            </a>
+            <p class="affiliate-disclosure">We may earn a commission if you book.</p>
+          </div>
+        `;
+      }
+      
       // Build action buttons row
       const actionButtonsHtml = `
         <div class="action-buttons-row">
@@ -2726,6 +2749,9 @@ async function showPlaceDetails(placeId) {
                 
                 <!-- Action Buttons Row -->
                 ${actionButtonsHtml}
+                
+                <!-- Hotel Booking CTA (only for hotels) -->
+                ${hotelBookingHtml}
                 
                 <!-- Opening Hours (Collapsible) -->
                 ${hoursHtml}
