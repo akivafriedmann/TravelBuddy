@@ -2113,14 +2113,19 @@ function createPlaceCard(place, index) {
     }
   }
   
-  // Get thumbnail photo URL
+  // Get thumbnail photo URL and attribution
   let thumbnailUrl = '';
+  let photoAttribution = '';
   if (place.photos && place.photos.length > 0) {
     const photo = place.photos[0];
     if (photo.url) {
       thumbnailUrl = photo.url;
     } else if (photo.photo_reference) {
       thumbnailUrl = `/api/photo?photo_reference=${photo.photo_reference}&maxwidth=400`;
+    }
+    // Get photo attribution if available
+    if (photo.html_attributions && photo.html_attributions.length > 0) {
+      photoAttribution = photo.html_attributions[0];
     }
   }
   
@@ -2137,6 +2142,7 @@ function createPlaceCard(place, index) {
       ${thumbnailUrl ? `
         <div class="card-img-wrapper clickable-place" data-place-id="${place.place_id}">
           <img src="${thumbnailUrl}" class="card-img-top" alt="${escapeHTML(place.name)}" loading="lazy">
+          ${photoAttribution ? `<span class="photo-attribution">${photoAttribution}</span>` : ''}
         </div>
       ` : `
         <div class="card-img-placeholder clickable-place" data-place-id="${place.place_id}">
@@ -2517,9 +2523,16 @@ async function showPlaceDetails(placeId) {
             photoUrl = 'https://via.placeholder.com/800x400?text=No+Image';
           }
           
+          // Get photo attribution if available
+          let photoAttr = '';
+          if (photo.html_attributions && photo.html_attributions.length > 0) {
+            photoAttr = photo.html_attributions[0];
+          }
+          
           heroCarouselHtml += `
             <div class="carousel-item ${index === 0 ? 'active' : ''}">
               <img src="${photoUrl}" class="d-block w-100 hero-img" alt="${place.name}">
+              ${photoAttr ? `<span class="carousel-photo-attribution">${photoAttr}</span>` : ''}
             </div>
           `;
         });
