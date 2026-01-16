@@ -584,7 +584,7 @@ function createCustomClusterRenderer() {
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: 18,
-          fillColor: '#00AA6C',
+          fillColor: '#0E2F23',
           fillOpacity: 1,
           strokeColor: '#FFFFFF',
           strokeWeight: 2
