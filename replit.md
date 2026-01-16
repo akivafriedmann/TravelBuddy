@@ -141,10 +141,10 @@ Preferred communication style: Simple, everyday language.
   - Migrated from deprecated `google.maps.Marker` to `google.maps.marker.AdvancedMarkerElement`
   - Added proper response validation (status codes, content-type) before parsing API responses
 
-- **Smart Search Behavior**: Location search now distinguishes between geographic locations and attractions:
-  - Searching for cities/villages/regions (e.g., "Amsterdam", "Paris") just centers the map without showing a card
-  - Searching for attractions/POIs (e.g., "Anne Frank House", "Nobu restaurant") shows the details card
-  - Uses Google Places type detection to intelligently differentiate
+- **Separated Search Bars**: Clear separation between location and restaurant search:
+  - Location search bar: Only geocodes cities, addresses, and regions - just moves the map
+  - Restaurant search bar: Finds specific restaurants and attractions - shows details card
+  - Prevents confusion like searching for "Dijon" and getting a deli instead of the city
 
 - **Soft Premium Map Style**: Updated light mode map style with vivid natural colors:
   - Water areas display with bright sky blue (#4FC3F7) - canals and rivers are clearly visible
