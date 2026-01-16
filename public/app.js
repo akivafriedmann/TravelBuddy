@@ -1041,8 +1041,7 @@ function renderSearchResults(places, origin, searchQuery) {
   // Initialize/update marker clustering
   updateMarkerClusterer();
   
-  // Load TripAdvisor ratings for displayed places
-  loadTripAdvisorForPlaces(places);
+  // TripAdvisor ratings now loaded on-demand via external link to save API credits
 }
 
 // Initialize My Lists modal
@@ -1759,6 +1758,11 @@ async function searchLocation() {
     if (data.status === "OK" && data.results && data.results.length > 0) {
       const location = data.results[0].geometry.location;
       
+      // Extract city name for TripAdvisor links
+      const addressComponents = data.results[0].address_components || [];
+      const cityComponent = addressComponents.find(c => c.types.includes('locality') || c.types.includes('administrative_area_level_1'));
+      window.currentCity = cityComponent ? cityComponent.long_name : searchInput;
+      
       // Center the map on the geocoded location
       window.map.setCenter(location);
       
@@ -2046,8 +2050,7 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false,
   // Initialize/update marker clustering
   updateMarkerClusterer();
   
-  // Load TripAdvisor ratings for displayed places
-  loadTripAdvisorForPlaces(filteredPlaces);
+  // TripAdvisor ratings now loaded on-demand via external link to save API credits
 }
 
 // Create a card for a place
@@ -2158,7 +2161,6 @@ function createPlaceCard(place, index) {
           <span class="rating-stars">${ratingStars}</span>
           <span class="rating-value">${place.rating}</span>
           <span class="rating-count">(${place.user_ratings_total})</span>
-          <span class="tripadvisor-badge" data-tripadvisor-id="${place.place_id}"></span>
           ${priceLevel ? `<span class="price-level ms-2">${priceLevel}</span>` : ''}
         </div>
         
@@ -2168,6 +2170,10 @@ function createPlaceCard(place, index) {
           <button class="view-details-btn clickable-place" data-place-id="${place.place_id}">
             View Details
           </button>
+          <a href="https://www.tripadvisor.com/Search?q=${encodeURIComponent(place.name + ' ' + (window.currentCity || ''))}" 
+            target="_blank" class="check-reviews-btn" title="Check reviews on TripAdvisor">
+            <i class="fas fa-external-link-alt"></i> Reviews
+          </a>
           <button class="action-btn add-to-list-btn" 
             data-place-id="${place.place_id}"
             title="Add to List">
@@ -2413,14 +2419,8 @@ async function showPlaceDetails(placeId) {
       place.place_id = placeId;
       console.log("Place details:", place);
       
-      // Get TripAdvisor data if available
-      let tripAdvisorData = null;
-      try {
-        tripAdvisorData = await fetchTripAdvisorData(place);
-        console.log("TripAdvisor data:", tripAdvisorData);
-      } catch (tripadvisorError) {
-        console.error("Error fetching TripAdvisor data:", tripadvisorError);
-      }
+      // TripAdvisor link (external - no API call to save credits)
+      const tripAdvisorSearchUrl = `https://www.tripadvisor.com/Search?q=${encodeURIComponent(place.name + ' ' + (window.currentCity || ''))}`;
       
       // Format opening hours with collapsible accordion
       let hoursHtml = '';
@@ -2560,55 +2560,14 @@ async function showPlaceDetails(placeId) {
         `;
       }
       
-      // TripAdvisor data section
-      let tripAdvisorHtml = '';
-      if (tripAdvisorData) {
-        tripAdvisorHtml = `
-          <div class="tripadvisor-section mt-3">
-            <h5>TripAdvisor Information</h5>
-            <div class="card mb-3">
-              <div class="card-body">
-                ${tripAdvisorData.rating ? `
-                  <div class="d-flex align-items-center mb-2">
-                    <span class="me-2">TripAdvisor Rating:</span>
-                    <strong class="me-1">${tripAdvisorData.rating}</strong>
-                    ${Array(Math.round(tripAdvisorData.rating)).fill('<i class="fas fa-star text-warning"></i>').join('')}
-                    <small class="text-muted ms-2">(${tripAdvisorData.review_count || 0} reviews)</small>
-                  </div>
-                ` : ''}
-                
-                ${tripAdvisorData.price_range ? `
-                  <div class="mb-2">
-                    <span>Price Range: <strong>${tripAdvisorData.price_range}</strong></span>
-                  </div>
-                ` : ''}
-                
-                ${tripAdvisorData.cuisine ? `
-                  <div class="mb-2">
-                    <span>Cuisine: <strong>${tripAdvisorData.cuisine}</strong></span>
-                  </div>
-                ` : ''}
-                
-                ${tripAdvisorData.website ? `
-                  <div class="mb-2">
-                    <a href="${tripAdvisorData.website}" target="_blank" class="btn btn-sm btn-outline-primary">
-                      <i class="fas fa-globe me-1"></i> Visit Website
-                    </a>
-                  </div>
-                ` : ''}
-                
-                ${tripAdvisorData.tripadvisor_url ? `
-                  <div>
-                    <a href="${tripAdvisorData.tripadvisor_url}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                      <i class="fab fa-tripadvisor me-1"></i> TripAdvisor Page
-                    </a>
-                  </div>
-                ` : ''}
-              </div>
-            </div>
-          </div>
-        `;
-      }
+      // TripAdvisor external link section (no API call to save credits)
+      const tripAdvisorHtml = `
+        <div class="tripadvisor-section mt-3">
+          <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn btn-outline-secondary w-100">
+            <i class="fas fa-external-link-alt me-2"></i> Check Reviews on TripAdvisor
+          </a>
+        </div>
+      `;
       
       // Nearby recommendations section
       let recommendationsHtml = '';

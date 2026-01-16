@@ -1679,6 +1679,45 @@ body.dark-mode #share-btn:hover {
   transform: translateY(-1px);
 }
 
+/* Check Reviews Button (TripAdvisor link) */
+.place-card .check-reviews-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: var(--radius-full);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.place-card .check-reviews-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+  text-decoration: none;
+}
+
+.place-card .check-reviews-btn i {
+  font-size: 10px;
+}
+
+body.dark-mode .place-card .check-reviews-btn {
+  background: #2d2d2d;
+  border-color: #444;
+  color: #aaa;
+}
+
+body.dark-mode .place-card .check-reviews-btn:hover {
+  background: #3d3d3d;
+  color: #e0e0e0;
+}
+
 /* Open Now Badge */
 .badge-open {
   background: #00A699 !important;
