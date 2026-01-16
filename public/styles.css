@@ -588,7 +588,7 @@ body.dark-mode .legal-modal .modal-body p {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--bg-primary);
+  background: transparent;
   padding: 12px 0;
   margin-top: 0 !important;
 }
@@ -2151,7 +2151,7 @@ body.dark-mode .place-card {
 }
 
 body.dark-mode .categories-section {
-  background: #121212;
+  background: transparent;
 }
 
 body.dark-mode .category-btn {
