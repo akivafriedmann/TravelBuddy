@@ -1,0 +1,85 @@
+The screenshot shows you have the "skeleton" of Dark Mode working (the UI turns black), but it currently suffers from the "Flashlight Effect."
+
+The UI is dark, but the map is still blindingly bright. This contrast hurts the user's eyes and breaks the "premium" immersion.
+
+Here is how to fix the map and elevate the color palette to a "Luxury Dark" theme.
+
+1. The Critical Fix: Dark Map Style 🗺️
+You need to tell Google Maps to switch its "skin" when Dark Mode is active.
+
+Current: Standard Day Mode (too bright).
+
+Premium Fix: Use a "Night" or "Dark Matter" JSON style.
+
+Add this to your map initialization code: You likely have a variable for mapOptions. You need to add a styles array.
+
+JavaScript
+const darkMapStyle = [
+  { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [{ color: "#263c3f" }],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#17263c" }],
+  },
+];
+2. The Palette: "Charcoal" vs. "Pitch Black" ⚫
+In your screenshot, the background looks like pure black (#000000).
+
+The Problem: Pure black can feel harsh and cheap.
+
+The Premium Fix: Use "Dark Grey/Charcoal" (#121212 or #1A1A1A) for the background. This allows you to use shadows (which are invisible on pure black) to create depth.
+
+CSS Tweak:
+
+CSS
+body.dark-mode {
+  background-color: #121212; /* Soft premium dark */
+  color: #E0E0E0; /* Off-white text is easier to read than pure white */
+}
+
+/* Make cards slightly lighter to "float" */
+.dark-mode .restaurant-card {
+  background-color: #1E1E1E;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5); /* Deep shadow */
+}
+3. The Replit Prompt to Do It All
+Copy this to fix the map and the colors in one go.
+
+Copy and paste this into Replit:
+
+Refine the "Dark Mode" implementation to make it look premium and integrated.
+
+Apply Dark Map Style:
+
+Update the initMap function. When isDarkMode is true, apply a custom Google Maps JSON style (Dark/Night mode) so the map matches the UI.
+
+If the user toggles the theme, dynamically update the map style (map.setOptions({ styles: ... })) without reloading the page.
+
+Soften the Backgrounds:
+
+Change the dark mode background from pure black (#000000) to Premium Charcoal (#121212).
+
+Set the Card backgrounds to a slightly lighter grey (#1E1E1E) so they stand out.
+
+Ensure text is Off-White (#E0E0E0) rather than stark white, which reduces eye strain.
+
+Header Integration:
+
+Ensure the Search Bar input fields turn dark grey (#2C2C2C) with light text in Dark Mode, so they blend in perfectly.
