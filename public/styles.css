@@ -600,12 +600,30 @@ body.dark-mode .legal-modal .modal-body p {
   padding: 8px 0;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: #1B4D3E #f0f0f0;
 }
 
 .category-select::-webkit-scrollbar {
-  display: none;
+  height: 4px;
+}
+
+.category-select::-webkit-scrollbar-track {
+  background: #f0f0f0;
+  border-radius: 4px;
+}
+
+.category-select::-webkit-scrollbar-thumb {
+  background: #1B4D3E;
+  border-radius: 4px;
+}
+
+body.dark-mode .category-select::-webkit-scrollbar-track {
+  background: #333;
+}
+
+body.dark-mode .category-select::-webkit-scrollbar-thumb {
+  background: #1B4D3E;
 }
 
 .category-btn {
