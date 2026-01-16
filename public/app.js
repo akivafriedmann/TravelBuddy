@@ -1559,6 +1559,17 @@ function initMap() {
     });
   });
   
+  // Mouse wheel horizontal scrolling for category filters
+  const categorySelect = document.querySelector('.category-select');
+  if (categorySelect) {
+    categorySelect.addEventListener('wheel', function(e) {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        this.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+  }
+  
   // Radius slider handler
   const radiusSlider = document.getElementById('radius-slider');
   if (radiusSlider) {
