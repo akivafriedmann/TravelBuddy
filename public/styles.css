@@ -285,6 +285,24 @@ body.dark-mode .dark-mode-toggle label i {
 }
 
 /* ==================== FILTERS PANEL ==================== */
+.search-section {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.filters-section {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.categories-section {
+  width: 100%;
+}
+
+.results-header {
+  width: 100%;
+}
+
 .filters-card {
   background: var(--bg-primary);
   border-radius: var(--radius-md);
