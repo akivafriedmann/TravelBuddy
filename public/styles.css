@@ -2065,43 +2065,64 @@ body.dark-mode .place-card .favorite-btn {
    MODERN MODAL STYLES - Airbnb/Google Maps inspired
    ============================================ */
 
-/* Modern Modal Container */
-.modern-modal {
-  border-radius: var(--radius-lg);
+/* Modern Modal Container - Full-width hero image */
+.modern-modal,
+.modal-content.modern-modal {
+  padding: 0 !important;
   overflow: hidden;
+  border-radius: 16px;
   border: none;
 }
 
-.modern-modal .modal-content,
-.modal-dialog.modern-modal .modal-content {
-  padding: 0;
-  border: none;
+/* Override Bootstrap modal-content default padding */
+.modal-content.modern-modal {
+  padding: 0 !important;
 }
 
+/* Hero section - First child, edge-to-edge image */
+.modern-modal .hero-section {
+  width: 100% !important;
+  height: 400px;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block;
+  position: relative;
+}
+
+.modern-modal .hero-section .hero-carousel {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.modern-modal .hero-section .hero-carousel .carousel-inner {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.modern-modal .hero-section .hero-carousel .carousel-item {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.modern-modal .hero-section .hero-carousel .carousel-item img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: block;
+}
+
+/* Modal body - Add padding back for text content */
 .modern-modal .modal-body {
   padding: 24px;
-}
-
-/* Hero section full-width, no padding - edge to edge image */
-.modern-modal .hero-section {
-  margin: 0;
-  padding: 0 !important;
-  width: 100%;
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
-  overflow: hidden;
-}
-
-.modern-modal .hero-carousel {
-  margin: 0 !important;
-  padding: 0 !important;
-  width: 100%;
-}
-
-.modern-modal .hero-carousel .carousel-inner {
-  border-radius: 0;
-  margin: 0 !important;
-  padding: 0 !important;
 }
 
 /* Hero Section with Carousel */
@@ -2320,12 +2341,14 @@ body.dark-mode .place-card .favorite-btn {
     font-size: 11px;
   }
   
-  /* Taller hero image on mobile for better visual impact */
-  .hero-img,
-  .hero-carousel .carousel-item img,
-  .modern-modal .hero-carousel .carousel-item img {
-    height: 320px !important;
-    min-height: 320px !important;
+  /* Hero image on mobile */
+  .modern-modal .hero-section {
+    height: 300px !important;
+  }
+  
+  .modern-modal .hero-section .hero-carousel .carousel-item img {
+    height: 300px !important;
+    min-height: 300px !important;
     object-fit: cover !important;
   }
 }
