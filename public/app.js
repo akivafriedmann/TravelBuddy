@@ -2419,8 +2419,17 @@ async function showPlaceDetails(placeId) {
       place.place_id = placeId;
       console.log("Place details:", place);
       
-      // TripAdvisor link (external - no API call to save credits)
+      // TripAdvisor search URL for external link
       const tripAdvisorSearchUrl = `https://www.tripadvisor.com/Search?q=${encodeURIComponent(place.name + ' ' + (window.currentCity || ''))}`;
+      
+      // Get TripAdvisor data from API
+      let tripAdvisorData = null;
+      try {
+        tripAdvisorData = await fetchTripAdvisorData(place);
+        console.log("TripAdvisor data:", tripAdvisorData);
+      } catch (tripadvisorError) {
+        console.error("Error fetching TripAdvisor data:", tripadvisorError);
+      }
       
       // Format opening hours with collapsible accordion
       let hoursHtml = '';
@@ -2560,14 +2569,51 @@ async function showPlaceDetails(placeId) {
         `;
       }
       
-      // TripAdvisor external link section (no API call to save credits)
-      const tripAdvisorHtml = `
-        <div class="tripadvisor-section mt-3">
-          <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn btn-outline-secondary w-100">
-            <i class="fas fa-external-link-alt me-2"></i> Check Reviews on TripAdvisor
-          </a>
-        </div>
-      `;
+      // TripAdvisor section - show API data if available, fallback to external link
+      let tripAdvisorHtml = '';
+      if (tripAdvisorData) {
+        tripAdvisorHtml = `
+          <div class="tripadvisor-section mt-3">
+            <h5>TripAdvisor</h5>
+            <div class="card mb-3">
+              <div class="card-body">
+                ${tripAdvisorData.rating ? `
+                  <div class="d-flex align-items-center mb-2">
+                    <span class="me-2">Rating:</span>
+                    <strong class="me-1">${tripAdvisorData.rating}</strong>
+                    ${Array(Math.round(tripAdvisorData.rating)).fill('<i class="fas fa-star text-warning"></i>').join('')}
+                    <small class="text-muted ms-2">(${tripAdvisorData.num_reviews || tripAdvisorData.review_count || 0} reviews)</small>
+                  </div>
+                ` : ''}
+                
+                ${tripAdvisorData.price_range ? `
+                  <div class="mb-2">
+                    <span>Price Range: <strong>${tripAdvisorData.price_range}</strong></span>
+                  </div>
+                ` : ''}
+                
+                ${tripAdvisorData.cuisine ? `
+                  <div class="mb-2">
+                    <span>Cuisine: <strong>${tripAdvisorData.cuisine}</strong></span>
+                  </div>
+                ` : ''}
+                
+                <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                  <i class="fas fa-external-link-alt me-1"></i> Read Full Reviews
+                </a>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        tripAdvisorHtml = `
+          <div class="tripadvisor-section mt-3">
+            <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn btn-outline-secondary w-100">
+              <i class="fas fa-external-link-alt me-2"></i> Check Reviews on TripAdvisor
+            </a>
+          </div>
+        `;
+      }
       
       // Nearby recommendations section
       let recommendationsHtml = '';

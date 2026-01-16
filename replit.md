@@ -118,12 +118,12 @@ Preferred communication style: Simple, everyday language.
   - Details modal carousel shows photo attribution on each slide
   - CSS styling for attribution overlays with semi-transparent backgrounds
 
-- **TripAdvisor Cost Optimization**:
-  - Replaced automatic TripAdvisor API calls with external link buttons (zero API cost)
-  - "Reviews" button on restaurant cards opens TripAdvisor search in new tab
-  - Details modal includes "Check Reviews on TripAdvisor" button
-  - Links use restaurant name + city for accurate search results
-  - Users can read full reviews directly on TripAdvisor site
+- **TripAdvisor Integration (Cost-Optimized)**:
+  - API calls enabled for details modal only (shows rating, price range, cuisine when available)
+  - "Reviews" button on restaurant cards opens TripAdvisor search in new tab (no API cost for browsing)
+  - Details modal shows TripAdvisor data with "Read Full Reviews" external link
+  - Fallback to external link if API fails or returns no data
+  - Domain craving.life approved by TripAdvisor for API access
 
 - **Security Improvements**:
   - Added DOMPurify library for XSS protection on all innerHTML operations
