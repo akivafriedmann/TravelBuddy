@@ -647,7 +647,7 @@ function showClusterPlacesModal(places, position) {
           <div class="modal-body" id="cluster-places-list"></div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="button" class="btn" id="zoom-to-cluster" style="background-color: #0E2F23; color: white; border: none;">
+            <button type="button" class="btn" id="zoom-to-cluster" style="background-color: #1B4D3E; color: white; border: none;">
               <i class="fas fa-search-plus me-1"></i>Zoom to Area
             </button>
           </div>
