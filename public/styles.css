@@ -1190,6 +1190,60 @@ body.dark-mode #loading-indicator {
   #weather-temp {
     font-size: 1.5rem;
   }
+  
+  /* Stack search inputs on mobile */
+  .search-inputs {
+    flex-direction: column;
+  }
+  
+  .search-field {
+    width: 100%;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .search-field:last-of-type {
+    border-bottom: none;
+  }
+  
+  .search-divider {
+    display: none;
+  }
+  
+  .unified-search-bar {
+    border-radius: var(--radius-md);
+  }
+  
+  /* Action buttons - space evenly on mobile */
+  .action-buttons-row {
+    justify-content: space-evenly;
+    gap: 8px;
+    padding: 0 8px;
+  }
+  
+  .action-btn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  /* Compact mobile cards */
+  .restaurant-card .card-img-top,
+  .place-card .card-img-top {
+    height: 180px;
+  }
+  
+  .restaurant-card .card-body,
+  .place-card .card-body {
+    padding: 16px;
+  }
+  
+  /* Brand title smaller on mobile */
+  .brand-title {
+    font-size: 2.5rem;
+  }
+  
+  .brand-tagline {
+    font-size: 0.9rem;
+  }
 }
 
 /* Search This Area Button */
@@ -1708,18 +1762,18 @@ body.dark-mode #share-btn:hover {
   gap: 6px;
   padding: 6px 10px;
   border-radius: 4px;
-  background: #fff;
-  color: #555;
-  border: 1px solid #ddd;
+  background: #00AA6C;
+  color: #fff;
+  border: 1px solid #00AA6C;
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .ta-show-rating-btn:hover {
-  background: #f5f5f5;
-  border-color: #ccc;
+  background: #008f5b;
+  border-color: #008f5b;
 }
 
 .ta-show-rating-btn:disabled {
@@ -1821,14 +1875,14 @@ body.dark-mode #share-btn:hover {
 
 /* Dark mode TripAdvisor styles */
 body.dark-mode .ta-show-rating-btn {
-  background: #2d2d2d;
-  border-color: #444;
-  color: #aaa;
+  background: #00AA6C;
+  border-color: #00AA6C;
+  color: #fff;
 }
 
 body.dark-mode .ta-show-rating-btn:hover {
-  background: #3d3d3d;
-  border-color: #555;
+  background: #008f5b;
+  border-color: #008f5b;
 }
 
 body.dark-mode .ta-rating-display {
@@ -2190,6 +2244,12 @@ body.dark-mode .place-card .favorite-btn {
   border-top: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
   margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .action-buttons-row {
+    justify-content: space-evenly;
+  }
 }
 
 .action-btn {

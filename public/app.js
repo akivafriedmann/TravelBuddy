@@ -1276,12 +1276,7 @@ function initMap() {
     center: initialCenter,
     mapTypeId: google.maps.MapTypeId.ROADMAP,
     gestureHandling: 'cooperative',
-    zoomControl: true,
-    mapTypeControl: false,
-    scaleControl: true,
-    streetViewControl: true,
-    rotateControl: true,
-    fullscreenControl: true,
+    disableDefaultUI: true,
     styles: isDarkModePreferred ? darkMapStyle : silverMapStyle
   });
   
