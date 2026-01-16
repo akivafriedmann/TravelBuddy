@@ -571,36 +571,27 @@ function createCustomClusterRenderer() {
   return {
     render: function({ count, position }, stats) {
       const color = count > 10 ? '#e74c3c' : count > 5 ? '#f39c12' : '#3498db';
-      const size = count > 10 ? 60 : count > 5 ? 50 : 40;
+      const scale = count > 10 ? 18 : count > 5 ? 15 : 12;
       
-      // Create content element for cluster marker
-      const content = document.createElement('div');
-      content.className = 'cluster-marker-content';
-      content.style.cssText = `
-        width: ${size}px;
-        height: ${size}px;
-        background: ${color};
-        border: 3px solid white;
-        border-radius: 50%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        cursor: pointer;
-        opacity: 0.9;
-      `;
-      content.innerHTML = `
-        <span style="color: white; font-size: 16px; font-weight: bold; line-height: 1;">${count}</span>
-        <span style="color: white; font-size: 9px; line-height: 1;">places</span>
-      `;
-      
-      // Create AdvancedMarkerElement for cluster
-      const marker = new google.maps.marker.AdvancedMarkerElement({
+      // Create regular Marker for cluster (no mapId required)
+      const marker = new google.maps.Marker({
         position,
-        content,
         zIndex: 1000 + count,
-        title: `${count} places in this area - click to see them`
+        title: `${count} places in this area - click to see them`,
+        label: {
+          text: String(count),
+          color: 'white',
+          fontWeight: 'bold',
+          fontSize: '14px'
+        },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: scale,
+          fillColor: color,
+          fillOpacity: 0.9,
+          strokeColor: 'white',
+          strokeWeight: 3
+        }
       });
       
       return marker;
@@ -1317,8 +1308,7 @@ function initMap() {
                               document.body.classList.contains('dark-mode');
   
   // Create the map with explicit configuration
-  // Note: mapId enables AdvancedMarkerElement but prevents JavaScript style overrides
-  // For dark mode, styles are applied but may be ignored when mapId is present
+  // Note: Without mapId, we use regular markers and can apply custom styles
   window.map = new google.maps.Map(mapElement, {
     zoom: 13,
     center: initialCenter,
@@ -1330,7 +1320,6 @@ function initMap() {
     streetViewControl: true,
     rotateControl: true,
     fullscreenControl: true,
-    mapId: 'DEMO_MAP_ID',
     styles: isDarkModePreferred ? darkMapStyle : silverMapStyle
   });
   
@@ -2415,58 +2404,46 @@ async function fetchTripAdvisorData(place) {
 // Global array to keep track of markers
 window.markers = [];
 
-// Helper function to create AdvancedMarkerElement
+// Helper function to create a regular Marker (no mapId required)
 function createAdvancedMarker(options) {
   const { position, map, title, label, color = '#EA4335', isUserLocation = false, onClick } = options;
   
-  // Create content element for the marker
-  const content = document.createElement('div');
-  content.className = 'advanced-marker-content';
-  
-  if (isUserLocation) {
-    // User location marker - blue dot
-    content.style.cssText = `
-      width: 20px;
-      height: 20px;
-      background: ${color};
-      border: 3px solid white;
-      border-radius: 50%;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    `;
-  } else if (label) {
-    // Numbered marker for places
-    content.style.cssText = `
-      width: 28px;
-      height: 28px;
-      background: ${color};
-      border: 2px solid white;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: bold;
-      font-size: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    `;
-    content.textContent = label;
-  } else {
-    // Default pin marker
-    content.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="36" viewBox="0 0 24 36">
-        <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24c0-6.6-5.4-12-12-12z" fill="${color}"/>
-        <circle cx="12" cy="12" r="5" fill="white"/>
-      </svg>
-    `;
-  }
-  
-  // Create the AdvancedMarkerElement
-  const marker = new google.maps.marker.AdvancedMarkerElement({
+  let markerOptions = {
     position,
     map,
-    title,
-    content
-  });
+    title
+  };
+  
+  if (isUserLocation) {
+    // User location marker - blue circle icon
+    markerOptions.icon = {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 10,
+      fillColor: color,
+      fillOpacity: 1,
+      strokeColor: 'white',
+      strokeWeight: 3
+    };
+  } else if (label) {
+    // Numbered marker for places
+    markerOptions.label = {
+      text: label,
+      color: 'white',
+      fontWeight: 'bold',
+      fontSize: '12px'
+    };
+    markerOptions.icon = {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 14,
+      fillColor: color,
+      fillOpacity: 1,
+      strokeColor: 'white',
+      strokeWeight: 2
+    };
+  }
+  
+  // Create the regular Marker
+  const marker = new google.maps.Marker(markerOptions);
   
   // Add click listener if provided
   if (onClick) {
@@ -2509,15 +2486,15 @@ function addMarker(place, index) {
 function clearMarkers() {
   if (window.markers) {
     for (let marker of window.markers) {
-      // AdvancedMarkerElement uses .map = null instead of setMap(null)
-      marker.map = null;
+      // Regular Marker uses setMap(null)
+      marker.setMap(null);
     }
   }
   window.markers = [];
   
   // Also clear the hover marker if it exists
   if (window.hoverMarker) {
-    window.hoverMarker.map = null;
+    window.hoverMarker.setMap(null);
     window.hoverMarker = null;
   }
 }
@@ -3080,42 +3057,31 @@ function debounce(func, delay) {
 function updateHoverMarker(location) {
   // Remove existing hover marker
   if (window.hoverMarker) {
-    window.hoverMarker.map = null;
+    window.hoverMarker.setMap(null);
   }
   
-  // Create content element for hover marker with animation
-  const content = document.createElement('div');
-  content.className = 'hover-marker-content';
-  content.style.cssText = `
-    width: 20px;
-    height: 20px;
-    background: #FF4081;
-    border: 3px solid white;
-    border-radius: 50%;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    animation: bounce 0.5s ease-in-out 3;
-  `;
-  
-  // Add bounce animation keyframes if not already added
-  if (!document.getElementById('hover-marker-styles')) {
-    const style = document.createElement('style');
-    style.id = 'hover-marker-styles';
-    style.textContent = `
-      @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-      }
-    `;
-    document.head.appendChild(style);
-  }
-  
-  // Create a new hover marker using AdvancedMarkerElement
-  window.hoverMarker = new google.maps.marker.AdvancedMarkerElement({
+  // Create a new hover marker using regular Marker
+  window.hoverMarker = new google.maps.Marker({
     position: location,
     map: window.map,
-    content: content,
-    zIndex: 999
+    zIndex: 999,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 10,
+      fillColor: '#FF4081',
+      fillOpacity: 1,
+      strokeColor: 'white',
+      strokeWeight: 3
+    },
+    animation: google.maps.Animation.BOUNCE
   });
+  
+  // Stop bouncing after 1.5 seconds
+  setTimeout(() => {
+    if (window.hoverMarker) {
+      window.hoverMarker.setAnimation(null);
+    }
+  }, 1500);
 }
 
 // Search for places nearby the hover location
