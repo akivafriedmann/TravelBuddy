@@ -119,10 +119,12 @@ Preferred communication style: Simple, everyday language.
   - CSS styling for attribution overlays with semi-transparent backgrounds
 
 - **TripAdvisor Integration (Cost-Optimized)**:
-  - API calls enabled for details modal only (shows rating, price range, cuisine when available)
-  - "Reviews" button on restaurant cards opens TripAdvisor search in new tab (no API cost for browsing)
-  - Details modal shows TripAdvisor data with "Read Full Reviews" external link
-  - Fallback to external link if API fails or returns no data
+  - On-demand "Show Rating" button on restaurant cards (API call only when clicked)
+  - Displays official TripAdvisor bubble rating image with review count and attribution
+  - Uses TripAdvisor owl logo (brand-compliant) for button icon
+  - Loading spinner during API fetch, graceful fallback link if API fails
+  - Details modal still shows TripAdvisor data with "Read Full Reviews" external link
+  - Minimalist styling: white background, thin grey border, dark mode support
   - Domain craving.life approved by TripAdvisor for API access
 
 - **Security Improvements**:
