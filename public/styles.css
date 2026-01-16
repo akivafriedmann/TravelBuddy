@@ -1514,21 +1514,6 @@ body.dark-mode .map-control-btn.active {
   color: white;
 }
 
-/* Category buttons - ensure horizontal scroll works */
-.category-select {
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  gap: 10px;
-  padding: 8px 4px;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-body.dark-mode .category-select {
-  background: transparent;
-}
 
 /* Skeleton Loading */
 .skeleton {
