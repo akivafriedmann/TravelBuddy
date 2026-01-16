@@ -123,6 +123,9 @@ Preferred communication style: Simple, everyday language.
   - Clean map floating buttons
   - Full-width header and map sections (edge-to-edge)
   - Centered content container (max-width 1300px, 20px side padding) for search, filters, and cards
+  - Results section with 40px top padding and #FAFAFA off-white background
+  - Category filter pills: no borders, #f0f0f0 background, brand teal when active
+  - Weather widget: glassmorphism pill (90% white, blur, subtle shadow)
 
 ### Previous Updates (January 13, 2026)
 
