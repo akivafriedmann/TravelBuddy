@@ -152,6 +152,8 @@ Preferred communication style: Simple, everyday language.
   - Restaurant cards have compact 180px image height and 16px padding on mobile
   - Action buttons (Near Me, Saved, Filters) use space-evenly distribution on mobile
   - TripAdvisor "Show Rating" button now uses brand green (#00AA6C) instead of gray
+  - Modal action buttons (Call, Website, Directions, Share) display in clean horizontal row
+  - Modal hero image height increased to 280px on mobile for better visual impact
 
 - **Soft Premium Map Style**: Updated light mode map style with vivid natural colors:
   - Water areas display with bright sky blue (#4FC3F7) - canals and rivers are clearly visible
