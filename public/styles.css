@@ -2250,6 +2250,40 @@ body.dark-mode .place-card .favorite-btn {
   .action-buttons-row {
     justify-content: space-evenly;
   }
+  
+  /* Modal-specific: Compact action buttons to fit all 4 in single row */
+  .modern-modal .action-buttons-row {
+    flex-wrap: nowrap;
+    padding: 12px 0;
+    gap: 0;
+  }
+  
+  .modern-modal .action-btn {
+    flex: 1;
+    padding: 6px 4px;
+    gap: 4px;
+    min-width: 0;
+  }
+  
+  .modern-modal .action-btn-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .modern-modal .action-btn-icon i {
+    font-size: 16px;
+  }
+  
+  .modern-modal .action-btn-label {
+    font-size: 11px;
+  }
+  
+  /* Taller hero image on mobile for better visual impact */
+  .hero-img,
+  .hero-carousel .carousel-item img {
+    height: 280px !important;
+    object-fit: cover;
+  }
 }
 
 .action-btn {
