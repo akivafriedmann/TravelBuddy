@@ -109,7 +109,20 @@ Preferred communication style: Simple, everyday language.
 - **Added Legacy API Fallback**: If the New Places API fails or returns an error, the system automatically falls back to the legacy Text Search API.
 - **Cleaned Up Workflows**: Removed unused/broken workflows (BasicServer, ModernPlacesApp).
 
-### Latest Updates (January 13, 2026)
+### Latest Updates (January 16, 2026)
+
+- **"Crave" Luxury Minimalist Redesign**: Complete UI transformation from Travel Planner to premium "Crave" brand:
+  - Playfair Display serif font for headings, Inter for body text
+  - Premium color palette: off-white (#F9F9F9), dark charcoal (#1A1A1A), deep teal accent (#1B4D3E)
+  - Unified search bar combining location and restaurant search
+  - Action buttons row (Near Me, Saved, Filters, Dark mode toggle)
+  - Collapsible Filters panel hidden behind Filters button
+  - Weather displayed as elegant glassmorphism pill on map
+  - Silver/desaturated Google Maps style with hidden POI icons
+  - Premium card styling with 200px images, soft shadows, hover lift effect
+  - Clean map floating buttons
+
+### Previous Updates (January 13, 2026)
 
 - **Restaurant Card Photos**: Added thumbnail images to all restaurant cards with hover zoom effect
 - **Sorting Options**: New dropdown to sort by Rating (highest), Most Reviews, Distance, or Name (A-Z)
