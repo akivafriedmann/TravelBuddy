@@ -2096,11 +2096,13 @@ body.dark-mode .place-card .favorite-btn {
   padding: 0 !important;
   width: 100%;
   display: block;
+  height: 300px;
+  object-fit: cover;
 }
 
 .hero-img {
-  height: 300px;
-  object-fit: cover;
+  height: 300px !important;
+  object-fit: cover !important;
 }
 
 .hero-placeholder {
@@ -2280,9 +2282,11 @@ body.dark-mode .place-card .favorite-btn {
   
   /* Taller hero image on mobile for better visual impact */
   .hero-img,
-  .hero-carousel .carousel-item img {
+  .hero-carousel .carousel-item img,
+  .modern-modal .hero-carousel .carousel-item img {
     height: 280px !important;
-    object-fit: cover;
+    min-height: 280px !important;
+    object-fit: cover !important;
   }
 }
 
