@@ -2086,8 +2086,12 @@ function createPlaceCard(place, index) {
   }
   
   // Create the modern card HTML with thumbnail
+  const cardNumber = index + 1; // 1-based numbering to match map pins
   card.innerHTML = sanitizeHTML(`
     <div class="card h-100 place-card">
+      <!-- Card Number Badge (matches map marker) -->
+      <span class="card-number-badge">${cardNumber}</span>
+      
       <!-- Floating Favorite Button -->
       <button class="favorite-btn ${favoriteClass}" 
         data-place-id="${place.place_id}"
@@ -2123,7 +2127,7 @@ function createPlaceCard(place, index) {
         <div class="ta-rating-container" data-place-id="${place.place_id}" data-place-name="${escapeHTML(place.name)}" data-place-address="${escapeHTML(place.vicinity || place.formatted_address || '')}">
           <button class="ta-show-rating-btn" title="Load TripAdvisor rating">
             <i class="fab fa-tripadvisor ta-icon"></i>
-            <span>Show Rating</span>
+            <span>Show Tripadvisor Rating</span>
           </button>
         </div>
         

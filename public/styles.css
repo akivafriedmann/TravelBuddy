@@ -587,6 +587,25 @@ body.dark-mode .weather-pill {
 }
 
 /* Floating Favorite Heart Button */
+.place-card .card-number-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #000;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 2px solid #fff;
+}
+
 .place-card .favorite-btn {
   position: absolute;
   top: 12px;
@@ -2096,12 +2115,12 @@ body.dark-mode .place-card .favorite-btn {
   padding: 0 !important;
   width: 100%;
   display: block;
-  height: 300px;
+  height: 400px;
   object-fit: cover;
 }
 
 .hero-img {
-  height: 300px !important;
+  height: 400px !important;
   object-fit: cover !important;
 }
 
@@ -2284,8 +2303,8 @@ body.dark-mode .place-card .favorite-btn {
   .hero-img,
   .hero-carousel .carousel-item img,
   .modern-modal .hero-carousel .carousel-item img {
-    height: 280px !important;
-    min-height: 280px !important;
+    height: 320px !important;
+    min-height: 320px !important;
     object-fit: cover !important;
   }
 }

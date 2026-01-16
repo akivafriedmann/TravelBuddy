@@ -229,7 +229,7 @@ app.get('/api/places/search', async (req, res) => {
           place.photos = place.photos.map(photo => {
             return {
               ...photo,
-              url: `/api/photo?reference=${photo.photo_reference}&maxwidth=400&maxheight=200`
+              url: `/api/photo?reference=${photo.photo_reference}&maxwidth=800&maxheight=600`
             };
           });
         }
@@ -280,7 +280,7 @@ app.get('/api/places/details', async (req, res) => {
       data.result.photos = data.result.photos.map(photo => {
         return {
           ...photo,
-          url: `/api/photo?reference=${photo.photo_reference}&maxwidth=600&maxheight=400`
+          url: `/api/photo?reference=${photo.photo_reference}&maxwidth=1200&maxheight=800`
         };
       });
     }
@@ -330,7 +330,7 @@ app.get('/api/search', async (req, res) => {
           place.photos = place.photos.map(photo => {
             return {
               ...photo,
-              url: `/api/photo?reference=${photo.photo_reference}&maxwidth=400&maxheight=200`
+              url: `/api/photo?reference=${photo.photo_reference}&maxwidth=800&maxheight=600`
             };
           });
         }
@@ -774,7 +774,7 @@ app.get('/api/nearby', async (req, res) => {
           if (place.photos && place.photos.length > 0) {
             place.photos = place.photos.map(photo => ({
               ...photo,
-              url: `/api/photo?reference=${photo.photo_reference}&maxwidth=400&maxheight=200`
+              url: `/api/photo?reference=${photo.photo_reference}&maxwidth=800&maxheight=600`
             }));
           }
         });
@@ -859,7 +859,7 @@ app.get('/api/nearby', async (req, res) => {
         }
         return {
           photo_reference: photoName,
-          url: `/api/photo-v2?name=${encodeURIComponent(photoName)}&maxwidth=400&maxheight=200`,
+          url: `/api/photo-v2?name=${encodeURIComponent(photoName)}&maxwidth=800&maxheight=600`,
           html_attributions: htmlAttributions
         };
       }) : [];
@@ -966,7 +966,7 @@ app.get('/api/details', async (req, res) => {
       data.result.photos = data.result.photos.map(photo => {
         return {
           ...photo,
-          url: `/api/photo?reference=${photo.photo_reference}&maxwidth=600&maxheight=400`
+          url: `/api/photo?reference=${photo.photo_reference}&maxwidth=1200&maxheight=800`
         };
       });
     }
