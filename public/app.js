@@ -5,7 +5,10 @@ let currentKeyword = ''; // Track the current keyword filter
 // ==================== SECURITY: HTML SANITIZATION ====================
 function sanitizeHTML(html) {
   if (typeof DOMPurify !== 'undefined') {
-    return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+    return DOMPurify.sanitize(html, { 
+      USE_PROFILES: { html: true },
+      ADD_ATTR: ['data-place-id', 'data-list-id', 'data-tripadvisor-id', 'data-lat', 'data-lng']
+    });
   }
   return html;
 }
@@ -271,22 +274,20 @@ function renderListRestaurantItem(restaurant, listId) {
   const lng = restaurant.lng;
   const mapsLink = lat && lng ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}` : '#';
   
-  // Build a view details link using place_id for getting website
-  const detailsOnClick = `onclick="showPlaceDetails('${restaurant.place_id}')"`;
-  
+  // Build view details using data attributes for event delegation
   return `
     <div class="restaurant-list-item d-flex align-items-start mb-3 p-2 border rounded">
-      <img src="${photoUrl}" alt="${restaurant.name}" class="rounded me-3" style="width: 80px; height: 80px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/100x100?text=No+Image'">
+      <img src="${photoUrl}" alt="${escapeHTML(restaurant.name)}" class="rounded me-3" style="width: 80px; height: 80px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/100x100?text=No+Image'">
       <div class="flex-grow-1">
-        <h6 class="mb-1" style="cursor: pointer;" ${detailsOnClick}>${restaurant.name}</h6>
+        <h6 class="mb-1 clickable-place" style="cursor: pointer;" data-place-id="${restaurant.place_id}">${escapeHTML(restaurant.name)}</h6>
         <p class="text-muted small mb-1">
-          <i class="fas fa-map-marker-alt"></i> ${restaurant.address || 'Address not available'}
+          <i class="fas fa-map-marker-alt"></i> ${escapeHTML(restaurant.address || 'Address not available')}
         </p>
         <div class="d-flex gap-2 flex-wrap">
           <a href="${mapsLink}" target="_blank" class="btn btn-sm btn-outline-primary" ${!lat || !lng ? 'style="display:none;"' : ''}>
             <i class="fas fa-map"></i> Map
           </a>
-          <button class="btn btn-sm btn-outline-info" ${detailsOnClick}>
+          <button class="btn btn-sm btn-outline-info clickable-place" data-place-id="${restaurant.place_id}">
             <i class="fas fa-info-circle"></i> Details
           </button>
           <button class="btn btn-sm btn-outline-danger remove-from-list-btn" data-list-id="${listId}" data-place-id="${restaurant.place_id}">
@@ -670,10 +671,10 @@ function showClusterPlacesModal(places, position) {
   
   const listContainer = document.getElementById('cluster-places-list');
   listContainer.innerHTML = sanitizeHTML(places.map((place, i) => `
-    <div class="cluster-place-item d-flex align-items-center p-2 border-bottom" style="cursor: pointer" 
-         onclick="showPlaceDetails('${place.place_id}'); bootstrap.Modal.getInstance(document.getElementById('cluster-places-modal')).hide();">
+    <div class="cluster-place-item d-flex align-items-center p-2 border-bottom clickable-place cluster-modal-place" 
+         style="cursor: pointer" data-place-id="${place.place_id}">
       <div class="flex-grow-1">
-        <strong>${place.name}</strong>
+        <strong>${escapeHTML(place.name)}</strong>
         <div class="small text-muted">
           <span class="text-warning">${'★'.repeat(Math.round(place.rating || 0))}</span>
           ${place.rating || 'N/A'} (${place.user_ratings_total || 0} reviews)
@@ -1620,6 +1621,41 @@ function initMap() {
       }
     });
   }
+  
+  // Event delegation for clickable place elements (cards, buttons)
+  // This replaces inline onclick handlers which are stripped by DOMPurify for security
+  document.addEventListener('click', function(e) {
+    const clickablePlace = e.target.closest('.clickable-place');
+    if (clickablePlace) {
+      const placeId = clickablePlace.dataset.placeId;
+      if (placeId) {
+        e.stopPropagation();
+        
+        // If clicking from cluster modal, close the modal first
+        if (clickablePlace.classList.contains('cluster-modal-place')) {
+          const clusterModal = document.getElementById('cluster-places-modal');
+          if (clusterModal) {
+            const modalInstance = bootstrap.Modal.getInstance(clusterModal);
+            if (modalInstance) modalInstance.hide();
+          }
+        }
+        
+        showPlaceDetails(placeId);
+      }
+    }
+  });
+  
+  // Event delegation for map hover buttons
+  document.addEventListener('mouseover', function(e) {
+    const mapHoverBtn = e.target.closest('.map-hover-btn');
+    if (mapHoverBtn) {
+      const lat = parseFloat(mapHoverBtn.dataset.lat);
+      const lng = parseFloat(mapHoverBtn.dataset.lng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        updateHoverMarker({ lat, lng });
+      }
+    }
+  });
 }
 
 // Use the user's current location
@@ -2099,18 +2135,18 @@ function createPlaceCard(place, index) {
       </button>
       
       ${thumbnailUrl ? `
-        <div class="card-img-wrapper" onclick="showPlaceDetails('${place.place_id}')">
-          <img src="${thumbnailUrl}" class="card-img-top" alt="${place.name}" loading="lazy">
+        <div class="card-img-wrapper clickable-place" data-place-id="${place.place_id}">
+          <img src="${thumbnailUrl}" class="card-img-top" alt="${escapeHTML(place.name)}" loading="lazy">
         </div>
       ` : `
-        <div class="card-img-placeholder" onclick="showPlaceDetails('${place.place_id}')">
+        <div class="card-img-placeholder clickable-place" data-place-id="${place.place_id}">
           <i class="fas fa-utensils"></i>
         </div>
       `}
       
-      <div class="card-body" onclick="showPlaceDetails('${place.place_id}')">
-        <h5 class="card-title">${place.name}${openBadge}</h5>
-        <p class="card-text">${place.vicinity || place.formatted_address || ''}</p>
+      <div class="card-body clickable-place" data-place-id="${place.place_id}">
+        <h5 class="card-title">${escapeHTML(place.name)}${openBadge}</h5>
+        <p class="card-text">${escapeHTML(place.vicinity || place.formatted_address || '')}</p>
         
         <div class="rating">
           <span class="rating-stars">${ratingStars}</span>
@@ -2122,8 +2158,8 @@ function createPlaceCard(place, index) {
         
         <div class="type-badges">${typesBadges}</div>
         
-        <div class="card-actions" onclick="event.stopPropagation()">
-          <button class="view-details-btn" onclick="showPlaceDetails('${place.place_id}')">
+        <div class="card-actions">
+          <button class="view-details-btn clickable-place" data-place-id="${place.place_id}">
             View Details
           </button>
           <button class="action-btn add-to-list-btn" 
@@ -2135,8 +2171,9 @@ function createPlaceCard(place, index) {
             target="_blank" class="action-btn" title="Get Directions">
             <i class="fas fa-directions"></i>
           </a>
-          <button class="action-btn" 
-            onmouseover="updateHoverMarker({lat: ${place.geometry.location.lat}, lng: ${place.geometry.location.lng}})"
+          <button class="action-btn map-hover-btn" 
+            data-lat="${place.geometry.location.lat}"
+            data-lng="${place.geometry.location.lng}"
             title="Show on map">
             <i class="fas fa-map-marker-alt"></i>
           </button>
@@ -2793,11 +2830,11 @@ async function loadNearbyRecommendations(place) {
             }
           }
           
-          card.innerHTML = `
+          card.innerHTML = sanitizeHTML(`
             <div class="card h-100">
               <div class="card-body">
-                <h6 class="card-title">${recommendation.name}</h6>
-                <small class="text-muted">${recommendation.vicinity || ''}</small>
+                <h6 class="card-title">${escapeHTML(recommendation.name)}</h6>
+                <small class="text-muted">${escapeHTML(recommendation.vicinity || '')}</small>
                 <div class="mt-2">
                   ${ratingStars}
                   <small class="ms-1">${recommendation.rating || 'No rating'}</small>
@@ -2805,12 +2842,12 @@ async function loadNearbyRecommendations(place) {
                 <div class="mt-2">
                   <strong>${priceLevel}</strong>
                 </div>
-                <button class="btn btn-outline-primary btn-sm mt-2" onclick="showPlaceDetails('${recommendation.place_id}')">
+                <button class="btn btn-outline-primary btn-sm mt-2 clickable-place" data-place-id="${recommendation.place_id}">
                   View Details
                 </button>
               </div>
             </div>
-          `;
+          `);
           
           recommendationsContainer.appendChild(card);
         });
