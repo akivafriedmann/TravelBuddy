@@ -1,0 +1,159 @@
+Security and Privacy Scanner
+Beta
+Run a scan to check for potential security risks and privacy leaks in your application. Scans are typically complete within minutes. Learn more
+75 potential vulnerabilities found.
+Last ran on
+ 
+3:10 pm, Jan 16, 2026
+Security
+Outdated dependencies have known vulnerabilities
+There are dependencies that have vulnerabilities and may need to be updated.
+These dependencies can be updated automatically.
+axios@1.8.4
+form-data@4.0.2
+qs@6.13.0
+These dependencies may cause issues if updated without making additional changes. You can have the Agent update them for you and make any necessary changes.
+urllib3@2.4.0
+urllib3@2.4.0
+urllib3@2.4.0
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+XSS Vulnerability: Unsafe DOM Manipulation. User controlled data in methods like `innerHTML`, `outerHTML` or `document.write` is an anti-pattern that can lead to XSS vulnerabilities. Replace with safe DOM methods: Use createElement() + appendChild() + textContent for dynamic content. Avoid use innerHTML with user data: Even escaped data can be risky. If HTML injection is absolutely necessary: Sanitize with DOMPurify library first.
+Security
+Detected calls to child_process from a function argument `req`. This could lead to a command injection if the input is user controllable. Try to avoid calls to child_process, and if it is needed ensure user input is correctly sanitized or sandboxed.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+Detected calls to child_process from a function argument `req`. This could lead to a command injection if the input is user controllable. Try to avoid calls to child_process, and if it is needed ensure user input is correctly sanitized or sandboxed.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Security
+Google API Key detected. Avoid hardcoding credentials directly in connection strings as this creates security risks. Instead, use environment variables to store and access credentials at runtime. If you need the actual credential values to make this work properly, ask me to provide them through Replit's secret system.
+Privacy
+Auth Token exposed to Standard Output Standard Output
+Privacy
+Auth Token exposed to Standard Output Standard Output
+Privacy
+Auth Token exposed to Standard Output Standard Output
+Vulnerability scans are enabled by the following Replit partners:
+Security scans are powered by Semgrep Community Edition.
+Privacy scans are powered by HoundDog.ai.

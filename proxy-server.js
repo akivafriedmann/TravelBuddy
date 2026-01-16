@@ -83,6 +83,7 @@ function makeRequest(url) {
 }
 
 // Helper function to make HTTP GET requests with headers (for TripAdvisor)
+// Returns { statusCode, body } to allow graceful handling of non-200 responses
 function makeRequestWithHeaders(url, headers = {}) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
@@ -97,10 +98,6 @@ function makeRequestWithHeaders(url, headers = {}) {
     };
     
     const req = https.request(options, (res) => {
-      if (res.statusCode < 200 || res.statusCode >= 300) {
-        return reject(new Error(`Status Code: ${res.statusCode}`));
-      }
-      
       const data = [];
       res.on('data', chunk => {
         data.push(chunk);
@@ -109,6 +106,16 @@ function makeRequestWithHeaders(url, headers = {}) {
       res.on('end', () => {
         try {
           const result = Buffer.concat(data).toString();
+          // For 403/401 errors, reject with a specific error type for graceful handling
+          if (res.statusCode === 403 || res.statusCode === 401) {
+            const authError = new Error(`API authorization failed`);
+            authError.statusCode = res.statusCode;
+            authError.isAuthError = true;
+            return reject(authError);
+          }
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            return reject(new Error(`Status Code: ${res.statusCode}`));
+          }
           resolve(result);
         } catch (e) {
           reject(e);
@@ -180,7 +187,7 @@ app.get('/api/maps-loader', (req, res) => {
     console.log("Google Maps API loading with server-provided key");
     (function() {
       const script = document.createElement('script');
-      script.src = "https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap";
+      script.src = "https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,marker&callback=initMap";
       script.defer = true;
       script.async = true;
       
@@ -296,6 +303,58 @@ app.get('/api/places/details', async (req, res) => {
   }
 });
 
+// Text Search endpoint - searches for places by name/query
+app.get('/api/search', async (req, res) => {
+  try {
+    const { query } = req.query;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || '';
+    
+    if (!apiKey) {
+      return res.status(500).json({ status: 'ERROR', error: 'API key is not configured' });
+    }
+    
+    if (!query) {
+      return res.status(400).json({ status: 'ERROR', error: 'Query parameter is required' });
+    }
+    
+    const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${apiKey}`;
+    
+    console.log(`Text search for: "${query}"`);
+    
+    const data = await makeRequest(url);
+    
+    // Process the response to include direct photo URLs
+    if (data.results) {
+      data.results.forEach(place => {
+        if (place.photos && place.photos.length > 0) {
+          place.photos = place.photos.map(photo => {
+            return {
+              ...photo,
+              url: `/api/photo?reference=${photo.photo_reference}&maxwidth=400&maxheight=200`
+            };
+          });
+        }
+      });
+    }
+    
+    console.log(`Text search response: status=${data.status}, results=${data.results ? data.results.length : 0}`);
+    
+    // Check if the API request was denied
+    if (data.status === 'REQUEST_DENIED' || data.status === 'OVER_QUERY_LIMIT') {
+      console.log(`API request was denied with status: ${data.status}`);
+      return res.status(403).json({ 
+        status: 'ERROR', 
+        error: `API request was denied: ${data.status}. This is likely due to API key domain restrictions.`
+      });
+    }
+    
+    res.json(data);
+  } catch (error) {
+    console.error('Error in text search:', error);
+    res.status(500).json({ status: 'ERROR', error: 'Failed to search places' });
+  }
+});
+
 // TripAdvisor integration using Content API
 app.get('/api/tripadvisor', async (req, res) => {
   try {
@@ -399,13 +458,28 @@ app.get('/api/tripadvisor', async (req, res) => {
     return res.json(result);
     
   } catch (error) {
-    console.error('Error in TripAdvisor route:', error.message);
+    // Only log non-auth errors (403/401 are expected when API key is invalid or missing)
+    if (!error.isAuthError) {
+      console.error('Error in TripAdvisor route:', error.message);
+    }
+    // Cache failed results to avoid repeated API calls (use req.query values)
+    const { place_name: placeName, lat: latitude, lng: longitude } = req.query;
+    if (placeName) {
+      const failedCacheKey = `${placeName}_${latitude}_${longitude}`.toLowerCase();
+      const failedResponse = {
+        status: 'OK',
+        result: {
+          tripadvisor_data: null,
+          api_error: true
+        }
+      };
+      tripAdvisorCache.set(failedCacheKey, { data: failedResponse, timestamp: Date.now() });
+    }
     res.status(200).json({
       status: 'OK',
       result: {
         tripadvisor_data: null,
-        api_error: true,
-        error_message: error.message
+        api_error: true
       }
     });
   }

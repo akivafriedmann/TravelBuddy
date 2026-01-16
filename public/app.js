@@ -384,6 +384,18 @@ async function fetchTripAdvisorRating(place) {
     const url = `/api/tripadvisor?place_name=${encodeURIComponent(place.name)}&lat=${lat}&lng=${lng}&category=${category}`;
     
     const response = await fetch(url);
+    
+    if (!response.ok) {
+      tripAdvisorCache.set(cacheKey, null);
+      return null;
+    }
+    
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      tripAdvisorCache.set(cacheKey, null);
+      return null;
+    }
+    
     const data = await response.json();
     
     if (data.status === 'OK' && data.result?.tripadvisor_data) {
@@ -394,7 +406,7 @@ async function fetchTripAdvisorRating(place) {
     tripAdvisorCache.set(cacheKey, null);
     return null;
   } catch (error) {
-    console.warn('TripAdvisor fetch error:', error.message);
+    tripAdvisorCache.set(cacheKey, null);
     return null;
   }
 }
@@ -545,22 +557,33 @@ function createCustomClusterRenderer() {
       const color = count > 10 ? '#e74c3c' : count > 5 ? '#f39c12' : '#3498db';
       const size = count > 10 ? 60 : count > 5 ? 50 : 40;
       
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="${size}" height="${size}">
-          <circle cx="50" cy="50" r="45" fill="${color}" stroke="white" stroke-width="3" opacity="0.9"/>
-          <text x="50" y="42" text-anchor="middle" fill="white" font-size="18" font-weight="bold">${count}</text>
-          <text x="50" y="60" text-anchor="middle" fill="white" font-size="10">places</text>
-        </svg>
+      // Create content element for cluster marker
+      const content = document.createElement('div');
+      content.className = 'cluster-marker-content';
+      content.style.cssText = `
+        width: ${size}px;
+        height: ${size}px;
+        background: ${color};
+        border: 3px solid white;
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        cursor: pointer;
+        opacity: 0.9;
+      `;
+      content.innerHTML = `
+        <span style="color: white; font-size: 16px; font-weight: bold; line-height: 1;">${count}</span>
+        <span style="color: white; font-size: 9px; line-height: 1;">places</span>
       `;
       
-      const marker = new google.maps.Marker({
+      // Create AdvancedMarkerElement for cluster
+      const marker = new google.maps.marker.AdvancedMarkerElement({
         position,
-        icon: {
-          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
-          scaledSize: new google.maps.Size(size, size),
-          anchor: new google.maps.Point(size / 2, size / 2)
-        },
-        zIndex: Number(google.maps.Marker.MAX_ZINDEX) + count,
+        content,
+        zIndex: 1000 + count,
         title: `${count} places in this area - click to see them`
       });
       
@@ -1247,18 +1270,20 @@ function initMap() {
   ];
 
   // Create the map with explicit configuration to ensure it displays
+  // mapId is required for AdvancedMarkerElement
+  // Note: When using mapId, styles must be configured in Google Cloud Console
   window.map = new google.maps.Map(mapElement, {
     zoom: 13,
     center: initialCenter,
     mapTypeId: google.maps.MapTypeId.ROADMAP,
-    styles: silverMapStyle,
     gestureHandling: 'greedy',
     zoomControl: true,
     mapTypeControl: false,
     scaleControl: true,
     streetViewControl: true,
     rotateControl: true,
-    fullscreenControl: true
+    fullscreenControl: true,
+    mapId: 'DEMO_MAP_ID'
   });
   
   // Force map to resize after creation
@@ -1267,8 +1292,8 @@ function initMap() {
     window.map.setCenter(initialCenter);
   }, 100);
   
-  // Add a marker at the center
-  new google.maps.Marker({
+  // Add a marker at the center using AdvancedMarkerElement
+  createAdvancedMarker({
     position: initialCenter,
     map: window.map,
     title: urlParams ? "Shared Location" : "Amsterdam"
@@ -1598,19 +1623,13 @@ function useMyLocation() {
         // Center the map on the user's location
         window.map.setCenter(userLocation);
         
-        // Add a marker at the user's location
-        new google.maps.Marker({
+        // Add a marker at the user's location using AdvancedMarkerElement
+        createAdvancedMarker({
           position: userLocation,
           map: window.map,
-          icon: {
-            path: google.maps.SymbolPath.CIRCLE,
-            scale: 10,
-            fillColor: "#4285F4",
-            fillOpacity: 1,
-            strokeColor: "#ffffff",
-            strokeWeight: 2,
-          },
           title: "Your Location",
+          color: "#4285F4",
+          isUserLocation: true
         });
         
         // Load nearby places (use current radius, clear keyword for new location)
@@ -2190,17 +2209,24 @@ async function fetchTripAdvisorData(place) {
     const placeLocation = encodeURIComponent(place.vicinity || '');
     
     const response = await fetch(`/api/tripadvisor?place_name=${placeName}&location=${placeLocation}`);
+    
+    if (!response.ok) {
+      return null;
+    }
+    
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      return null;
+    }
+    
     const data = await response.json();
     
-    console.log("TripAdvisor API response:", data);
-    
-    if (data && data.status === 'success' && data.data) {
-      return data.data;
+    if (data && data.status === 'OK' && data.result?.tripadvisor_data) {
+      return data.result.tripadvisor_data;
     }
     
     return null;
   } catch (error) {
-    console.error("Error fetching TripAdvisor data:", error);
     return null;
   }
 }
@@ -2208,7 +2234,68 @@ async function fetchTripAdvisorData(place) {
 // Global array to keep track of markers
 window.markers = [];
 
-// Add a marker for a place
+// Helper function to create AdvancedMarkerElement
+function createAdvancedMarker(options) {
+  const { position, map, title, label, color = '#EA4335', isUserLocation = false, onClick } = options;
+  
+  // Create content element for the marker
+  const content = document.createElement('div');
+  content.className = 'advanced-marker-content';
+  
+  if (isUserLocation) {
+    // User location marker - blue dot
+    content.style.cssText = `
+      width: 20px;
+      height: 20px;
+      background: ${color};
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    `;
+  } else if (label) {
+    // Numbered marker for places
+    content.style.cssText = `
+      width: 28px;
+      height: 28px;
+      background: ${color};
+      border: 2px solid white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    `;
+    content.textContent = label;
+  } else {
+    // Default pin marker
+    content.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="36" viewBox="0 0 24 36">
+        <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24c0-6.6-5.4-12-12-12z" fill="${color}"/>
+        <circle cx="12" cy="12" r="5" fill="white"/>
+      </svg>
+    `;
+  }
+  
+  // Create the AdvancedMarkerElement
+  const marker = new google.maps.marker.AdvancedMarkerElement({
+    position,
+    map,
+    title,
+    content
+  });
+  
+  // Add click listener if provided
+  if (onClick) {
+    marker.addListener('click', onClick);
+  }
+  
+  return marker;
+}
+
+// Add a marker for a place using AdvancedMarkerElement
 function addMarker(place, index) {
   if (!place.geometry || !place.geometry.location) return;
   
@@ -2217,27 +2304,21 @@ function addMarker(place, index) {
     lng: place.geometry.location.lng
   };
   
-  // Create marker with label
-  const marker = new google.maps.Marker({
+  // Create marker with label using AdvancedMarkerElement
+  const marker = createAdvancedMarker({
     position: position,
     map: window.map,
     title: place.name,
-    label: {
-      text: (index + 1).toString(),
-      color: 'white'
-    },
-    animation: google.maps.Animation.DROP
+    label: (index + 1).toString(),
+    onClick: () => {
+      window.map.setCenter(position);
+      window.map.setZoom(16);
+      showPlaceDetails(place.place_id);
+    }
   });
   
   // Store place data on marker for cluster access
   marker.placeData = place;
-  
-  // Add click event to marker
-  marker.addListener("click", () => {
-    window.map.setCenter(position);
-    window.map.setZoom(16);
-    showPlaceDetails(place.place_id);
-  });
   
   // Store marker in global array
   window.markers.push(marker);
@@ -2247,14 +2328,15 @@ function addMarker(place, index) {
 function clearMarkers() {
   if (window.markers) {
     for (let marker of window.markers) {
-      marker.setMap(null);
+      // AdvancedMarkerElement uses .map = null instead of setMap(null)
+      marker.map = null;
     }
   }
   window.markers = [];
   
   // Also clear the hover marker if it exists
   if (window.hoverMarker) {
-    window.hoverMarker.setMap(null);
+    window.hoverMarker.map = null;
     window.hoverMarker = null;
   }
 }
@@ -2815,33 +2897,42 @@ function debounce(func, delay) {
 function updateHoverMarker(location) {
   // Remove existing hover marker
   if (window.hoverMarker) {
-    window.hoverMarker.setMap(null);
+    window.hoverMarker.map = null;
   }
   
-  // Create a new hover marker
-  window.hoverMarker = new google.maps.Marker({
+  // Create content element for hover marker with animation
+  const content = document.createElement('div');
+  content.className = 'hover-marker-content';
+  content.style.cssText = `
+    width: 20px;
+    height: 20px;
+    background: #FF4081;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    animation: bounce 0.5s ease-in-out 3;
+  `;
+  
+  // Add bounce animation keyframes if not already added
+  if (!document.getElementById('hover-marker-styles')) {
+    const style = document.createElement('style');
+    style.id = 'hover-marker-styles';
+    style.textContent = `
+      @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  
+  // Create a new hover marker using AdvancedMarkerElement
+  window.hoverMarker = new google.maps.marker.AdvancedMarkerElement({
     position: location,
     map: window.map,
-    icon: {
-      path: google.maps.SymbolPath.CIRCLE,
-      scale: 10,
-      fillColor: "#FF4081",
-      fillOpacity: 0.8,
-      strokeColor: "#FFFFFF",
-      strokeWeight: 2
-    },
-    zIndex: 999  // Make sure it appears above other markers
+    content: content,
+    zIndex: 999
   });
-  
-  // Animate the marker
-  window.hoverMarker.setAnimation(google.maps.Animation.BOUNCE);
-  
-  // Stop animation after a short time
-  setTimeout(() => {
-    if (window.hoverMarker) {
-      window.hoverMarker.setAnimation(null);
-    }
-  }, 1500);
 }
 
 // Search for places nearby the hover location
