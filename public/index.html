@@ -310,53 +310,49 @@
     </div>
   </div>
   
-  <!-- My Lists Modal -->
-  <div class="modal fade" id="lists-modal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="fas fa-list me-2"></i>My Restaurant Lists</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+  <!-- Lists Slide-Over Drawer -->
+  <div class="lists-drawer-overlay" id="lists-drawer-overlay"></div>
+  <div class="lists-drawer" id="lists-drawer">
+    <div class="drawer-header">
+      <div class="drawer-title">
+        <i class="fas fa-book-open me-2"></i>
+        <span>My Guidebooks</span>
+      </div>
+      <button class="drawer-close-btn" id="drawer-close-btn">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="drawer-body">
+      <div class="create-list-section">
+        <div class="create-list-input-group">
+          <input type="text" id="new-list-name" class="drawer-input" placeholder="New guidebook name...">
+          <button class="create-list-btn" id="create-list-btn">
+            <i class="fas fa-plus"></i>
+          </button>
         </div>
-        <div class="modal-body" id="lists-modal-body">
-          <div class="mb-3">
-            <div class="input-group">
-              <input type="text" id="new-list-name" class="form-control" placeholder="New list name (e.g., 'Date Night Spots')">
-              <button class="btn btn-primary" id="create-list-btn">
-                <i class="fas fa-plus"></i> Create List
-              </button>
-            </div>
-          </div>
-          <hr>
-          <div id="lists-container">
-            <p class="text-muted text-center">No lists yet. Create one above!</p>
-          </div>
-        </div>
+      </div>
+      
+      <div class="lists-grid" id="lists-container">
       </div>
     </div>
   </div>
   
-  <!-- Add to List Modal -->
-  <div class="modal fade" id="add-to-list-modal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Add to List</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body" id="add-to-list-body">
-          <p class="mb-3">Select a list for <strong id="add-to-list-place-name"></strong>:</p>
-          <div id="add-to-list-options">
-            <!-- List options will be populated here -->
-          </div>
-          <hr>
-          <div class="input-group">
-            <input type="text" id="quick-create-list-name" class="form-control" placeholder="Or create a new list...">
-            <button class="btn btn-outline-primary" id="quick-create-list-btn">
-              <i class="fas fa-plus"></i>
-            </button>
-          </div>
-        </div>
+  <!-- Save to List Popup -->
+  <div class="save-to-list-popup" id="save-to-list-popup" style="display: none;">
+    <div class="popup-header">
+      <span>Save to Guidebook</span>
+      <button class="popup-close-btn" id="popup-close-btn">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="popup-body">
+      <div id="save-to-list-options"></div>
+      <div class="popup-create-new">
+        <input type="text" id="quick-create-list-name" class="popup-input" placeholder="Create new guidebook...">
+        <button class="popup-create-btn" id="quick-create-list-btn">
+          <i class="fas fa-plus"></i>
+        </button>
       </div>
     </div>
   </div>

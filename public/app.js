@@ -1141,18 +1141,30 @@ function renderSearchResults(places, origin, searchQuery) {
   // TripAdvisor ratings now loaded on-demand via external link to save API credits
 }
 
-// Initialize My Lists modal
+// ==================== DRAWER STATE ====================
+let currentExpandedListId = null;
+
+// Initialize Guidebook Drawer
 function initListsModal() {
   const listsButton = document.getElementById('my-lists-button');
+  const drawer = document.getElementById('lists-drawer');
+  const overlay = document.getElementById('lists-drawer-overlay');
+  const closeBtn = document.getElementById('drawer-close-btn');
   const createListBtn = document.getElementById('create-list-btn');
   const newListInput = document.getElementById('new-list-name');
   
   if (listsButton) {
     listsButton.addEventListener('click', function() {
-      renderListsModal();
-      const modal = new bootstrap.Modal(document.getElementById('lists-modal'));
-      modal.show();
+      openDrawer();
     });
+  }
+  
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeDrawer);
+  }
+  
+  if (overlay) {
+    overlay.addEventListener('click', closeDrawer);
   }
   
   if (createListBtn && newListInput) {
@@ -1161,10 +1173,8 @@ function initListsModal() {
       if (name) {
         createList(name);
         newListInput.value = '';
-        renderListsModal();
-        showToast(`List "${name}" created!`);
-      } else {
-        alert('Please enter a list name');
+        renderDrawerContent();
+        showToast(`"${name}" created!`);
       }
     });
     
@@ -1174,6 +1184,297 @@ function initListsModal() {
       }
     });
   }
+  
+  // Close popup when clicking outside
+  document.addEventListener('click', function(e) {
+    const popup = document.getElementById('save-to-list-popup');
+    if (popup && popup.style.display !== 'none') {
+      if (!popup.contains(e.target) && !e.target.closest('.btn-save-to-list')) {
+        popup.style.display = 'none';
+      }
+    }
+  });
+  
+  // Popup close button
+  document.getElementById('popup-close-btn')?.addEventListener('click', function() {
+    document.getElementById('save-to-list-popup').style.display = 'none';
+  });
+  
+  // Quick create in popup
+  const quickCreateBtn = document.getElementById('quick-create-list-btn');
+  const quickCreateInput = document.getElementById('quick-create-list-name');
+  if (quickCreateBtn && quickCreateInput) {
+    quickCreateBtn.addEventListener('click', function() {
+      const name = quickCreateInput.value.trim();
+      if (name && window.currentSavePlace) {
+        const newList = createList(name);
+        addRestaurantToList(newList.id, window.currentSavePlace);
+        quickCreateInput.value = '';
+        document.getElementById('save-to-list-popup').style.display = 'none';
+        showToast(`Saved to "${name}"!`);
+        updateSaveButtonState(window.currentSavePlace.place_id);
+      }
+    });
+    
+    quickCreateInput.addEventListener('keyup', function(e) {
+      if (e.key === 'Enter') quickCreateBtn.click();
+    });
+  }
+}
+
+function openDrawer() {
+  currentExpandedListId = null;
+  renderDrawerContent();
+  document.getElementById('lists-drawer').classList.add('open');
+  document.getElementById('lists-drawer-overlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDrawer() {
+  document.getElementById('lists-drawer').classList.remove('open');
+  document.getElementById('lists-drawer-overlay').classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function renderDrawerContent() {
+  const container = document.getElementById('lists-container');
+  const lists = getLists();
+  
+  if (currentExpandedListId) {
+    const list = lists.find(l => l.id === currentExpandedListId);
+    if (list) {
+      renderExpandedList(container, list);
+      return;
+    }
+  }
+  
+  if (lists.length === 0) {
+    container.innerHTML = `
+      <div class="lists-empty-state">
+        <i class="fas fa-book-open"></i>
+        <h4>Start Your Guidebook</h4>
+        <p>Save your favorite spots and create travel guides</p>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = sanitizeHTML(lists.map(list => {
+    const bgImage = getListCoverImage(list);
+    return `
+      <div class="guidebook-card" data-list-id="${list.id}">
+        <div class="guidebook-card-bg" style="background-image: url('${bgImage}')"></div>
+        <div class="guidebook-card-overlay"></div>
+        <div class="guidebook-card-content">
+          <div class="guidebook-card-title">${escapeHTML(list.name)}</div>
+          <div class="guidebook-card-count">${list.restaurants.length} place${list.restaurants.length !== 1 ? 's' : ''}</div>
+        </div>
+        <div class="guidebook-card-actions">
+          <button class="guidebook-action-btn share-btn" data-list-id="${list.id}" title="Share">
+            <i class="fas fa-share-alt"></i>
+          </button>
+          <button class="guidebook-action-btn delete-btn" data-list-id="${list.id}" title="Delete">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join(''));
+  
+  // Card click to expand
+  container.querySelectorAll('.guidebook-card').forEach(card => {
+    card.addEventListener('click', function(e) {
+      if (!e.target.closest('.guidebook-action-btn')) {
+        currentExpandedListId = this.dataset.listId;
+        renderDrawerContent();
+      }
+    });
+  });
+  
+  // Share button
+  container.querySelectorAll('.share-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      shareList(this.dataset.listId);
+    });
+  });
+  
+  // Delete button
+  container.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const listId = this.dataset.listId;
+      const list = getLists().find(l => l.id === listId);
+      if (confirm(`Delete "${list.name}"?`)) {
+        deleteList(listId);
+        renderDrawerContent();
+        showToast('List deleted');
+      }
+    });
+  });
+}
+
+function renderExpandedList(container, list) {
+  const placesHtml = list.restaurants.length === 0 
+    ? '<p class="text-muted text-center" style="padding: 24px;">No places saved yet</p>'
+    : list.restaurants.map(r => `
+        <div class="guidebook-place-item" data-place-id="${r.place_id}">
+          <img src="${r.photoUrl || 'https://via.placeholder.com/64x64?text=No+Image'}" 
+               class="guidebook-place-image" 
+               onerror="this.src='https://via.placeholder.com/64x64?text=No+Image'">
+          <div class="guidebook-place-info">
+            <div class="guidebook-place-name">${escapeHTML(r.name)}</div>
+            <div class="guidebook-place-address">${escapeHTML(r.address || 'Address not available')}</div>
+          </div>
+          <button class="guidebook-place-remove" data-place-id="${r.place_id}" title="Remove">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      `).join('');
+  
+  container.innerHTML = sanitizeHTML(`
+    <div class="guidebook-expanded">
+      <button class="guidebook-back-btn">
+        <i class="fas fa-arrow-left"></i>
+        <span>All Guidebooks</span>
+      </button>
+      <div class="guidebook-expanded-header">
+        <h3 class="guidebook-expanded-title">${escapeHTML(list.name)}</h3>
+        <p class="guidebook-expanded-count">${list.restaurants.length} place${list.restaurants.length !== 1 ? 's' : ''}</p>
+      </div>
+      <div class="guidebook-places-list">
+        ${placesHtml}
+      </div>
+    </div>
+  `);
+  
+  // Back button
+  container.querySelector('.guidebook-back-btn')?.addEventListener('click', function() {
+    currentExpandedListId = null;
+    renderDrawerContent();
+  });
+  
+  // Click place to view details
+  container.querySelectorAll('.guidebook-place-item').forEach(item => {
+    item.addEventListener('click', function(e) {
+      if (!e.target.closest('.guidebook-place-remove')) {
+        closeDrawer();
+        showPlaceDetails(this.dataset.placeId);
+      }
+    });
+  });
+  
+  // Remove from list
+  container.querySelectorAll('.guidebook-place-remove').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      removeRestaurantFromList(list.id, this.dataset.placeId);
+      renderDrawerContent();
+    });
+  });
+}
+
+function getListCoverImage(list) {
+  if (list.restaurants.length > 0 && list.restaurants[0].photoUrl) {
+    return list.restaurants[0].photoUrl;
+  }
+  return 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=80';
+}
+
+function shareList(listId) {
+  const list = getLists().find(l => l.id === listId);
+  if (!list) return;
+  
+  const placeNames = list.restaurants.slice(0, 5).map(r => r.name).join(', ');
+  const moreCount = list.restaurants.length > 5 ? ` +${list.restaurants.length - 5} more` : '';
+  const text = `Check out my "${list.name}" guidebook on Crave: ${placeNames}${moreCount}`;
+  
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('Copied to clipboard!');
+    });
+  } else {
+    showToast('Share: ' + text);
+  }
+}
+
+// Show Save to List popup
+function showSaveToListPopup(place, buttonElement) {
+  window.currentSavePlace = place;
+  const popup = document.getElementById('save-to-list-popup');
+  const optionsContainer = document.getElementById('save-to-list-options');
+  const lists = getLists();
+  
+  if (lists.length === 0) {
+    optionsContainer.innerHTML = '<p class="text-muted small">No guidebooks yet. Create one below!</p>';
+  } else {
+    optionsContainer.innerHTML = sanitizeHTML(lists.map(list => {
+      const isInList = list.restaurants.some(r => r.place_id === place.place_id);
+      return `
+        <button class="save-list-option ${isInList ? 'saved' : ''}" data-list-id="${list.id}">
+          <i class="fas ${isInList ? 'fa-check' : 'fa-book-open'}"></i>
+          <span class="save-list-option-name">${escapeHTML(list.name)}</span>
+        </button>
+      `;
+    }).join(''));
+    
+    optionsContainer.querySelectorAll('.save-list-option').forEach(opt => {
+      opt.addEventListener('click', function() {
+        const listId = this.dataset.listId;
+        const list = getLists().find(l => l.id === listId);
+        const isInList = list.restaurants.some(r => r.place_id === place.place_id);
+        
+        if (isInList) {
+          removeRestaurantFromList(listId, place.place_id);
+          showToast(`Removed from "${list.name}"`);
+        } else {
+          addRestaurantToList(listId, place);
+          showToast(`Saved to "${list.name}"!`);
+        }
+        popup.style.display = 'none';
+        updateSaveButtonState(place.place_id);
+      });
+    });
+  }
+  
+  // Position popup near the button
+  const rect = buttonElement.getBoundingClientRect();
+  popup.style.display = 'block';
+  
+  // Center on screen for mobile, position near button for desktop
+  if (window.innerWidth < 768) {
+    popup.style.top = '50%';
+    popup.style.left = '50%';
+    popup.style.transform = 'translate(-50%, -50%)';
+  } else {
+    popup.style.top = Math.min(rect.bottom + 8, window.innerHeight - 350) + 'px';
+    popup.style.left = Math.min(rect.left, window.innerWidth - 340) + 'px';
+    popup.style.transform = 'none';
+  }
+}
+
+// Check if place is saved in any list
+function isPlaceSaved(placeId) {
+  return getLists().some(list => list.restaurants.some(r => r.place_id === placeId));
+}
+
+// Update save button state
+function updateSaveButtonState(placeId) {
+  const isSaved = isPlaceSaved(placeId);
+  document.querySelectorAll(`.btn-save-to-list[data-place-id="${placeId}"]`).forEach(btn => {
+    if (isSaved) {
+      btn.classList.add('saved');
+      btn.innerHTML = '<i class="fas fa-bookmark"></i> Saved';
+    } else {
+      btn.classList.remove('saved');
+      btn.innerHTML = '<i class="far fa-bookmark"></i> Save';
+    }
+  });
+}
+
+// Legacy render function (kept for compatibility)
+function renderListsModal() {
+  renderDrawerContent();
 }
 
 function toggleDarkMode(enabled) {
@@ -3162,6 +3463,12 @@ async function showPlaceDetails(placeId) {
             <i class="fas fa-share-alt"></i>
             <span>Share</span>
           </button>
+          <button class="btn-save-to-list ${isPlaceSaved(place.place_id) ? 'saved' : ''}" 
+                  data-place-id="${place.place_id}" 
+                  title="Save to Guidebook">
+            <i class="${isPlaceSaved(place.place_id) ? 'fas' : 'far'} fa-bookmark"></i>
+            ${isPlaceSaved(place.place_id) ? 'Saved' : 'Save'}
+          </button>
         </div>
       `;
       
@@ -3253,6 +3560,15 @@ async function showPlaceDetails(placeId) {
             const placeName = decodeURIComponent(this.dataset.placeName);
             const placeId = this.dataset.placeId;
             sharePlace(placeName, placeId);
+          });
+        }
+        
+        // Attach save to list button listener
+        const saveBtn = document.querySelector('.btn-save-to-list');
+        if (saveBtn) {
+          saveBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showSaveToListPopup(place, this);
           });
         }
         
