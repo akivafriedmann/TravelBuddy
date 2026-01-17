@@ -52,29 +52,3 @@ API security is managed through environment-based API keys, Google Maps API key 
 
 ### Optional Services
 - **ScrapingBee**: Used for reliable web scraping for services like TripAdvisor.
-
-## Mobile App (React Native/Expo)
-
-### Testing the Mobile App
-1. Open the Expo Go app on your phone (download from App Store/Play Store)
-2. The CraveMobile workflow shows a QR code in the console logs
-3. Scan the QR code with Expo Go (Android) or Camera app (iOS)
-4. The Crave mobile app will load on your device
-
-### Mobile App Features
-- **Map View**: Full-screen Google Maps with restaurant/hotel markers
-- **Category Pills**: Filter by Restaurants, Hotels, Cafes, Bars
-- **Search This Area**: Button appears when you pan the map to search new locations
-- **Place Details**: Tap any marker to see full details including photos, ratings, hours
-- **Directions**: Get directions to any place via native maps app
-- **Brand Colors**: Deep emerald green (#1B4D3E) for restaurants, purple (#5B3B8C) for hotels
-
-### Mobile App Architecture
-- **App.js**: Main entry with Stack Navigator
-- **src/screens/MapScreen.js**: Main map view with markers and search
-- **src/screens/PlaceDetailsScreen.js**: Detailed place info with photos
-- **src/services/PlacesService.js**: API calls to backend
-- **src/services/LocationService.js**: Device GPS handling
-
-### Backend API (Production)
-The mobile app connects to: https://crave-craving-life.replit.app/api
