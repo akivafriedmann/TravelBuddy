@@ -326,7 +326,6 @@ body.dark-mode .dark-mode-toggle label i {
 .content-container.results-section {
   padding-top: 30px;
   background: #FAFAFA;
-  border-top: none;
 }
 
 .filters-card {
@@ -559,9 +558,8 @@ body.dark-mode .legal-modal .modal-body p {
   margin-bottom: 0;
   border: none;
   border-radius: 0;
-  overflow: visible;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-  z-index: 10;
+  overflow: hidden;
+  box-shadow: none;
 }
 
 /* Modern Category Pills - Horizontal Scrollable */
@@ -571,7 +569,7 @@ body.dark-mode .legal-modal .modal-body p {
   z-index: 100;
   background: transparent;
   padding: 12px 0;
-  margin-top: -20px;
+  margin-top: 0 !important;
 }
 
 .category-select {
@@ -1388,7 +1386,7 @@ body.dark-mode .reviews-carousel .slick-next:hover {
 /* Search This Area Button - White pill with brand green text */
 .search-area-btn {
   position: absolute;
-  top: 20px;
+  top: 15px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;

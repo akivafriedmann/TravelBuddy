@@ -24,9 +24,6 @@ args = "CraveMobile"
 name = "ProxyServer"
 author = "agent"
 
-[workflows.workflow.metadata]
-outputType = "webview"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node proxy-server.js"
@@ -36,13 +33,12 @@ waitForPort = 5000
 name = "CraveMobile"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "console"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "yes | npx expo start --tunnel"
-waitForPort = 8081
-
-[workflows.workflow.metadata]
-outputType = "console"
 
 [deployment]
 run = ["node", "proxy-server.js"]
@@ -50,7 +46,11 @@ deploymentTarget = "autoscale"
 
 [[ports]]
 localPort = 5000
-externalPort = 80
+externalPort = 5000
+
+[[ports]]
+localPort = 5001
+externalPort = 3000
 
 [[ports]]
 localPort = 8000
@@ -59,10 +59,6 @@ externalPort = 80
 [[ports]]
 localPort = 8081
 externalPort = 8081
-
-[[ports]]
-localPort = 8082
-externalPort = 3001
 
 [agent]
 expertMode = true
