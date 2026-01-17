@@ -913,6 +913,29 @@ app.get('/api/nearby', async (req, res) => {
         });
         console.log(`Hotel filtering: ${legacyData.results.length} of ${beforeCount} places remain`);
       }
+      
+      // Filter out non-restaurant places from cuisine/category searches
+      if (type === "restaurant" && keyword) {
+        const nonFoodTypes = ['museum', 'art_gallery', 'library', 'church', 'place_of_worship', 
+          'hospital', 'doctor', 'dentist', 'pharmacy', 'bank', 'atm', 'post_office',
+          'police', 'fire_station', 'city_hall', 'courthouse', 'embassy', 'local_government_office',
+          'school', 'university', 'gym', 'spa', 'beauty_salon', 'hair_care',
+          'car_dealer', 'car_rental', 'car_repair', 'car_wash', 'gas_station', 'parking',
+          'travel_agency', 'real_estate_agency', 'insurance_agency', 'lawyer', 'accounting',
+          'movie_theater', 'stadium', 'amusement_park', 'aquarium', 'zoo', 'park',
+          'campground', 'rv_park', 'cemetery', 'funeral_home', 'storage', 'moving_company',
+          'laundry', 'locksmith', 'plumber', 'electrician', 'roofing_contractor', 'painter',
+          'transit_station', 'bus_station', 'train_station', 'subway_station', 'airport',
+          'lodging', 'hotel'];
+        const beforeCount = legacyData.results.length;
+        legacyData.results = legacyData.results.filter(place => {
+          if (!place.types || place.types.length === 0) return true;
+          // Reject if any type is a known non-food type
+          const hasNonFoodType = place.types.some(t => nonFoodTypes.includes(t));
+          return !hasNonFoodType;
+        });
+        console.log(`Non-food filtering: ${legacyData.results.length} of ${beforeCount} places remain after removing museums, hotels, etc.`);
+      }
     }
     
     console.log(`Final result count: ${legacyData.results?.length || 0}`);

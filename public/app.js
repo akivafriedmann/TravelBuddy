@@ -2710,13 +2710,14 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false,
   container.innerHTML = '';
   
   // Minimum required reviews for statistical significance
-  // Lower thresholds to show more results
+  // Use stricter threshold for category browsing, lower for specific/dessert searches
+  const isSmallResultSet = places.length <= 10; // Likely a name search
   const MIN_REVIEWS = {
-    restaurant: 5,
-    lodging: 3,
-    night_club: 3,
-    supermarket: 2,
-    default: 3
+    restaurant: (isDessertSearch || isSmallResultSet) ? 5 : 20,
+    lodging: 10,
+    night_club: 10,
+    supermarket: 5,
+    default: 10
   };
   const currentMinReviews = MIN_REVIEWS[currentPlaceType] || MIN_REVIEWS.default;
   
