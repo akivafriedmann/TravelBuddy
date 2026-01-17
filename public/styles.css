@@ -90,16 +90,25 @@ body.dark-mode .btn-outline-purple {
   padding: 0 20px;
 }
 
+/* Header area (search + controls) gets soft shadow separator */
+.content-container:first-of-type {
+  padding-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+body.dark-mode .content-container:first-of-type {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
 .map-section {
   width: 100%;
 }
 
 /* ==================== CRAVE HEADER ==================== */
 .crave-header {
-  padding: 24px 0 16px;
+  padding: 24px 0 20px;
   width: 100%;
   background: var(--bg-secondary);
-  border-bottom: 1px solid #eaeaea;
 }
 
 .brand-title {
@@ -122,7 +131,6 @@ body.dark-mode .brand-title {
 
 body.dark-mode .crave-header {
   background: #121212;
-  border-bottom-color: #333;
 }
 
 body.dark-mode .brand-tagline {
@@ -215,6 +223,16 @@ body.dark-mode .search-btn {
 }
 
 /* ==================== ACTION BUTTONS ==================== */
+.header-action-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+/* Legacy support - modal action buttons row (different from header) */
 .action-buttons-row {
   display: flex;
   align-items: center;
@@ -307,6 +325,7 @@ body.dark-mode .dark-mode-toggle label i {
 .search-section {
   max-width: 800px;
   margin: 0 auto;
+  padding-bottom: 16px;
 }
 
 .filters-section {
