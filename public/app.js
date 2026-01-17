@@ -2577,6 +2577,8 @@ async function showPlaceDetails(placeId) {
       const carouselId = 'photoCarousel-' + place.place_id.replace(/[^a-zA-Z0-9]/g, '');
       
       if (place.photos && place.photos.length > 0) {
+        // Include +1 for the "View All" slide in indicators
+        const totalSlides = place.photos.length + 1;
         heroCarouselHtml = `
           <div id="${carouselId}" class="carousel slide hero-carousel" data-bs-ride="false">
             <div class="carousel-indicators">
@@ -2584,6 +2586,7 @@ async function showPlaceDetails(placeId) {
                 <button type="button" data-bs-target="#${carouselId}" data-bs-slide-to="${i}" 
                   ${i === 0 ? 'class="active" aria-current="true"' : ''} aria-label="Slide ${i + 1}"></button>
               `).join('')}
+              <button type="button" data-bs-target="#${carouselId}" data-bs-slide-to="${place.photos.length}" aria-label="View All"></button>
             </div>
             <div class="carousel-inner">
         `;
@@ -2612,6 +2615,21 @@ async function showPlaceDetails(placeId) {
           `;
         });
         
+        // Add "View All Photos" slide at the end
+        const googleMapsUrl = place.url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + (place.vicinity || ''))}`;
+        heroCarouselHtml += `
+          <div class="carousel-item view-all-slide">
+            <div class="view-all-content">
+              <i class="fas fa-images"></i>
+              <h5>See All Photos</h5>
+              <p>View the complete gallery on Google Maps</p>
+              <a href="${googleMapsUrl}" target="_blank" class="view-all-btn">
+                <i class="fab fa-google me-2"></i>Open in Google Maps
+              </a>
+            </div>
+          </div>
+        `;
+        
         heroCarouselHtml += `
             </div>
             <button class="carousel-control-prev" type="button" data-bs-target="#${carouselId}" data-bs-slide="prev">
@@ -2622,7 +2640,7 @@ async function showPlaceDetails(placeId) {
               <span class="carousel-control-next-icon" aria-hidden="true"></span>
               <span class="visually-hidden">Next</span>
             </button>
-            <div class="photo-count-badge">${place.photos.length} photos</div>
+            <div class="photo-count-badge">${place.photos.length}+ photos</div>
           </div>
         `;
       } else {
