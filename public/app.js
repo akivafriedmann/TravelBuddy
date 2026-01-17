@@ -2907,7 +2907,7 @@ async function showPlaceDetails(placeId) {
               <i class="fas fa-images"></i>
               <h5>See All Photos</h5>
               <p>View the complete gallery on Google Maps</p>
-              <a href="${googleMapsUrl}" target="_blank" class="view-all-btn">
+              <a href="${googleMapsUrl}" target="_blank" rel="noopener noreferrer" class="view-all-btn">
                 <i class="fab fa-google me-2"></i>Open in Google Maps
               </a>
             </div>
@@ -2953,7 +2953,7 @@ async function showPlaceDetails(placeId) {
                   ${tripAdvisorData.cuisine ? `<span class="meta-separator">•</span><span class="text-muted">${tripAdvisorData.cuisine}</span>` : ''}
                 </div>
               ` : ''}
-              <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn-tripadvisor-cta">
+              <a href="${tripAdvisorSearchUrl}" target="_blank" rel="noopener noreferrer" class="btn-tripadvisor-cta">
                 <i class="fab fa-tripadvisor"></i>
                 Find on TripAdvisor
               </a>
@@ -2963,7 +2963,7 @@ async function showPlaceDetails(placeId) {
       } else {
         tripAdvisorHtml = `
           <div class="tripadvisor-section mt-3">
-            <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn-tripadvisor-cta">
+            <a href="${tripAdvisorSearchUrl}" target="_blank" rel="noopener noreferrer" class="btn-tripadvisor-cta">
               <i class="fab fa-tripadvisor"></i>
               Find on TripAdvisor
             </a>
@@ -2997,7 +2997,7 @@ async function showPlaceDetails(placeId) {
         const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(bookingSearchQuery.trim())}`;
         hotelBookingHtml = `
           <div class="hotel-booking-section mt-4">
-            <a href="${bookingUrl}" target="_blank" class="btn btn-booking-cta w-100">
+            <a href="${bookingUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-booking-cta w-100">
               <i class="fas fa-calendar-check me-2"></i>Check Rates & Availability
             </a>
             <p class="affiliate-disclosure">We may earn a commission if you book.</p>
@@ -3031,12 +3031,12 @@ async function showPlaceDetails(placeId) {
             </span>
           `}
           ${place.url ? `
-            <a href="${place.url}" target="_blank" class="action-pill" title="Directions">
+            <a href="${place.url}" target="_blank" rel="noopener noreferrer" class="action-pill" title="Directions">
               <i class="fas fa-directions"></i>
               <span>Directions</span>
             </a>
           ` : `
-            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${place.place_id}" target="_blank" class="action-pill" title="Directions">
+            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${place.place_id}" target="_blank" rel="noopener noreferrer" class="action-pill" title="Directions">
               <i class="fas fa-directions"></i>
               <span>Directions</span>
             </a>
