@@ -41,6 +41,9 @@ API security is managed through environment-based API keys, Google Maps API key 
 - **Premium Date Spot Badge**: $$$ and $$$$ bars in Date Drinks mode display a glowing purple "Premium Date Spot" badge.
 - **Speakeasy Boost**: Places with "speakeasy" in their name are prioritized in Date Drinks mode.
 - **Accessibility**: Mobile responsiveness improvements including stacked inputs, compact cards, and optimized modal displays.
+- **Shareable URLs**: Hash routing (#/place/{place_id}) enables sharing links that open directly to a place's details modal.
+- **Travel Essentials Modal**: Header button with eSIM (Airalo) and Travel Insurance (SafetyWing) affiliate cards for passive revenue.
+- **Google Analytics (GA4)**: Event tracking for filter selections (select_content) and lead generation (generate_lead) on Booking.com, TripAdvisor, eSIM, and Insurance button clicks. Placeholder ID: G-XXXXXXXXXX.
 
 ## External Dependencies
 
