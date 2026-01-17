@@ -11,6 +11,15 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
   <link rel="stylesheet" href="styles.css">
+  
+  <!-- Google Analytics (GA4) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-XXXXXXXXXX');
+  </script>
 </head>
 <body>
   <!-- Full-width Header -->
@@ -50,6 +59,9 @@
         <button id="my-lists-button" class="action-btn">
           <i class="fas fa-bookmark"></i> Saved
           <span id="lists-count" class="count-badge" style="display: none;">0</span>
+        </button>
+        <button id="travel-essentials-btn" class="action-btn">
+          <i class="fas fa-suitcase"></i> Essentials
         </button>
         <button id="filters-toggle" class="action-btn">
           <i class="fas fa-sliders-h"></i> Filters
@@ -344,6 +356,45 @@
               <i class="fas fa-plus"></i>
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Travel Essentials Modal -->
+  <div class="modal fade" id="travel-essentials-modal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-suitcase me-2"></i>Trip Essentials</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted mb-4">Everything you need for your trip</p>
+          
+          <!-- eSIM Card -->
+          <a href="https://www.airalo.com/" target="_blank" rel="noopener noreferrer" class="essentials-card" id="esim-link">
+            <div class="essentials-icon">
+              <i class="fas fa-sim-card"></i>
+            </div>
+            <div class="essentials-content">
+              <h6>Get Mobile Data (eSIM)</h6>
+              <p>Instant 4G/5G data in <span id="esim-city">your destination</span>. No physical SIM needed.</p>
+            </div>
+            <i class="fas fa-chevron-right essentials-arrow"></i>
+          </a>
+          
+          <!-- Travel Insurance Card -->
+          <a href="https://safetywing.com/" target="_blank" rel="noopener noreferrer" class="essentials-card" id="insurance-link">
+            <div class="essentials-icon insurance-icon">
+              <i class="fas fa-shield-alt"></i>
+            </div>
+            <div class="essentials-content">
+              <h6>Travel Insurance</h6>
+              <p>Medical & travel coverage for nomads. Peace of mind wherever you go.</p>
+            </div>
+            <i class="fas fa-chevron-right essentials-arrow"></i>
+          </a>
         </div>
       </div>
     </div>

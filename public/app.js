@@ -2,6 +2,102 @@
 let searchRadius = 1500; // Default search radius in meters
 let currentKeyword = ''; // Track the current keyword filter
 
+// ==================== GOOGLE ANALYTICS HELPER ====================
+function trackEvent(eventName, params = {}) {
+  if (typeof gtag !== 'undefined') {
+    gtag('event', eventName, params);
+    console.log('GA Event:', eventName, params);
+  }
+}
+
+// ==================== HASH ROUTING FOR SHAREABLE URLS ====================
+function updateUrlHash(placeId) {
+  if (placeId) {
+    window.location.hash = '#/place/' + placeId;
+  }
+}
+
+function clearUrlHash() {
+  if (window.location.hash) {
+    history.pushState('', document.title, window.location.pathname + window.location.search);
+  }
+}
+
+function getPlaceIdFromHash() {
+  const hash = window.location.hash;
+  if (hash && hash.startsWith('#/place/')) {
+    return hash.replace('#/place/', '');
+  }
+  return null;
+}
+
+// Check hash on page load and open place if found
+function checkHashOnLoad() {
+  const placeId = getPlaceIdFromHash();
+  if (placeId) {
+    console.log('Opening place from URL hash:', placeId);
+    // Delay slightly to ensure map is ready
+    setTimeout(() => {
+      showPlaceDetails(placeId);
+    }, 1000);
+  }
+}
+
+// Clear hash when modal is closed
+document.addEventListener('DOMContentLoaded', function() {
+  const placeModal = document.getElementById('place-details-modal');
+  if (placeModal) {
+    placeModal.addEventListener('hidden.bs.modal', function() {
+      clearUrlHash();
+    });
+  }
+  
+  // Travel Essentials button handler
+  const essentialsBtn = document.getElementById('travel-essentials-btn');
+  if (essentialsBtn) {
+    essentialsBtn.addEventListener('click', function() {
+      // Update city name in modal if available
+      const citySpan = document.getElementById('esim-city');
+      if (citySpan && window.currentCity) {
+        citySpan.textContent = window.currentCity;
+      }
+      
+      const modal = new bootstrap.Modal(document.getElementById('travel-essentials-modal'));
+      modal.show();
+    });
+  }
+  
+  // Track clicks on essentials links
+  document.getElementById('esim-link')?.addEventListener('click', function() {
+    trackEvent('generate_lead', { content_type: 'esim', item_id: 'airalo' });
+  });
+  
+  document.getElementById('insurance-link')?.addEventListener('click', function() {
+    trackEvent('generate_lead', { content_type: 'insurance', item_id: 'safetywing' });
+  });
+  
+  // Event delegation for dynamically created Booking and TripAdvisor buttons
+  document.body.addEventListener('click', function(e) {
+    // Track Booking.com button clicks
+    if (e.target.closest('.btn-booking-cta')) {
+      trackEvent('generate_lead', { 
+        content_type: 'booking', 
+        item_id: 'booking_com',
+        item_name: 'Check Rates & Availability'
+      });
+    }
+    
+    // Track TripAdvisor button clicks
+    if (e.target.closest('.btn-tripadvisor-cta')) {
+      trackEvent('generate_lead', { 
+        content_type: 'tripadvisor', 
+        item_id: 'tripadvisor_search',
+        item_name: 'Find on TripAdvisor'
+      });
+    }
+  });
+});
+
 // ==================== SECURITY: HTML SANITIZATION ====================
 function sanitizeHTML(html) {
   if (typeof DOMPurify !== 'undefined') {
@@ -1312,6 +1408,11 @@ function initMap() {
   // Load places for the initial location (use default radius, no keyword)
   loadNearbyPlaces(initialCenter, '', searchRadius);
   
+  // Check URL hash for shareable links (defer to ensure map and data are ready)
+  setTimeout(() => {
+    checkHashOnLoad();
+  }, 2000);
+  
   // Add click event to the map
   google.maps.event.addListener(window.map, "click", function(event) {
     const clickedLocation = {
@@ -1506,6 +1607,7 @@ function initMap() {
   // Set up event listeners for category buttons
   document.getElementById("restaurants-button").addEventListener("click", function() {
     document.getElementById("place-type-select").value = "restaurant";
+    trackEvent('select_content', { content_type: 'filter', item_id: 'restaurant', item_name: 'Restaurants' });
     const currentLocation = window.map.getCenter();
     const location = {
       lat: currentLocation.lat(),
@@ -1516,6 +1618,7 @@ function initMap() {
   
   document.getElementById("hotels-button").addEventListener("click", function() {
     document.getElementById("place-type-select").value = "lodging";
+    trackEvent('select_content', { content_type: 'filter', item_id: 'lodging', item_name: 'Hotels' });
     const currentLocation = window.map.getCenter();
     const location = {
       lat: currentLocation.lat(),
@@ -1526,6 +1629,7 @@ function initMap() {
   
   document.getElementById("attractions-button").addEventListener("click", function() {
     document.getElementById("place-type-select").value = "tourist_attraction";
+    trackEvent('select_content', { content_type: 'filter', item_id: 'tourist_attraction', item_name: 'Attractions' });
     const currentLocation = window.map.getCenter();
     const location = {
       lat: currentLocation.lat(),
@@ -1536,6 +1640,7 @@ function initMap() {
   
   document.getElementById("coffee-button").addEventListener("click", function() {
     document.getElementById("place-type-select").value = "cafe";
+    trackEvent('select_content', { content_type: 'filter', item_id: 'cafe', item_name: 'Coffee' });
     const currentLocation = window.map.getCenter();
     const location = {
       lat: currentLocation.lat(),
@@ -1545,6 +1650,7 @@ function initMap() {
   });
   
   document.getElementById("dessert-button").addEventListener("click", function() {
+    trackEvent('select_content', { content_type: 'filter', item_id: 'dessert', item_name: 'Dessert' });
     const currentLocation = window.map.getCenter();
     const location = {
       lat: currentLocation.lat(),
@@ -1556,6 +1662,7 @@ function initMap() {
   
   document.getElementById("nightlife-button").addEventListener("click", function() {
     document.getElementById("place-type-select").value = "night_club";
+    trackEvent('select_content', { content_type: 'filter', item_id: 'night_club', item_name: 'Nightlife' });
     const currentLocation = window.map.getCenter();
     const location = {
       lat: currentLocation.lat(),
@@ -1595,6 +1702,13 @@ function initMap() {
       if (type === 'lodging') {
         this.classList.add('hotel-active');
       }
+      
+      // Track filter selection in Google Analytics
+      trackEvent('select_content', { 
+        content_type: 'filter', 
+        item_id: keyword || type || 'category',
+        item_name: this.textContent.trim()
+      });
       
       // EXCLUSIVE TOGGLE: Clear existing markers/clusters before loading new category
       clearMarkers();
@@ -2756,6 +2870,9 @@ function clearMarkers() {
 // Show details for a specific place
 async function showPlaceDetails(placeId) {
   showLoading();
+  
+  // Update URL hash for shareable links
+  updateUrlHash(placeId);
   
   try {
     const response = await fetch(`/api/details?place_id=${placeId}`);
