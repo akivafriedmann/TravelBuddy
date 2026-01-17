@@ -16,6 +16,10 @@ author = "agent"
 task = "workflow.run"
 args = "ProxyServer"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "CraveMobile"
+
 [[workflows.workflow]]
 name = "ProxyServer"
 author = "agent"
@@ -24,6 +28,17 @@ author = "agent"
 task = "shell.exec"
 args = "node proxy-server.js"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "CraveMobile"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx expo start --tunnel"
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [deployment]
 run = ["node", "proxy-server.js"]

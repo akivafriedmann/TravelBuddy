@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { searchPlace } from '../services/GeocodingService';
-import { styles as globalStyles } from '../styles/styles';
+
+const BRAND_COLOR = '#1B4D3E';
 
 const SearchBar = ({ onSearch }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -15,7 +16,6 @@ const SearchBar = ({ onSearch }) => {
       setLoading(true);
       const results = await searchPlace(searchQuery);
       if (results && results.length > 0) {
-        // Pass the first result to the parent component
         onSearch({
           name: results[0].formatted_address,
           location: {
@@ -41,8 +41,8 @@ const SearchBar = ({ onSearch }) => {
         <Feather name="search" size={20} color="#757575" style={styles.searchIcon} />
         <TextInput
           style={styles.input}
-          placeholder="Search for places..."
-          placeholderTextColor="#757575"
+          placeholder="Search cities, neighborhoods..."
+          placeholderTextColor="#999"
           value={searchQuery}
           onChangeText={setSearchQuery}
           onSubmitEditing={handleSearch}
@@ -82,17 +82,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'white',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowRadius: 4,
     elevation: 3,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   input: {
     flex: 1,
@@ -104,18 +104,18 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   searchButton: {
-    backgroundColor: '#2196F3',
-    borderRadius: 8,
+    backgroundColor: BRAND_COLOR,
+    borderRadius: 12,
     padding: 10,
     marginLeft: 10,
-    height: 48,
-    width: 48,
+    height: 50,
+    width: 50,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
     elevation: 3,
   },
 });

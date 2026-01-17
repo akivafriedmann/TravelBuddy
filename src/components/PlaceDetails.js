@@ -1,45 +1,42 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Linking, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { styles as globalStyles } from '../styles/styles';
 
-const PlaceDetails = ({ place, onClose }) => {
-  // Format price level
+const BRAND_COLOR = '#1B4D3E';
+
+const PlaceDetails = ({ place, onClose, onViewDetails }) => {
   const getPriceLevel = (priceLevel) => {
-    if (!priceLevel && priceLevel !== 0) return 'Price not available';
+    if (!priceLevel && priceLevel !== 0) return '';
     const priceLevels = ['Free', '$', '$$', '$$$', '$$$$'];
-    return priceLevels[priceLevel] || 'Price not available';
+    return priceLevels[priceLevel] || '';
   };
 
-  // Format rating stars
   const renderRatingStars = (rating) => {
-    if (!rating) return 'No ratings yet';
+    if (!rating) return <Text style={styles.noRating}>No ratings yet</Text>;
     
     const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
     
     return (
       <View style={styles.ratingContainer}>
-        {[...Array(fullStars)].map((_, i) => (
-          <Feather key={`full-${i}`} name="star" size={16} color="#FFC107" />
-        ))}
-        {hasHalfStar && <Feather name="star" size={16} color="#FFC107" style={{ opacity: 0.5 }} />}
-        {[...Array(emptyStars)].map((_, i) => (
-          <Feather key={`empty-${i}`} name="star" size={16} color="#E0E0E0" />
+        {[...Array(5)].map((_, i) => (
+          <Feather 
+            key={i} 
+            name="star" 
+            size={16} 
+            color={i < fullStars ? '#FFD700' : '#E0E0E0'} 
+          />
         ))}
         <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
       </View>
     );
   };
 
-  // Open directions in Google Maps
   const openInMaps = () => {
     const scheme = Platform.select({
       ios: 'maps:0,0?q=',
       android: 'geo:0,0?q='
     });
-    const latLng = `${place.geometry.location.lat},${place.geometry.location.lng}`;
+    const latLng = `${place.geometry?.location?.lat},${place.geometry?.location?.lng}`;
     const label = place.name;
     const url = Platform.select({
       ios: `${scheme}${label}@${latLng}`,
@@ -56,9 +53,11 @@ const PlaceDetails = ({ place, onClose }) => {
       <View style={styles.header}>
         <View style={styles.headerTextContainer}>
           <Text style={styles.title}>{place.name}</Text>
-          <Text style={styles.type}>
-            {place.types?.map(type => type.replace('_', ' ')).join(', ')}
-          </Text>
+          {place.types && (
+            <Text style={styles.type}>
+              {place.types.slice(0, 2).map(type => type.replace(/_/g, ' ')).join(' • ')}
+            </Text>
+          )}
         </View>
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
           <Feather name="x" size={24} color="#212121" />
@@ -68,12 +67,12 @@ const PlaceDetails = ({ place, onClose }) => {
       <ScrollView style={styles.content}>
         <View style={styles.infoSection}>
           <View style={styles.infoRow}>
-            <Feather name="map-pin" size={20} color="#2196F3" style={styles.icon} />
+            <Feather name="map-pin" size={18} color={BRAND_COLOR} style={styles.icon} />
             <Text style={styles.address}>{place.vicinity || place.formatted_address}</Text>
           </View>
           
           <View style={styles.infoRow}>
-            <Feather name="star" size={20} color="#2196F3" style={styles.icon} />
+            <Feather name="star" size={18} color={BRAND_COLOR} style={styles.icon} />
             <View>
               {renderRatingStars(place.rating)}
               <Text style={styles.reviewCount}>
@@ -84,9 +83,9 @@ const PlaceDetails = ({ place, onClose }) => {
             </View>
           </View>
           
-          {(place.price_level !== undefined) && (
+          {place.price_level !== undefined && (
             <View style={styles.infoRow}>
-              <Feather name="dollar-sign" size={20} color="#2196F3" style={styles.icon} />
+              <Feather name="dollar-sign" size={18} color={BRAND_COLOR} style={styles.icon} />
               <Text style={styles.priceLevel}>{getPriceLevel(place.price_level)}</Text>
             </View>
           )}
@@ -149,7 +148,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   type: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#757575',
     textTransform: 'capitalize',
   },
@@ -160,41 +159,46 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   infoSection: {
-    marginBottom: 20,
+    marginBottom: 10,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   icon: {
-    marginRight: 15,
+    marginRight: 12,
     marginTop: 2,
   },
   address: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     color: '#212121',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   ratingText: {
-    marginLeft: 5,
-    fontSize: 16,
+    marginLeft: 6,
+    fontSize: 15,
     color: '#212121',
     fontWeight: '500',
   },
-  reviewCount: {
+  noRating: {
     fontSize: 14,
     color: '#757575',
-    marginTop: 3,
+  },
+  reviewCount: {
+    fontSize: 13,
+    color: '#757575',
+    marginTop: 2,
   },
   priceLevel: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#212121',
+    fontWeight: '500',
   },
   actionsContainer: {
     marginTop: 10,
@@ -202,13 +206,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: BRAND_COLOR,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 30,
-    borderRadius: 8,
+    borderRadius: 10,
     flex: 1,
   },
   actionButtonText: {

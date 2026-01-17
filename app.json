@@ -1,14 +1,15 @@
 {
   "expo": {
-    "name": "TravelPlanner",
-    "slug": "travel-planner",
+    "name": "Crave",
+    "slug": "crave",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#1B4D3E"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -18,30 +19,43 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.travelplanner.app",
+      "bundleIdentifier": "com.crave.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "We need your location to show you nearby places of interest.",
-        "NSLocationAlwaysUsageDescription": "We need your location to show you nearby places of interest."
+        "NSLocationWhenInUseUsageDescription": "Allow Crave to find restaurants near you.",
+        "NSLocationAlwaysUsageDescription": "Allow Crave to find restaurants near you."
+      },
+      "config": {
+        "googleMapsApiKey": ""
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#1B4D3E"
       },
-      "package": "com.travelplanner.app",
+      "package": "com.crave.app",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+          "apiKey": ""
         }
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "scheme": "crave",
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Crave to use your location to find nearby restaurants."
+        }
+      ]
+    ]
   }
 }

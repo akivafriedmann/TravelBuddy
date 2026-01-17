@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { styles as globalStyles } from '../styles/styles';
+
+const BRAND_COLOR = '#1B4D3E';
 
 const ErrorMessage = ({ message, onRetry }) => {
   return (
@@ -43,10 +44,10 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     flexDirection: 'row',
-    backgroundColor: '#2196F3',
-    paddingVertical: 12,
+    backgroundColor: BRAND_COLOR,
+    paddingVertical: 14,
     paddingHorizontal: 25,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
