@@ -769,14 +769,15 @@ body.dark-mode .sub-filter-container {
 }
 
 body.dark-mode .sub-filter-pill {
-  background: #333;
-  color: #ccc;
-  border-color: #555;
+  background: #444;
+  color: #f0f0f0;
+  border-color: #666;
 }
 
 body.dark-mode .sub-filter-pill:hover {
-  background: #444;
-  border-color: #666;
+  background: #555;
+  border-color: #888;
+  color: #fff;
 }
 
 body.dark-mode .sub-filter-pill.active {

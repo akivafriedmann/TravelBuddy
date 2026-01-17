@@ -2632,7 +2632,13 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       
       // Add keyword if provided and it's not the dessert keyword (handled separately above)
       if (keyword && !isDessertSearch) {
-        apiUrl += `&keyword=${encodeURIComponent(keyword)}`;
+        // For restaurant searches, append "restaurant" to keyword for better API results
+        // This helps Google Maps return actual restaurants instead of shops/museums
+        let searchKeyword = keyword;
+        if (currentPlaceType === 'restaurant' && !keyword.toLowerCase().includes('restaurant')) {
+          searchKeyword = keyword + ' restaurant';
+        }
+        apiUrl += `&keyword=${encodeURIComponent(searchKeyword)}`;
       }
       
       // Add the opennow parameter if checked
@@ -2756,6 +2762,19 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false,
     minReviews: currentMinReviews,
     unwantedTypes: UNWANTED_TYPES
   });
+  
+  // POST-PROCESS: For restaurant searches, ensure only food establishments are shown
+  // This is the final safety check to prevent briefcase shops, museums, etc. from appearing
+  if (currentPlaceType === 'restaurant') {
+    const FOOD_TYPES = ['restaurant', 'food', 'meal_delivery', 'meal_takeaway', 'cafe', 'bakery', 'bar'];
+    const beforeCount = filteredPlaces.length;
+    filteredPlaces = filteredPlaces.filter(place => {
+      if (!place.types || place.types.length === 0) return false;
+      // Must have at least one food-related type
+      return place.types.some(t => FOOD_TYPES.includes(t));
+    });
+    console.log(`Food type validation: ${filteredPlaces.length} of ${beforeCount} places are food establishments`);
+  }
   
   // Date Drinks mode: Filter to only include bar types and exclude restaurants
   if (window.isDateDrinksMode && window.dateBarTypes) {
