@@ -2964,7 +2964,7 @@ async function showPlaceDetails(placeId) {
             </span>
           `}
           ${place.website ? `
-            <a href="${place.website}" target="_blank" class="action-pill" title="Website">
+            <a href="${place.website}" target="_blank" rel="noopener noreferrer" class="action-pill website-link" title="Website">
               <i class="fas fa-globe"></i>
               <span>Website</span>
             </a>
@@ -3156,6 +3156,11 @@ async function loadNearbyRecommendations(place) {
     
     const recommendationsContainer = document.getElementById('recommendations-container');
     
+    if (!recommendationsContainer) {
+      console.log('Recommendations container not found, skipping update');
+      return;
+    }
+    
     if (data.status === 'OK' && data.results && data.results.length > 0) {
       // Filter out the current place and get up to 3 other places
       const otherPlaces = data.results
@@ -3222,11 +3227,14 @@ async function loadNearbyRecommendations(place) {
     }
   } catch (error) {
     console.error("Error loading recommendations:", error);
-    document.getElementById('recommendations-container').innerHTML = `
-      <div class="col-12">
-        <div class="alert alert-danger">Error loading recommendations. Please try again later.</div>
-      </div>
-    `;
+    const container = document.getElementById('recommendations-container');
+    if (container) {
+      container.innerHTML = `
+        <div class="col-12">
+          <div class="alert alert-danger">Error loading recommendations. Please try again later.</div>
+        </div>
+      `;
+    }
   }
 }
 
