@@ -1223,21 +1223,35 @@ function initListsModal() {
 }
 
 function openDrawer() {
+  const drawer = document.getElementById('lists-drawer');
+  const overlay = document.getElementById('lists-drawer-overlay');
+  
+  if (!drawer || !overlay) {
+    console.error('Drawer elements not found. Please refresh the page.');
+    showToast('Please refresh your browser to use Guidebooks', 'error');
+    return;
+  }
+  
   currentExpandedListId = null;
   renderDrawerContent();
-  document.getElementById('lists-drawer').classList.add('open');
-  document.getElementById('lists-drawer-overlay').classList.add('active');
+  drawer.classList.add('open');
+  overlay.classList.add('active');
   document.body.style.overflow = 'hidden';
 }
 
 function closeDrawer() {
-  document.getElementById('lists-drawer').classList.remove('open');
-  document.getElementById('lists-drawer-overlay').classList.remove('active');
+  const drawer = document.getElementById('lists-drawer');
+  const overlay = document.getElementById('lists-drawer-overlay');
+  
+  if (drawer) drawer.classList.remove('open');
+  if (overlay) overlay.classList.remove('active');
   document.body.style.overflow = '';
 }
 
 function renderDrawerContent() {
   const container = document.getElementById('lists-container');
+  if (!container) return;
+  
   const lists = getLists();
   
   if (currentExpandedListId) {
