@@ -2990,10 +2990,10 @@ async function showPlaceDetails(placeId) {
       // Check if this is a hotel/lodging
       const isHotel = place.types && (place.types.includes('lodging') || place.types.includes('hotel'));
       
-      // Booking button for hotels - use Name + Address + City for high-fidelity search
+      // Booking button for hotels - use Name + formatted_address for reliable search
       let hotelBookingHtml = '';
       if (isHotel) {
-        const bookingSearchQuery = place.name + ' ' + (place.vicinity || '') + ' ' + (window.currentCity || '');
+        const bookingSearchQuery = place.name + ' ' + (place.formatted_address || place.vicinity || '');
         const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(bookingSearchQuery.trim())}`;
         hotelBookingHtml = `
           <div class="hotel-booking-section mt-4">
