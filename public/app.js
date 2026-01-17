@@ -31,39 +31,6 @@ const cheapEatsKeywords = {
   'Under €15': 'budget restaurant good value'
 };
 
-// Cuisine-specific keywords for more accurate search results
-const cuisineKeywords = {
-  // Asian sub-cuisines
-  'Thai': 'thai cuisine pad thai',
-  'Chinese': 'chinese restaurant dim sum',
-  'Japanese': 'japanese cuisine ramen sushi',
-  'Vietnamese': 'vietnamese pho banh mi',
-  'Korean': 'korean bbq kimchi',
-  'Indian': 'indian curry tandoori',
-  'Sushi': 'sushi sashimi omakase',
-  // European sub-cuisines
-  'Italian': 'italian pasta pizza trattoria',
-  'French': 'french cuisine bistro brasserie',
-  'Spanish': 'spanish tapas paella',
-  'Greek': 'greek mediterranean gyros souvlaki',
-  'Tapas': 'tapas small plates spanish',
-  // Latin sub-cuisines
-  'Mexican': 'mexican tacos burritos',
-  'Tacos': 'tacos taqueria mexican',
-  'Argentinian': 'argentinian steakhouse asado',
-  'Peruvian': 'peruvian ceviche',
-  // American sub-cuisines
-  'Burgers': 'burger hamburger',
-  'BBQ': 'bbq barbecue smoked meat ribs',
-  'Steakhouse': 'steakhouse steak prime',
-  'Diner': 'american diner breakfast',
-  // Healthy sub-cuisines
-  'Vegan': 'vegan plant-based restaurant',
-  'Vegetarian': 'vegetarian restaurant',
-  'Salad': 'salad healthy bowl',
-  'Juice Bar': 'juice bar smoothie'
-};
-
 // ==================== GOOGLE ANALYTICS HELPER ====================
 function trackEvent(eventName, params = {}) {
   if (typeof gtag !== 'undefined') {
@@ -1292,11 +1259,6 @@ function initListsModal() {
         createListBtn.click();
       }
     });
-    
-    // Mobile touch fix: ensure input can receive focus
-    newListInput.addEventListener('touchstart', function(e) {
-      e.stopPropagation();
-    }, { passive: true });
   }
   
   // Close popup when clicking outside
@@ -1333,11 +1295,6 @@ function initListsModal() {
     quickCreateInput.addEventListener('keyup', function(e) {
       if (e.key === 'Enter') quickCreateBtn.click();
     });
-    
-    // Mobile touch fix: ensure input can receive focus
-    quickCreateInput.addEventListener('touchstart', function(e) {
-      e.stopPropagation();
-    }, { passive: true });
   }
 }
 
@@ -2157,7 +2114,6 @@ function initMap() {
         subFilterContainer.innerHTML = '';
         window.activeCuisineParent = null;
         window.activeCuisineParentKeyword = null;
-        window.activeCuisineSubFilter = null;
       }
       
       // EXCLUSIVE TOGGLE: Clear existing markers/clusters before loading new category
@@ -2219,11 +2175,6 @@ function initMap() {
         
         if (!wasActive) {
           this.classList.add('active');
-          // Track active sub-filter for cuisine boosting in render
-          window.activeCuisineSubFilter = subCuisine;
-        } else {
-          // Clear sub-filter when deactivating
-          window.activeCuisineSubFilter = null;
         }
         
         // Track sub-filter selection
@@ -2251,22 +2202,14 @@ function initMap() {
         if (wasActive) {
           loadNearbyPlaces(location, window.activeCuisineParentKeyword, searchRadius);
         } else {
-          // Determine the search keyword based on category type
-          let searchKeyword;
-          
+          // Check if this is a Date Night or Cheap Eats sub-category with custom keywords
           if (pillParent === 'Date Night' && dateNightKeywords[subCuisine]) {
-            searchKeyword = dateNightKeywords[subCuisine];
+            loadNearbyPlaces(location, dateNightKeywords[subCuisine], searchRadius);
           } else if (pillParent === 'Cheap Eats' && cheapEatsKeywords[subCuisine]) {
-            searchKeyword = cheapEatsKeywords[subCuisine];
-          } else if (cuisineKeywords[subCuisine]) {
-            // Use cuisine-specific keywords for better search accuracy
-            searchKeyword = cuisineKeywords[subCuisine];
+            loadNearbyPlaces(location, cheapEatsKeywords[subCuisine], searchRadius);
           } else {
-            searchKeyword = subCuisine.toLowerCase() + ' restaurant';
+            loadNearbyPlaces(location, subCuisine.toLowerCase() + ' restaurant', searchRadius);
           }
-          
-          console.log(`Sub-filter "${subCuisine}" using search keyword: "${searchKeyword}"`);
-          loadNearbyPlaces(location, searchKeyword, searchRadius);
         }
       });
     });
@@ -2861,68 +2804,6 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false,
     }
     
     console.log(`Price filter (${priceFilter}): ${filteredPlaces.length} of ${beforeCount} places match`);
-  }
-  
-  // Cuisine-based boosting: prioritize places that match the active cuisine filter
-  if (window.activeCuisineSubFilter && cuisineKeywords[window.activeCuisineSubFilter]) {
-    const cuisineFilter = window.activeCuisineSubFilter.toLowerCase();
-    const cuisineTerms = cuisineKeywords[window.activeCuisineSubFilter].toLowerCase().split(/\s+/);
-    
-    // Score each place based on cuisine relevance
-    filteredPlaces.forEach(place => {
-      let cuisineScore = 0;
-      const nameLower = (place.name || '').toLowerCase();
-      const typesLower = (place.types || []).map(t => t.toLowerCase());
-      
-      // Check name for cuisine indicators
-      cuisineTerms.forEach(term => {
-        if (nameLower.includes(term)) {
-          cuisineScore += 10;
-        }
-      });
-      
-      // Check if place types include the cuisine
-      if (typesLower.some(t => t.includes(cuisineFilter))) {
-        cuisineScore += 20;
-      }
-      
-      // Common cuisine indicators in the name
-      const cuisineIndicators = {
-        'french': ['bistro', 'brasserie', 'café', 'cafe', 'patisserie', 'crêpe', 'crepe', 'boulangerie'],
-        'italian': ['trattoria', 'osteria', 'ristorante', 'pizzeria', 'pasta'],
-        'japanese': ['sushi', 'ramen', 'izakaya', 'yakitori', 'tempura', 'udon', 'kaiseki'],
-        'chinese': ['dim sum', 'szechuan', 'sichuan', 'cantonese', 'wok', 'dumpling'],
-        'thai': ['pad thai', 'curry', 'tom yum', 'thai'],
-        'mexican': ['taqueria', 'cantina', 'tacos', 'burrito'],
-        'korean': ['bbq', 'kimchi', 'bulgogi', 'bibimbap'],
-        'indian': ['curry', 'tandoori', 'masala', 'biryani'],
-        'greek': ['gyros', 'souvlaki', 'taverna', 'mezze'],
-        'spanish': ['tapas', 'paella', 'bodega']
-      };
-      
-      if (cuisineIndicators[cuisineFilter]) {
-        cuisineIndicators[cuisineFilter].forEach(indicator => {
-          if (nameLower.includes(indicator)) {
-            cuisineScore += 15;
-          }
-        });
-      }
-      
-      place._cuisineScore = cuisineScore;
-    });
-    
-    // Sort places with cuisine matches first, then by rating
-    filteredPlaces.sort((a, b) => {
-      // First sort by cuisine score (descending)
-      if ((b._cuisineScore || 0) !== (a._cuisineScore || 0)) {
-        return (b._cuisineScore || 0) - (a._cuisineScore || 0);
-      }
-      // Then by rating
-      return (b.rating || 0) - (a.rating || 0);
-    });
-    
-    const matchingCount = filteredPlaces.filter(p => (p._cuisineScore || 0) > 0).length;
-    console.log(`Cuisine boost (${window.activeCuisineSubFilter}): ${matchingCount} of ${filteredPlaces.length} places match cuisine indicators`);
   }
   
   console.log(`After filtering: ${filteredPlaces.length} of ${places.length} places remaining`);
