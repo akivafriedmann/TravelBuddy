@@ -2545,12 +2545,13 @@ async function showPlaceDetails(placeId) {
         `;
       }
       
-      // Format reviews
+      // Format reviews with truncation and "Read more"
       let reviewsHtml = '';
       if (place.reviews && place.reviews.length > 0) {
         reviewsHtml = '<h5 class="mt-3">Reviews</h5><div class="reviews-carousel mb-3">';
-        place.reviews.forEach(review => {
+        place.reviews.forEach((review, index) => {
           const reviewDate = new Date(review.time * 1000).toLocaleDateString();
+          const reviewId = `review-text-${index}`;
           reviewsHtml += `
             <div class="review-card">
               <div class="d-flex align-items-center mb-2">
@@ -2563,7 +2564,8 @@ async function showPlaceDetails(placeId) {
                   </div>
                 </div>
               </div>
-              <p>${review.text}</p>
+              <p class="review-text" id="${reviewId}">${review.text}</p>
+              <span class="review-read-more" data-target="${reviewId}" style="display: none;">Read more</span>
             </div>
           `;
         });
@@ -2638,41 +2640,28 @@ async function showPlaceDetails(placeId) {
       if (tripAdvisorData) {
         tripAdvisorHtml = `
           <div class="tripadvisor-section mt-3">
-            <h5>TripAdvisor</h5>
-            <div class="card mb-3">
-              <div class="card-body">
-                ${tripAdvisorData.rating ? `
-                  <div class="d-flex align-items-center mb-2">
-                    <span class="me-2">Rating:</span>
-                    <strong class="me-1">${tripAdvisorData.rating}</strong>
-                    ${Array(Math.round(tripAdvisorData.rating)).fill('<i class="fas fa-star text-warning"></i>').join('')}
-                    <small class="text-muted ms-2">(${tripAdvisorData.num_reviews || tripAdvisorData.review_count || 0} reviews)</small>
-                  </div>
-                ` : ''}
-                
-                ${tripAdvisorData.price_range ? `
-                  <div class="mb-2">
-                    <span>Price Range: <strong>${tripAdvisorData.price_range}</strong></span>
-                  </div>
-                ` : ''}
-                
-                ${tripAdvisorData.cuisine ? `
-                  <div class="mb-2">
-                    <span>Cuisine: <strong>${tripAdvisorData.cuisine}</strong></span>
-                  </div>
-                ` : ''}
-                
-                <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                  <i class="fas fa-external-link-alt me-1"></i> Read Full Reviews
-                </a>
-              </div>
+            <div class="tripadvisor-data-card mb-3">
+              ${tripAdvisorData.rating ? `
+                <div class="d-flex align-items-center mb-2">
+                  <span class="rating-inline">
+                    <i class="fab fa-tripadvisor" style="color: #00AA6C;"></i> ${tripAdvisorData.rating}
+                    <span class="review-count">(${tripAdvisorData.num_reviews || tripAdvisorData.review_count || 0})</span>
+                  </span>
+                  ${tripAdvisorData.price_range ? `<span class="meta-separator">•</span><span class="price-inline">${tripAdvisorData.price_range}</span>` : ''}
+                  ${tripAdvisorData.cuisine ? `<span class="meta-separator">•</span><span class="text-muted">${tripAdvisorData.cuisine}</span>` : ''}
+                </div>
+              ` : ''}
+              <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn-tripadvisor-cta">
+                <i class="fab fa-tripadvisor"></i>
+                Read Full Reviews on TripAdvisor
+              </a>
             </div>
           </div>
         `;
       } else {
         tripAdvisorHtml = `
           <div class="tripadvisor-section mt-3">
-            <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn-tripadvisor-link">
+            <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn-tripadvisor-cta">
               <i class="fab fa-tripadvisor"></i>
               Check Reviews on TripAdvisor
             </a>
@@ -2713,51 +2702,56 @@ async function showPlaceDetails(placeId) {
         `;
       }
       
-      // Build action buttons row
+      // Build compact icon pill action buttons row
       const actionButtonsHtml = `
         <div class="action-buttons-row">
           ${place.formatted_phone_number ? `
-            <a href="tel:${place.formatted_phone_number}" class="action-btn" title="Call">
-              <div class="action-btn-icon"><i class="fas fa-phone"></i></div>
-              <span class="action-btn-label">Call</span>
+            <a href="tel:${place.formatted_phone_number}" class="action-pill" title="Call">
+              <i class="fas fa-phone"></i>
+              <span>Call</span>
             </a>
           ` : `
-            <div class="action-btn disabled" title="No phone available">
-              <div class="action-btn-icon"><i class="fas fa-phone"></i></div>
-              <span class="action-btn-label">Call</span>
-            </div>
+            <span class="action-pill disabled" title="No phone available">
+              <i class="fas fa-phone"></i>
+              <span>Call</span>
+            </span>
           `}
           ${place.website ? `
-            <a href="${place.website}" target="_blank" class="action-btn" title="Website">
-              <div class="action-btn-icon"><i class="fas fa-globe"></i></div>
-              <span class="action-btn-label">Website</span>
+            <a href="${place.website}" target="_blank" class="action-pill" title="Website">
+              <i class="fas fa-globe"></i>
+              <span>Website</span>
             </a>
           ` : `
-            <div class="action-btn disabled" title="No website available">
-              <div class="action-btn-icon"><i class="fas fa-globe"></i></div>
-              <span class="action-btn-label">Website</span>
-            </div>
+            <span class="action-pill disabled" title="No website available">
+              <i class="fas fa-globe"></i>
+              <span>Website</span>
+            </span>
           `}
           ${place.url ? `
-            <a href="${place.url}" target="_blank" class="action-btn" title="Directions">
-              <div class="action-btn-icon"><i class="fas fa-directions"></i></div>
-              <span class="action-btn-label">Directions</span>
+            <a href="${place.url}" target="_blank" class="action-pill" title="Directions">
+              <i class="fas fa-directions"></i>
+              <span>Directions</span>
             </a>
           ` : `
-            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + (place.vicinity || ''))}" target="_blank" class="action-btn" title="Directions">
-              <div class="action-btn-icon"><i class="fas fa-directions"></i></div>
-              <span class="action-btn-label">Directions</span>
+            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + (place.vicinity || ''))}" target="_blank" class="action-pill" title="Directions">
+              <i class="fas fa-directions"></i>
+              <span>Directions</span>
             </a>
           `}
-          <button class="action-btn share-place-btn" data-place-name="${encodeURIComponent(place.name)}" data-place-id="${place.place_id}" title="Share">
-            <div class="action-btn-icon"><i class="fas fa-share-alt"></i></div>
-            <span class="action-btn-label">Share</span>
+          <button class="action-pill share-place-btn" data-place-name="${encodeURIComponent(place.name)}" data-place-id="${place.place_id}" title="Share">
+            <i class="fas fa-share-alt"></i>
+            <span>Share</span>
           </button>
         </div>
       `;
       
       // Format price level
       const priceDisplay = place.price_level ? '$'.repeat(place.price_level) : '';
+      
+      // Format open/closed status for metadata row
+      const isOpenNow = place.opening_hours?.open_now;
+      const statusDisplay = place.opening_hours ? 
+        (isOpenNow ? '<span class="status-inline open">Open</span>' : '<span class="status-inline closed">Closed</span>') : '';
       
       // Create modal content with modern hero layout
       const modalHtml = `
@@ -2772,18 +2766,19 @@ async function showPlaceDetails(placeId) {
                 </button>
               </div>
               
-              <!-- Clean Title Section -->
+              <!-- Clean Title Section - Magazine Editorial Style -->
               <div class="modal-body">
                 <div class="title-section">
                   <h4 class="place-title">${place.name}</h4>
                   <div class="place-meta">
                     ${place.rating ? `
-                      <span class="rating-badge">
+                      <span class="rating-inline">
                         <i class="fas fa-star"></i> ${place.rating}
+                        <span class="review-count">(${place.user_ratings_total || 0})</span>
                       </span>
-                      <span class="review-count">(${place.user_ratings_total || 0})</span>
                     ` : ''}
-                    ${priceDisplay ? `<span class="price-badge">${priceDisplay}</span>` : ''}
+                    ${priceDisplay ? `${place.rating ? '<span class="meta-separator">•</span>' : ''}<span class="price-inline">${priceDisplay}</span>` : ''}
+                    ${statusDisplay ? `${place.rating || priceDisplay ? '<span class="meta-separator">•</span>' : ''}${statusDisplay}` : ''}
                   </div>
                   <p class="place-address">${place.vicinity || place.formatted_address || ''}</p>
                 </div>
@@ -2840,6 +2835,21 @@ async function showPlaceDetails(placeId) {
             sharePlace(placeName, placeId);
           });
         }
+        
+        // Setup "Read more" for reviews
+        document.querySelectorAll('.review-text').forEach(reviewEl => {
+          // Check if text is actually truncated (3+ lines)
+          if (reviewEl.scrollHeight > reviewEl.clientHeight) {
+            const readMoreBtn = reviewEl.nextElementSibling;
+            if (readMoreBtn && readMoreBtn.classList.contains('review-read-more')) {
+              readMoreBtn.style.display = 'inline-block';
+              readMoreBtn.addEventListener('click', function() {
+                reviewEl.classList.toggle('expanded');
+                this.textContent = reviewEl.classList.contains('expanded') ? 'Show less' : 'Read more';
+              });
+            }
+          }
+        });
       });
       
       // Clean up modal when hidden
