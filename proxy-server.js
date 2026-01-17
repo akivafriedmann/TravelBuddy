@@ -48,9 +48,16 @@ setInterval(() => {
 // Middleware
 app.use(express.json());
 
-// Serve static files from the public directory
+// Serve static files from the public directory with cache control
 const publicPath = path.join(__dirname, 'public');
-app.use(express.static(publicPath));
+app.use(express.static(publicPath, {
+  setHeaders: (res, filePath) => {
+    // Disable caching for JavaScript files during development
+    if (filePath.endsWith('.js')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
 console.log('Serving static files from:', publicPath);
 
 // Helper function to make HTTP GET requests
