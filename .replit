@@ -33,12 +33,12 @@ waitForPort = 5000
 name = "CraveMobile"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx expo start --tunnel"
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "yes | npx expo start --tunnel"
 
 [deployment]
 run = ["node", "proxy-server.js"]
@@ -55,6 +55,10 @@ externalPort = 3000
 [[ports]]
 localPort = 8000
 externalPort = 80
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
 
 [agent]
 expertMode = true
