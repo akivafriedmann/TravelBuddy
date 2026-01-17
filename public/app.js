@@ -4,11 +4,21 @@ let currentKeyword = ''; // Track the current keyword filter
 
 // ==================== CUISINE HIERARCHY FOR DRILL-DOWN FILTERS ====================
 const cuisineHierarchy = {
+  'Date Night': ['Dinner', 'Drinks', 'First Date', 'Anniversary', 'Activity', 'Speakeasy'],
   'Asian': ['Thai', 'Chinese', 'Japanese', 'Vietnamese', 'Korean', 'Indian', 'Sushi'],
   'European': ['Italian', 'French', 'Spanish', 'Greek', 'Tapas'],
   'Latin': ['Mexican', 'Tacos', 'Argentinian', 'Peruvian'],
   'American': ['Burgers', 'BBQ', 'Steakhouse', 'Diner'],
   'Healthy': ['Vegan', 'Vegetarian', 'Salad', 'Juice Bar']
+};
+
+const dateNightKeywords = {
+  'Dinner': 'romantic restaurant candlelit',
+  'Drinks': 'romantic cocktail bar intimate',
+  'First Date': 'casual date night fun bar',
+  'Anniversary': 'fine dining romantic view white tablecloth',
+  'Activity': 'bowling minigolf arcade date activity',
+  'Speakeasy': 'hidden bar speakeasy'
 };
 
 // ==================== GOOGLE ANALYTICS HELPER ====================
@@ -2135,7 +2145,12 @@ function initMap() {
         if (wasActive) {
           loadNearbyPlaces(location, window.activeCuisineParentKeyword, searchRadius);
         } else {
-          loadNearbyPlaces(location, subCuisine.toLowerCase() + ' restaurant', searchRadius);
+          // Check if this is a Date Night sub-category with custom keywords
+          if (pillParent === 'Date Night' && dateNightKeywords[subCuisine]) {
+            loadNearbyPlaces(location, dateNightKeywords[subCuisine], searchRadius);
+          } else {
+            loadNearbyPlaces(location, subCuisine.toLowerCase() + ' restaurant', searchRadius);
+          }
         }
       });
     });
