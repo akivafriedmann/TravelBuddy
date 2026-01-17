@@ -854,13 +854,41 @@ app.get('/api/nearby', async (req, res) => {
         };
       });
       
-      // Apply distance filtering
+      // Apply distance filtering (skip for specific name searches to find exact matches)
       const originalCount = legacyData.results.length;
-      legacyData.results = legacyData.results.filter(place => {
-        if (!place.distance_meters) return true;
-        return place.distance_meters <= radiusMeters;
-      });
-      console.log(`Distance filtering: ${legacyData.results.length} of ${originalCount} places within ${radiusMeters}m`);
+      
+      // Detect if this is a specific name search by checking if any result closely matches the keyword
+      // This is more robust than trying to detect via keyword patterns
+      let isNameSearch = false;
+      if (keyword && originalCount > 0 && originalCount <= 10) {
+        // Normalize function: lowercase, remove diacritics, strip punctuation
+        const normalize = (str) => str.toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+          .replace(/[''`]/g, '') // Remove apostrophes
+          .replace(/[^\w\s]/g, '') // Remove other punctuation
+          .replace(/\s+/g, ' ').trim(); // Collapse whitespace
+        
+        const keywordNorm = normalize(keyword);
+        const hasNameMatch = legacyData.results.some(place => {
+          const nameNorm = normalize(place.name);
+          // Check for exact match, contains match, or significant overlap
+          return nameNorm === keywordNorm || 
+                 nameNorm.includes(keywordNorm) || 
+                 keywordNorm.includes(nameNorm) ||
+                 nameNorm.startsWith(keywordNorm);
+        });
+        isNameSearch = hasNameMatch;
+      }
+      
+      if (isNameSearch) {
+        console.log(`Skipping distance filtering for specific name search: "${keyword}" (found ${originalCount} matching results)`);
+      } else {
+        legacyData.results = legacyData.results.filter(place => {
+          if (!place.distance_meters) return true;
+          return place.distance_meters <= radiusMeters;
+        });
+        console.log(`Distance filtering: ${legacyData.results.length} of ${originalCount} places within ${radiusMeters}m`);
+      }
       
       // Extra filtering for dessert places
       if (keyword === 'dessert') {
