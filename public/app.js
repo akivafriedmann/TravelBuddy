@@ -1143,11 +1143,58 @@ function renderSearchResults(places, origin, searchQuery) {
   // Update URL for shareable links
   updateURL(origin, 'restaurant');
   
-  // Apply user-selected sorting
-  const sortSelect = document.getElementById('sort-select');
-  const sortBy = sortSelect ? sortSelect.value : 'rating';
+  // Prioritize name matches: boost places with matching names to the top
+  const queryLower = searchQuery.toLowerCase().trim();
+  const queryWords = queryLower.split(/\s+/).filter(w => w.length > 2);
   
-  sortPlaces(places, sortBy, origin);
+  // Score each place based on name match quality
+  places.forEach(place => {
+    const nameLower = place.name.toLowerCase();
+    let matchScore = 0;
+    
+    // Exact match gets highest score
+    if (nameLower === queryLower) {
+      matchScore = 1000;
+    }
+    // Name contains full query
+    else if (nameLower.includes(queryLower)) {
+      matchScore = 500;
+    }
+    // Query contains full name (user typed more than name)
+    else if (queryLower.includes(nameLower)) {
+      matchScore = 400;
+    }
+    // Name starts with query
+    else if (nameLower.startsWith(queryLower)) {
+      matchScore = 300;
+    }
+    // Check word matches
+    else {
+      queryWords.forEach(word => {
+        if (nameLower.includes(word)) {
+          matchScore += 50;
+        }
+      });
+    }
+    
+    place._nameMatchScore = matchScore;
+  });
+  
+  // Sort: first by name match score (highest first), then by rating
+  places.sort((a, b) => {
+    const scoreA = a._nameMatchScore || 0;
+    const scoreB = b._nameMatchScore || 0;
+    
+    // If both have name match scores, sort by score first
+    if (scoreA > 0 || scoreB > 0) {
+      if (scoreA !== scoreB) {
+        return scoreB - scoreA;
+      }
+    }
+    
+    // Then fall back to rating
+    return (b.rating || 0) - (a.rating || 0);
+  });
   
   // Show results count
   const resultsCount = document.getElementById('results-count');
