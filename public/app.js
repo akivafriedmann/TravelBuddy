@@ -566,11 +566,18 @@ function createSkeletonCards(count = 6) {
 
 // ==================== MARKER CLUSTERING ====================
 window.clusterInstance = null;
+window.currentCategoryMode = 'restaurant'; // Track current category for exclusive toggle
+
+function getClusterColor() {
+  // Purple for hotels, Green for everything else
+  return window.currentCategoryMode === 'lodging' ? '#8E44AD' : '#0E2F23';
+}
 
 function createCustomClusterRenderer() {
+  const clusterColor = getClusterColor();
   return {
     render: function({ count, position }, stats) {
-      // Brand green cluster markers for cohesive design
+      // Dynamic cluster color based on category
       const marker = new google.maps.Marker({
         position,
         zIndex: 1000 + count,
@@ -584,7 +591,7 @@ function createCustomClusterRenderer() {
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: 18,
-          fillColor: '#0E2F23',
+          fillColor: clusterColor,
           fillOpacity: 1,
           strokeColor: '#FFFFFF',
           strokeWeight: 2
@@ -685,12 +692,15 @@ function showClusterPlacesModal(places, position) {
 function updateMarkerClusterer() {
   const MarkerClustererClass = window.markerClusterer?.MarkerClusterer;
   
+  // Always clear and reinitialize to pick up current category color
   if (window.clusterInstance) {
     window.clusterInstance.clearMarkers();
-    if (window.markers && window.markers.length > 0) {
-      window.clusterInstance.addMarkers(window.markers);
-    }
-  } else if (MarkerClustererClass && window.markers && window.markers.length > 0) {
+    window.clusterInstance.setMap(null);
+    window.clusterInstance = null;
+  }
+  
+  // Create fresh clusterer with current category color
+  if (MarkerClustererClass && window.markers && window.markers.length > 0) {
     initMarkerClusterer();
   }
   
@@ -1552,6 +1562,7 @@ function initMap() {
   });
   
   // Generic handler for all category buttons without specific IDs
+  // Implements EXCLUSIVE TOGGLE: Only one category at a time, clear map before switching
   document.querySelectorAll('.category-btn').forEach(button => {
     button.addEventListener('click', function() {
       const type = this.getAttribute('data-type');
@@ -1562,9 +1573,26 @@ function initMap() {
         document.getElementById("place-type-select").value = type;
       }
       
-      // Remove active class from all category buttons and add to this one
-      document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
+      // Track current category mode for cluster colors
+      window.currentCategoryMode = type || 'restaurant';
+      
+      // Remove active class and hotel-active from all category buttons
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.remove('active', 'hotel-active');
+      });
+      
+      // Add active class (and hotel-active for lodging)
       this.classList.add('active');
+      if (type === 'lodging') {
+        this.classList.add('hotel-active');
+      }
+      
+      // EXCLUSIVE TOGGLE: Clear existing markers/clusters before loading new category
+      clearMarkers();
+      if (window.clusterInstance) {
+        window.clusterInstance.clearMarkers();
+        window.clusterInstance = null;
+      }
       
       // Get current location from map
       const currentLocation = window.map.getCenter();
