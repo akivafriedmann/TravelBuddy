@@ -25,6 +25,7 @@ API security is managed through environment-based API keys, Google Maps API key 
 - **Detailed Place Information**: Provides ratings, reviews, opening hours, contact info, and photos.
 - **Enhanced Data**: Integrates TripAdvisor reviews (on-demand via "Show Rating" button for cost optimization) and OpenWeather API for local weather.
 - **User Personalization**: Favorites system via localStorage, custom lists, and shareable URLs.
+- **Premium Guidebook Lists**: Slide-over drawer with glassmorphism styling replaces center modal, guidebook cards display background images from first restaurant, hover reveals share/delete buttons, "Save" button in place details modal with popup for list selection or quick-create, share button copies text summary to clipboard.
 - **Interactive Maps**: Custom marker clustering, advanced marker elements, and customizable map styles (e.g., "Architectural," "Soft Premium," "Premium Charcoal Dark Mode").
 - **UI/UX**: Modern, minimalist luxury design ("Crave" brand), responsive layouts, dark mode, skeleton loading for perceived performance, and a redesigned "magazine editorial" details modal with hero image carousels, serif typography (Playfair Display), compact metadata row (rating • price • status), icon pill action buttons, solid brand green TripAdvisor CTA, and truncated reviews with "Read more" functionality.
 - **Security**: XSS protection using DOMPurify, updated dependencies (axios, urllib3) for vulnerability fixes, and secure handling of API keys.
