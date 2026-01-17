@@ -3634,9 +3634,11 @@ body.dark-mode .drawer-close-btn:hover {
   padding: 12px 16px;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 12px;
-  font-size: 14px;
+  font-size: 16px;
   background: rgba(255, 255, 255, 0.6);
   transition: all 0.2s ease;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .drawer-input:focus {
@@ -3961,8 +3963,18 @@ body.dark-mode .guidebook-place-name {
   -webkit-backdrop-filter: blur(20px);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-  z-index: 1060;
+  z-index: 1070;
   overflow: hidden;
+}
+
+/* Mobile: position popup at top to avoid keyboard overlap */
+@media (max-width: 768px) {
+  .save-to-list-popup {
+    top: 20%;
+    transform: translate(-50%, 0);
+    max-height: 60vh;
+    overflow-y: auto;
+  }
 }
 
 body.dark-mode .save-to-list-popup {
@@ -4080,8 +4092,15 @@ body.dark-mode .popup-create-new {
   padding: 10px 14px;
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 10px;
-  font-size: 14px;
+  font-size: 16px;
   background: white;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.popup-input:focus {
+  outline: none;
+  border-color: var(--brand-color);
 }
 
 body.dark-mode .popup-input {
