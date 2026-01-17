@@ -1895,8 +1895,17 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       const baseParams = `lat=${location.lat}&lng=${location.lng}&radius=${effectiveRadius}${openNowChecked ? '&opennow=true' : ''}`;
       
       // Search for multiple attraction types in parallel
-      const attractionTypes = ['tourist_attraction', 'museum', 'art_gallery', 'park', 'amusement_park', 'aquarium', 'church'];
+      // Mega list of attraction types for comprehensive results
+      const attractionTypes = [
+        'tourist_attraction', 'museum', 'art_gallery', 'park', 'amusement_park', 
+        'aquarium', 'zoo', 'casino', 'bowling_alley', 'church', 'place_of_worship', 
+        'synagogue', 'stadium', 'night_club', 'movie_theater', 'city_hall', 
+        'town_square', 'natural_feature', 'shopping_mall'
+      ];
       
+      console.log(`Searching ${attractionTypes.length} attraction types in parallel...`);
+      
+      // Create promises for all attraction types
       const attractionPromises = attractionTypes.map(type => 
         fetch(`/api/nearby?${baseParams}&type=${type}`).then(r => r.json()).catch(err => {
           console.error(`Error fetching ${type}:`, err);
@@ -1904,13 +1913,31 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
         })
       );
       
-      const attractionResults = await Promise.all(attractionPromises);
+      // Also add a "point of interest" keyword search as fallback for miscategorized places
+      const poiPromise = fetch(`/api/nearby?${baseParams}&type=establishment&keyword=point%20of%20interest`)
+        .then(r => r.json())
+        .catch(err => {
+          console.error('Error fetching POI fallback:', err);
+          return { status: 'ERROR', results: [] };
+        });
+      
+      // Execute all searches in parallel
+      const [attractionResults, poiResult] = await Promise.all([
+        Promise.all(attractionPromises),
+        poiPromise
+      ]);
       
       // Log results for each type
+      let totalBeforeDedup = 0;
       attractionTypes.forEach((type, i) => {
         const count = attractionResults[i].results?.length || 0;
-        console.log(`${type}: ${count} results`);
+        totalBeforeDedup += count;
+        if (count > 0) console.log(`${type}: ${count} results`);
       });
+      const poiCount = poiResult.results?.length || 0;
+      if (poiCount > 0) console.log(`point_of_interest fallback: ${poiCount} results`);
+      totalBeforeDedup += poiCount;
+      console.log(`Total results before deduplication: ${totalBeforeDedup}`);
       
       // Combine all results, deduplicating by place_id
       attractionResults.forEach(data => {
@@ -1918,6 +1945,11 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
           data.results.forEach(place => placesMap.set(place.place_id, place));
         }
       });
+      
+      // Add POI fallback results
+      if (poiResult.status === 'OK' && poiResult.results) {
+        poiResult.results.forEach(place => placesMap.set(place.place_id, place));
+      }
       
       places = Array.from(placesMap.values());
       console.log(`Combined ${places.length} unique attraction places`);
