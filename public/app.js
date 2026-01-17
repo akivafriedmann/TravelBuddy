@@ -1841,6 +1841,14 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
     let placesMap = new Map();
     let places = [];
     
+    // Check if this is an attractions search
+    const placeTypeSelect = document.getElementById('place-type-select');
+    const currentPlaceType = placeTypeSelect ? placeTypeSelect.value : 'restaurant';
+    const isAttractionsSearch = currentPlaceType === 'tourist_attraction';
+    
+    // Double the radius for attractions - tourists walk further for landmarks
+    const effectiveRadius = isAttractionsSearch ? Math.min(radius * 2, 5000) : radius;
+    
     if (isDessertSearch) {
       console.log("Performing specialized dessert multi-query search with Promise.all");
       
@@ -1879,12 +1887,71 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
       window.isDessertSearch = true;
       
       renderPlaces(places, location, "restaurant", true);
-    } else {
-      // Regular search for other place types
-      // Get the currently selected place type
-      const placeTypeSelect = document.getElementById('place-type-select');
-      const currentPlaceType = placeTypeSelect ? placeTypeSelect.value : 'restaurant';
+    } else if (isAttractionsSearch) {
+      // Expanded attractions search - search multiple attraction types in parallel
+      console.log("Performing expanded attractions multi-query search with Promise.all");
+      console.log(`Using expanded radius: ${effectiveRadius}m (original: ${radius}m)`);
       
+      const baseParams = `lat=${location.lat}&lng=${location.lng}&radius=${effectiveRadius}${openNowChecked ? '&opennow=true' : ''}`;
+      
+      // Search for multiple attraction types in parallel
+      const attractionTypes = ['tourist_attraction', 'museum', 'art_gallery', 'park', 'amusement_park', 'aquarium', 'church'];
+      
+      const attractionPromises = attractionTypes.map(type => 
+        fetch(`/api/nearby?${baseParams}&type=${type}`).then(r => r.json()).catch(err => {
+          console.error(`Error fetching ${type}:`, err);
+          return { status: 'ERROR', results: [] };
+        })
+      );
+      
+      const attractionResults = await Promise.all(attractionPromises);
+      
+      // Log results for each type
+      attractionTypes.forEach((type, i) => {
+        const count = attractionResults[i].results?.length || 0;
+        console.log(`${type}: ${count} results`);
+      });
+      
+      // Combine all results, deduplicating by place_id
+      attractionResults.forEach(data => {
+        if (data.status === 'OK' && data.results) {
+          data.results.forEach(place => placesMap.set(place.place_id, place));
+        }
+      });
+      
+      places = Array.from(placesMap.values());
+      console.log(`Combined ${places.length} unique attraction places`);
+      
+      if (places.length > 0) {
+        // Store for re-sorting
+        window.lastPlacesData = places;
+        window.lastOrigin = location;
+        window.currentPlaceType = 'tourist_attraction';
+        window.isDessertSearch = false;
+        
+        renderPlaces(places, location, 'tourist_attraction');
+      } else {
+        // No results - clear markers and show message
+        clearMarkers();
+        const radiusText = effectiveRadius >= 1000 ? `${effectiveRadius / 1000}km` : `${effectiveRadius}m`;
+        
+        const resultsCount = document.getElementById('results-count');
+        if (resultsCount) {
+          resultsCount.style.display = 'none';
+        }
+        
+        document.getElementById('places-container').innerHTML = `
+          <div class="col-12">
+            <div class="alert alert-info">
+              <strong>No attractions found</strong>
+              <p>No results within ${radiusText} of this location.</p>
+              <p>Try moving the map to a more touristy area, or choose a different category.</p>
+            </div>
+          </div>
+        `;
+      }
+    } else {
+      // Regular search for other place types (restaurants, hotels, etc.)
       console.log(`Searching for places of type: ${currentPlaceType}`);
       
       // Build API URL with required parameters
@@ -1929,7 +1996,9 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
           </div>
         `;
       } else {
-        // No results - show message with keyword if used
+        // No results - clear any ghost markers first, then show message
+        clearMarkers();
+        
         const keywordText = keyword ? ` matching "${keyword}"` : '';
         const radiusText = radius >= 1000 ? `${radius / 1000}km` : `${radius}m`;
         
