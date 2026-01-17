@@ -2,6 +2,15 @@
 let searchRadius = 1500; // Default search radius in meters
 let currentKeyword = ''; // Track the current keyword filter
 
+// ==================== CUISINE HIERARCHY FOR DRILL-DOWN FILTERS ====================
+const cuisineHierarchy = {
+  'Asian': ['Thai', 'Chinese', 'Japanese', 'Vietnamese', 'Korean', 'Indian', 'Sushi'],
+  'European': ['Italian', 'French', 'Spanish', 'Greek', 'Tapas'],
+  'Latin': ['Mexican', 'Tacos', 'Argentinian', 'Peruvian'],
+  'American': ['Burgers', 'BBQ', 'Steakhouse', 'Diner'],
+  'Healthy': ['Vegan', 'Vegetarian', 'Salad', 'Juice Bar']
+};
+
 // ==================== GOOGLE ANALYTICS HELPER ====================
 function trackEvent(eventName, params = {}) {
   if (typeof gtag !== 'undefined') {
@@ -1994,6 +2003,7 @@ function initMap() {
       const keyword = this.getAttribute('data-keyword');
       const barTypes = this.getAttribute('data-bar-types');
       const isDateDrinks = this.classList.contains('date-drinks-btn');
+      const cuisineParent = this.getAttribute('data-cuisine-parent');
       
       // Update the select dropdown
       if (type) {
@@ -2025,6 +2035,20 @@ function initMap() {
         item_name: this.textContent.trim()
       });
       
+      // Handle sub-filter display for cuisine parent categories
+      const subFilterContainer = document.getElementById('sub-filter-container');
+      if (cuisineParent && cuisineHierarchy[cuisineParent]) {
+        // Show sub-filters for this cuisine category
+        renderSubFilters(cuisineParent);
+        subFilterContainer.classList.add('visible');
+      } else {
+        // Hide sub-filters for non-cuisine categories and reset state
+        subFilterContainer.classList.remove('visible');
+        subFilterContainer.innerHTML = '';
+        window.activeCuisineParent = null;
+        window.activeCuisineParentKeyword = null;
+      }
+      
       // EXCLUSIVE TOGGLE: Clear existing markers/clusters before loading new category
       clearMarkers();
       if (window.clusterInstance) {
@@ -2047,6 +2071,75 @@ function initMap() {
       }
     });
   });
+  
+  // Track current active cuisine parent for sub-filter scoping
+  window.activeCuisineParent = null;
+  window.activeCuisineParentKeyword = null;
+  
+  // Function to render sub-filter pills for cuisine drill-down
+  function renderSubFilters(parentCategory) {
+    const container = document.getElementById('sub-filter-container');
+    if (!container || !cuisineHierarchy[parentCategory]) return;
+    
+    // Store parent info for scoped sub-filter handling
+    window.activeCuisineParent = parentCategory;
+    const parentButton = document.querySelector(`[data-cuisine-parent="${parentCategory}"]`);
+    window.activeCuisineParentKeyword = parentButton?.getAttribute('data-keyword') || '';
+    
+    const subCategories = cuisineHierarchy[parentCategory];
+    container.innerHTML = subCategories.map(sub => 
+      `<button class="sub-filter-pill" data-sub-cuisine="${sub}" data-parent="${parentCategory}">${sub}</button>`
+    ).join('');
+    
+    // Add click handlers for sub-filter pills (scoped to parent)
+    container.querySelectorAll('.sub-filter-pill').forEach(pill => {
+      pill.addEventListener('click', function() {
+        const subCuisine = this.getAttribute('data-sub-cuisine');
+        const pillParent = this.getAttribute('data-parent');
+        
+        // Guard: Only respond if this pill's parent is still the active cuisine
+        if (window.activeCuisineParent !== pillParent) {
+          return;
+        }
+        
+        // Toggle active state
+        const wasActive = this.classList.contains('active');
+        container.querySelectorAll('.sub-filter-pill').forEach(p => p.classList.remove('active'));
+        
+        if (!wasActive) {
+          this.classList.add('active');
+        }
+        
+        // Track sub-filter selection
+        trackEvent('select_content', { 
+          content_type: 'sub_filter', 
+          item_id: subCuisine.toLowerCase(),
+          item_name: subCuisine
+        });
+        
+        // Search for the specific sub-cuisine
+        const currentLocation = window.map.getCenter();
+        const location = {
+          lat: currentLocation.lat(),
+          lng: currentLocation.lng()
+        };
+        
+        // Clear markers before new search
+        clearMarkers();
+        if (window.clusterInstance) {
+          window.clusterInstance.clearMarkers();
+          window.clusterInstance = null;
+        }
+        
+        // If deactivating, search for parent category (using stored keyword); otherwise search for sub-cuisine
+        if (wasActive) {
+          loadNearbyPlaces(location, window.activeCuisineParentKeyword, searchRadius);
+        } else {
+          loadNearbyPlaces(location, subCuisine.toLowerCase() + ' restaurant', searchRadius);
+        }
+      });
+    });
+  }
   
   // Price filter pills handler
   window.activePriceFilter = null; // Track active price filter (1, 2, 3, or 4)
