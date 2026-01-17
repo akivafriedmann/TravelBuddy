@@ -704,6 +704,64 @@ body.dark-mode .legal-modal .modal-body p {
   color: #fff;
 }
 
+/* Price Filter Pills - Distinct square style */
+.price-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  margin: 3px;
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Inter', system-ui, sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.price-pill:hover {
+  background: #f5f5f5;
+  border-color: #aaa;
+  color: #333;
+}
+
+.price-pill.active {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(27, 77, 62, 0.3);
+}
+
+.price-pill.active:hover {
+  background: #164036;
+  border-color: #164036;
+}
+
+/* Dark mode for price pills */
+body.dark-mode .price-pill {
+  background: #2a2a2a;
+  border-color: #444;
+  color: #bbb;
+}
+
+body.dark-mode .price-pill:hover {
+  background: #3a3a3a;
+  border-color: #666;
+  color: #fff;
+}
+
+body.dark-mode .price-pill.active {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #fff;
+}
+
 .category-btn:first-child {
   margin-left: 0;
 }

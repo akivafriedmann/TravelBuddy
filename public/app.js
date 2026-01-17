@@ -1619,6 +1619,32 @@ function initMap() {
     });
   });
   
+  // Price filter pills handler
+  window.activePriceFilter = null; // Track active price filter (1, 2, 3, or 4)
+  
+  document.querySelectorAll('.price-pill').forEach(pill => {
+    pill.addEventListener('click', function() {
+      const priceLevel = parseInt(this.getAttribute('data-price'));
+      
+      // Toggle behavior: click again to deactivate
+      if (window.activePriceFilter === priceLevel) {
+        // Deactivate filter
+        window.activePriceFilter = null;
+        this.classList.remove('active');
+      } else {
+        // Activate this filter, deactivate others
+        document.querySelectorAll('.price-pill').forEach(p => p.classList.remove('active'));
+        this.classList.add('active');
+        window.activePriceFilter = priceLevel;
+      }
+      
+      // Re-render with the price filter applied
+      if (window.lastPlacesData && window.lastOrigin) {
+        renderPlaces(window.lastPlacesData, window.lastOrigin, window.currentPlaceType || 'restaurant', false);
+      }
+    });
+  });
+  
   // Mouse wheel horizontal scrolling for category filters
   const categorySelect = document.querySelector('.category-select');
   if (categorySelect) {
@@ -2160,6 +2186,30 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false,
     console.log(`Date Drinks mode: ${filteredPlaces.length} bars found after filtering`);
   }
   
+  // Price filter: Filter by price level if a price filter is active
+  if (window.activePriceFilter) {
+    const priceFilter = window.activePriceFilter;
+    const beforeCount = filteredPlaces.length;
+    
+    // Google API price levels: 0 = free, 1 = inexpensive, 2 = moderate, 3 = expensive, 4 = very expensive
+    // Our mapping: $ = 1, $$ = 2, $$$ = 3, $$$$ = 4
+    // For $ (cheap), we accept price_level 0 or 1
+    // For $$, $$$, $$$$ we match exactly
+    if (priceFilter === 1) {
+      // Cheap: accept price_level 0 or 1
+      filteredPlaces = filteredPlaces.filter(place => 
+        place.price_level !== undefined && place.price_level !== null && place.price_level <= 1
+      );
+    } else {
+      // Exact match for $$, $$$, $$$$
+      filteredPlaces = filteredPlaces.filter(place => 
+        place.price_level === priceFilter
+      );
+    }
+    
+    console.log(`Price filter (${priceFilter}): ${filteredPlaces.length} of ${beforeCount} places match`);
+  }
+  
   console.log(`After filtering: ${filteredPlaces.length} of ${places.length} places remaining`);
   
   // Clear markers before adding new ones
@@ -2172,6 +2222,12 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false,
       resultsCount.style.display = 'none';
     }
     
+    // Build filter info for message
+    const priceInfo = window.activePriceFilter ? ` in the ${'$'.repeat(window.activePriceFilter)} price range` : '';
+    const filterHint = window.activePriceFilter ? 
+      '<p>Try removing the price filter or expanding your search.</p>' : 
+      '<p>Try another location or category, or adjust the search radius.</p>';
+    
     // Show a message if no places meet the criteria
     const messageText = isDessertSearch ? 
       `No dessert places found matching your criteria` : 
@@ -2181,8 +2237,8 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false,
       <div class="col-12">
         <div class="alert alert-info">
           <strong>${messageText}</strong>
-          <p>No ${formatPlaceType(currentPlaceType)}${isDessertSearch ? ' serving desserts' : ''} with a rating of ${MIN_RATING}+ found in this area.</p>
-          <p>Try another location or category, or adjust the search radius.</p>
+          <p>No ${formatPlaceType(currentPlaceType)}${isDessertSearch ? ' serving desserts' : ''}${priceInfo} with a rating of ${MIN_RATING}+ found in this area.</p>
+          ${filterHint}
         </div>
       </div>
     `;
