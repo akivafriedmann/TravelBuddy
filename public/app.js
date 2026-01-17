@@ -2483,8 +2483,8 @@ async function showPlaceDetails(placeId) {
       place.place_id = placeId;
       console.log("Place details:", place);
       
-      // TripAdvisor search URL for external link
-      const tripAdvisorSearchUrl = `https://www.tripadvisor.com/Search?q=${encodeURIComponent(place.name + ' ' + (window.currentCity || ''))}`;
+      // TripAdvisor search URL - use Name + City with restaurant/place filter hint
+      const tripAdvisorSearchUrl = `https://www.tripadvisor.com/Search?q=${encodeURIComponent(place.name + ' ' + (window.currentCity || ''))}&m=12021`;
       
       // Get TripAdvisor data from API
       let tripAdvisorData = null;
@@ -2615,8 +2615,8 @@ async function showPlaceDetails(placeId) {
           `;
         });
         
-        // Add "View All Photos" slide at the end
-        const googleMapsUrl = place.url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + (place.vicinity || ''))}`;
+        // Add "View All Photos" slide at the end - use place.url or query_place_id for exact pin
+        const googleMapsUrl = place.url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${place.place_id}`;
         heroCarouselHtml += `
           <div class="carousel-item view-all-slide">
             <div class="view-all-content">
@@ -2706,10 +2706,11 @@ async function showPlaceDetails(placeId) {
       // Check if this is a hotel/lodging
       const isHotel = place.types && (place.types.includes('lodging') || place.types.includes('hotel'));
       
-      // Booking button for hotels
+      // Booking button for hotels - use Name + Address + City for high-fidelity search
       let hotelBookingHtml = '';
       if (isHotel) {
-        const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(place.name + ' ' + (place.vicinity || place.formatted_address || ''))}`;
+        const bookingSearchQuery = place.name + ' ' + (place.vicinity || '') + ' ' + (window.currentCity || '');
+        const bookingUrl = `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(bookingSearchQuery.trim())}`;
         hotelBookingHtml = `
           <div class="hotel-booking-section mt-4">
             <a href="${bookingUrl}" target="_blank" class="btn btn-booking-cta w-100">
@@ -2751,7 +2752,7 @@ async function showPlaceDetails(placeId) {
               <span>Directions</span>
             </a>
           ` : `
-            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ' ' + (place.vicinity || ''))}" target="_blank" class="action-pill" title="Directions">
+            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${place.place_id}" target="_blank" class="action-pill" title="Directions">
               <i class="fas fa-directions"></i>
               <span>Directions</span>
             </a>
