@@ -5,6 +5,7 @@ let currentKeyword = ''; // Track the current keyword filter
 // ==================== CUISINE HIERARCHY FOR DRILL-DOWN FILTERS ====================
 const cuisineHierarchy = {
   'Date Night': ['Dinner', 'Drinks', 'First Date', 'Anniversary', 'Activity', 'Speakeasy'],
+  'Cheap Eats': ['Street Food', 'Food Trucks', 'Markets', 'Fast Food', 'Late Night', 'Under €15'],
   'Asian': ['Thai', 'Chinese', 'Japanese', 'Vietnamese', 'Korean', 'Indian', 'Sushi'],
   'European': ['Italian', 'French', 'Spanish', 'Greek', 'Tapas'],
   'Latin': ['Mexican', 'Tacos', 'Argentinian', 'Peruvian'],
@@ -19,6 +20,15 @@ const dateNightKeywords = {
   'Anniversary': 'fine dining romantic view white tablecloth',
   'Activity': 'bowling minigolf arcade date activity',
   'Speakeasy': 'hidden bar speakeasy'
+};
+
+const cheapEatsKeywords = {
+  'Street Food': 'best street food snacks',
+  'Food Trucks': 'food truck food stand',
+  'Markets': 'food market food court',
+  'Fast Food': 'fast food quick bite',
+  'Late Night': 'late night food cheap',
+  'Under €15': 'budget restaurant good value'
 };
 
 // ==================== GOOGLE ANALYTICS HELPER ====================
@@ -2145,9 +2155,11 @@ function initMap() {
         if (wasActive) {
           loadNearbyPlaces(location, window.activeCuisineParentKeyword, searchRadius);
         } else {
-          // Check if this is a Date Night sub-category with custom keywords
+          // Check if this is a Date Night or Cheap Eats sub-category with custom keywords
           if (pillParent === 'Date Night' && dateNightKeywords[subCuisine]) {
             loadNearbyPlaces(location, dateNightKeywords[subCuisine], searchRadius);
+          } else if (pillParent === 'Cheap Eats' && cheapEatsKeywords[subCuisine]) {
+            loadNearbyPlaces(location, cheapEatsKeywords[subCuisine], searchRadius);
           } else {
             loadNearbyPlaces(location, subCuisine.toLowerCase() + ' restaurant', searchRadius);
           }
