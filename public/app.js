@@ -2518,7 +2518,7 @@ function createPlaceCard(place, index) {
           let ratingHtml = '';
           if (taData.rating_image_url) {
             ratingHtml = `
-              <a href="${taData.web_url || 'https://www.tripadvisor.com/Search?q=' + encodeURIComponent(placeName)}" 
+              <a href="${taData.web_url || 'https://www.google.com/search?q=site:tripadvisor.com+' + encodeURIComponent(placeName + ' ' + placeAddress)}" 
                  target="_blank" class="ta-rating-display" title="View on TripAdvisor">
                 <img src="${taData.rating_image_url}" alt="${taData.rating} rating" class="ta-bubbles-img">
                 <span class="ta-review-count">${taData.num_reviews || 0} reviews</span>
@@ -2528,7 +2528,7 @@ function createPlaceCard(place, index) {
           } else if (taData.rating) {
             // Fallback if no image URL - show text rating with proper branding
             ratingHtml = `
-              <a href="${taData.web_url || 'https://www.tripadvisor.com/Search?q=' + encodeURIComponent(placeName)}" 
+              <a href="${taData.web_url || 'https://www.google.com/search?q=site:tripadvisor.com+' + encodeURIComponent(placeName + ' ' + placeAddress)}" 
                  target="_blank" class="ta-rating-display" title="View on TripAdvisor">
                 <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_logomark_solid_green.svg" alt="TripAdvisor" class="ta-owl-icon">
                 <span class="ta-rating-text">${taData.rating}</span>
@@ -2536,35 +2536,35 @@ function createPlaceCard(place, index) {
               </a>
             `;
           } else {
-            // No rating data - show link to TripAdvisor
+            // No rating data - show link to TripAdvisor via Google search
             ratingHtml = `
-              <a href="https://www.tripadvisor.com/Search?q=${encodeURIComponent(placeName + ' ' + (window.currentCity || ''))}" 
-                 target="_blank" class="ta-rating-display ta-no-data" title="Search on TripAdvisor">
+              <a href="https://www.google.com/search?q=site:tripadvisor.com+${encodeURIComponent(placeName + ' ' + placeAddress)}" 
+                 target="_blank" class="ta-rating-display ta-no-data" title="Find on TripAdvisor">
                 <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_logomark_solid_green.svg" alt="TripAdvisor" class="ta-owl-icon">
-                <span>View on TripAdvisor</span>
+                <span>Find on TripAdvisor</span>
               </a>
             `;
           }
           
           container.innerHTML = sanitizeHTML(ratingHtml);
         } else {
-          // API error or no data - show fallback link
+          // API error or no data - show fallback link via Google search
           container.innerHTML = sanitizeHTML(`
-            <a href="https://www.tripadvisor.com/Search?q=${encodeURIComponent(placeName + ' ' + (window.currentCity || ''))}" 
-               target="_blank" class="ta-rating-display ta-no-data" title="Search on TripAdvisor">
+            <a href="https://www.google.com/search?q=site:tripadvisor.com+${encodeURIComponent(placeName + ' ' + placeAddress)}" 
+               target="_blank" class="ta-rating-display ta-no-data" title="Find on TripAdvisor">
               <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_logomark_solid_green.svg" alt="TripAdvisor" class="ta-owl-icon">
-              <span>View on TripAdvisor</span>
+              <span>Find on TripAdvisor</span>
             </a>
           `);
         }
       } catch (error) {
         console.error('Error fetching TripAdvisor rating:', error);
-        // Show fallback link on error
+        // Show fallback link on error via Google search
         container.innerHTML = sanitizeHTML(`
-          <a href="https://www.tripadvisor.com/Search?q=${encodeURIComponent(placeName + ' ' + (window.currentCity || ''))}" 
-             target="_blank" class="ta-rating-display ta-no-data" title="Search on TripAdvisor">
+          <a href="https://www.google.com/search?q=site:tripadvisor.com+${encodeURIComponent(placeName + ' ' + placeAddress)}" 
+             target="_blank" class="ta-rating-display ta-no-data" title="Find on TripAdvisor">
             <img src="https://static.tacdn.com/img2/brand_refresh/Tripadvisor_logomark_solid_green.svg" alt="TripAdvisor" class="ta-owl-icon">
-            <span>View on TripAdvisor</span>
+            <span>Find on TripAdvisor</span>
           </a>
         `);
       }
@@ -2767,8 +2767,8 @@ async function showPlaceDetails(placeId) {
       place.place_id = placeId;
       console.log("Place details:", place);
       
-      // TripAdvisor search URL - use Name + City with restaurant/place filter hint
-      const tripAdvisorSearchUrl = `https://www.tripadvisor.com/Search?q=${encodeURIComponent(place.name + ' ' + (window.currentCity || ''))}&m=12021`;
+      // TripAdvisor search URL - use Google search with site:tripadvisor.com for better results
+      const tripAdvisorSearchUrl = `https://www.google.com/search?q=site:tripadvisor.com+${encodeURIComponent(place.name + ' ' + (place.vicinity || ''))}`;
       
       // Get TripAdvisor data from API
       let tripAdvisorData = null;
@@ -2955,7 +2955,7 @@ async function showPlaceDetails(placeId) {
               ` : ''}
               <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn-tripadvisor-cta">
                 <i class="fab fa-tripadvisor"></i>
-                Read Full Reviews on TripAdvisor
+                Find on TripAdvisor
               </a>
             </div>
           </div>
@@ -2965,7 +2965,7 @@ async function showPlaceDetails(placeId) {
           <div class="tripadvisor-section mt-3">
             <a href="${tripAdvisorSearchUrl}" target="_blank" class="btn-tripadvisor-cta">
               <i class="fab fa-tripadvisor"></i>
-              Check Reviews on TripAdvisor
+              Find on TripAdvisor
             </a>
           </div>
         `;
