@@ -1292,6 +1292,11 @@ function initListsModal() {
         createListBtn.click();
       }
     });
+    
+    // Mobile touch fix: ensure input can receive focus
+    newListInput.addEventListener('touchstart', function(e) {
+      e.stopPropagation();
+    }, { passive: true });
   }
   
   // Close popup when clicking outside
@@ -1328,6 +1333,11 @@ function initListsModal() {
     quickCreateInput.addEventListener('keyup', function(e) {
       if (e.key === 'Enter') quickCreateBtn.click();
     });
+    
+    // Mobile touch fix: ensure input can receive focus
+    quickCreateInput.addEventListener('touchstart', function(e) {
+      e.stopPropagation();
+    }, { passive: true });
   }
 }
 
