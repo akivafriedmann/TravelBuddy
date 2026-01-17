@@ -661,6 +661,47 @@ body.dark-mode .legal-modal .modal-body p {
 
 .category-btn i {
   font-size: 14px;
+  color: #888;
+  transition: color 0.2s ease;
+}
+
+.category-btn.active i,
+.category-btn.hotel-active i {
+  color: #fff;
+}
+
+/* Filter divider between cuisine and vibe filters */
+.filter-divider {
+  display: inline-block;
+  width: 1px;
+  height: 28px;
+  background: #ddd;
+  margin: 0 8px;
+  vertical-align: middle;
+}
+
+/* Vibe filter buttons with subtle purple border */
+.vibe-btn {
+  border-color: #E8DAEF !important;
+}
+
+.vibe-btn i {
+  color: #9B59B6;
+}
+
+.vibe-btn:hover {
+  background: #F5EEF8;
+  border-color: #D2B4DE !important;
+}
+
+.vibe-btn.active {
+  background: #8E44AD !important;
+  border-color: #8E44AD !important;
+  color: #fff !important;
+}
+
+.vibe-btn.active i {
+  color: #fff;
 }
 
 .category-btn:first-child {
@@ -1843,6 +1884,35 @@ body.dark-mode #share-btn:hover {
   margin-bottom: 12px;
 }
 
+/* Smart snippet styling for search matches */
+.place-card .smart-snippet {
+  font-style: italic;
+  color: #666;
+  background: linear-gradient(to right, #f8f9fa, transparent);
+  padding: 8px 12px;
+  border-left: 3px solid #1B4D3E;
+  border-radius: 0 4px 4px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.place-card .smart-snippet i {
+  color: #1B4D3E;
+  font-size: 10px;
+  margin-right: 6px;
+  opacity: 0.7;
+}
+
+body.dark-mode .place-card .smart-snippet {
+  background: linear-gradient(to right, #2a2a2a, transparent);
+  color: #aaa;
+  border-left-color: #2E7D5A;
+}
+
+body.dark-mode .place-card .smart-snippet i {
+  color: #2E7D5A;
+}
+
 /* Modern Rating Display */
 .place-card .rating {
   display: flex;
@@ -2207,6 +2277,36 @@ body.dark-mode .category-btn.hotel-active {
   background: #8E44AD !important;
   color: #fff !important;
   border-color: #8E44AD !important;
+}
+
+body.dark-mode .filter-divider {
+  background: #444;
+}
+
+body.dark-mode .vibe-btn {
+  border-color: #5B2C6F !important;
+}
+
+body.dark-mode .vibe-btn i {
+  color: #BB8FCE;
+}
+
+body.dark-mode .vibe-btn:hover {
+  background: #2C1445;
+  border-color: #7D3C98 !important;
+}
+
+body.dark-mode .vibe-btn.active {
+  background: #8E44AD !important;
+  border-color: #8E44AD !important;
+}
+
+body.dark-mode .category-btn i {
+  color: #888;
+}
+
+body.dark-mode .category-btn.active i {
+  color: #fff;
 }
 
 body.dark-mode .content-container.results-section {

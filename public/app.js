@@ -939,6 +939,9 @@ async function searchForRestaurantByName() {
     return;
   }
   
+  // Track search keyword for smart snippets
+  window.lastSearchKeyword = query;
+  
   showLoading();
   
   try {
@@ -1820,6 +1823,9 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
   // Track current keyword for re-searching when radius changes
   currentKeyword = keyword;
   
+  // Track search keyword for smart snippets
+  window.lastSearchKeyword = keyword;
+  
   // Show skeleton loading cards
   const container = document.getElementById('places-container');
   container.innerHTML = createSkeletonCards(6);
@@ -2255,6 +2261,35 @@ function createPlaceCard(place, index) {
     }
   }
   
+  // Check for smart snippet - editorial summary or review excerpt
+  let smartSnippet = '';
+  const searchKeyword = window.lastSearchKeyword || '';
+  
+  // Check for editorial summary first
+  if (place.editorial_summary && place.editorial_summary.overview) {
+    smartSnippet = place.editorial_summary.overview;
+  } 
+  // Check reviews for matching keyword
+  else if (place.reviews && searchKeyword && searchKeyword.length > 2) {
+    const keywordLower = searchKeyword.toLowerCase();
+    const matchingReview = place.reviews.find(review => 
+      review.text && review.text.toLowerCase().includes(keywordLower)
+    );
+    if (matchingReview) {
+      // Extract a snippet around the keyword
+      const text = matchingReview.text;
+      const keywordIndex = text.toLowerCase().indexOf(keywordLower);
+      const start = Math.max(0, keywordIndex - 30);
+      const end = Math.min(text.length, keywordIndex + 80);
+      smartSnippet = (start > 0 ? '...' : '') + text.slice(start, end) + (end < text.length ? '...' : '');
+    }
+  }
+  
+  // Format snippet display
+  const snippetHTML = smartSnippet 
+    ? `<p class="card-text smart-snippet"><i class="fas fa-quote-left"></i> ${escapeHTML(smartSnippet)}</p>`
+    : `<p class="card-text">${escapeHTML(place.vicinity || place.formatted_address || '')}</p>`;
+  
   // Create the modern card HTML with thumbnail
   const cardNumber = index + 1; // 1-based numbering to match map pins
   card.innerHTML = sanitizeHTML(`
@@ -2282,7 +2317,7 @@ function createPlaceCard(place, index) {
       
       <div class="card-body clickable-place" data-place-id="${place.place_id}">
         <h5 class="card-title">${escapeHTML(place.name)}${openBadge}</h5>
-        <p class="card-text">${escapeHTML(place.vicinity || place.formatted_address || '')}</p>
+        ${snippetHTML}
         
         <div class="rating">
           <span class="rating-stars">${ratingStars}</span>
