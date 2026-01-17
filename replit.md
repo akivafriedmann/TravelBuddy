@@ -30,6 +30,16 @@ API security is managed through environment-based API keys, Google Maps API key 
 - **Security**: XSS protection using DOMPurify, updated dependencies (axios, urllib3) for vulnerability fixes, and secure handling of API keys.
 - **Search Experience**: Separated search bars for location (geocoding) and specific places (restaurants/attractions) to improve user clarity.
 - **Sorting & Filtering**: Options to sort results by rating, reviews, distance, or name, with category filter pills.
+- **Vibe Filters**: Mood-based search options including:
+  - **Date Dinner**: Romantic candlelit restaurants (fa-utensils + fa-heart)
+  - **Date Drinks**: Cocktail bars, wine bars, speakeasies with special bar-type filtering (fa-martini-glass + fa-heart)
+  - **Trendy**: Popular modern hotspots
+  - **Business**: Quiet professional lunch spots
+  - **Views**: Rooftop/view restaurants
+  - **Hidden Gem**: Local favorites off the beaten path
+- **Smart Snippets**: Result cards display contextual review excerpts or editorial summaries matching search keywords, with special prioritization for date bar keywords (intimate, cozy, speakeasy, dim lighting).
+- **Premium Date Spot Badge**: $$$ and $$$$ bars in Date Drinks mode display a glowing purple "Premium Date Spot" badge.
+- **Speakeasy Boost**: Places with "speakeasy" in their name are prioritized in Date Drinks mode.
 - **Accessibility**: Mobile responsiveness improvements including stacked inputs, compact cards, and optimized modal displays.
 
 ## External Dependencies

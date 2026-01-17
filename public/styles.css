@@ -1913,6 +1913,37 @@ body.dark-mode .place-card .smart-snippet i {
   color: #2E7D5A;
 }
 
+/* Premium Date Spot Badge */
+.premium-date-badge {
+  background: linear-gradient(135deg, #8E44AD, #9B59B6) !important;
+  color: #fff !important;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: premium-glow 2s ease-in-out infinite alternate;
+}
+
+.premium-date-badge i {
+  font-size: 9px;
+  margin-right: 4px;
+}
+
+@keyframes premium-glow {
+  from {
+    box-shadow: 0 0 5px rgba(142, 68, 173, 0.3);
+  }
+  to {
+    box-shadow: 0 0 12px rgba(142, 68, 173, 0.6);
+  }
+}
+
+body.dark-mode .premium-date-badge {
+  background: linear-gradient(135deg, #9B59B6, #BB8FCE) !important;
+}
+
 /* Modern Rating Display */
 .place-card .rating {
   display: flex;

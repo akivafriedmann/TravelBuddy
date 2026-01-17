@@ -1570,6 +1570,8 @@ function initMap() {
     button.addEventListener('click', function() {
       const type = this.getAttribute('data-type');
       const keyword = this.getAttribute('data-keyword');
+      const barTypes = this.getAttribute('data-bar-types');
+      const isDateDrinks = this.classList.contains('date-drinks-btn');
       
       // Update the select dropdown
       if (type) {
@@ -1578,6 +1580,10 @@ function initMap() {
       
       // Track current category mode for cluster colors
       window.currentCategoryMode = type || 'restaurant';
+      
+      // Track if we're in date drinks mode for special filtering
+      window.isDateDrinksMode = isDateDrinks;
+      window.dateBarTypes = barTypes ? barTypes.split(',') : null;
       
       // Remove active class and hotel-active from all category buttons
       document.querySelectorAll('.category-btn').forEach(btn => {
@@ -1825,6 +1831,13 @@ async function loadNearbyPlaces(location, keyword = '', radius = 1500) {
   
   // Track search keyword for smart snippets
   window.lastSearchKeyword = keyword;
+  
+  // Reset Date Drinks mode unless we're specifically in bar search mode
+  // This prevents the mode from persisting when user clicks other categories
+  if (!keyword.includes('cocktail bar') && !keyword.includes('speakeasy')) {
+    window.isDateDrinksMode = false;
+    window.dateBarTypes = null;
+  }
   
   // Show skeleton loading cards
   const container = document.getElementById('places-container');
@@ -2114,12 +2127,38 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false,
   ];
   
   // Use our shared utility function to filter and sort places
-  const filteredPlaces = filterAndSortPlaces(places, origin, {
+  let filteredPlaces = filterAndSortPlaces(places, origin, {
     radius: filterRadius,
     minRating: MIN_RATING,
     minReviews: currentMinReviews,
     unwantedTypes: UNWANTED_TYPES
   });
+  
+  // Date Drinks mode: Filter to only include bar types and exclude restaurants
+  if (window.isDateDrinksMode && window.dateBarTypes) {
+    const barTypes = window.dateBarTypes;
+    filteredPlaces = filteredPlaces.filter(place => {
+      if (!place.types) return false;
+      // Check if place has at least one bar type
+      const hasBarType = barTypes.some(barType => place.types.includes(barType));
+      // Exclude if it's primarily a restaurant (unless it's also a bar)
+      const isPrimaryRestaurant = place.types[0] === 'restaurant' && !hasBarType;
+      return hasBarType && !isPrimaryRestaurant;
+    });
+    
+    // Boost speakeasy-related places to the top
+    filteredPlaces.sort((a, b) => {
+      const aHasSpeakeasy = (a.name && a.name.toLowerCase().includes('speakeasy')) ||
+        (a.types && a.types.some(t => t.includes('speakeasy')));
+      const bHasSpeakeasy = (b.name && b.name.toLowerCase().includes('speakeasy')) ||
+        (b.types && b.types.some(t => t.includes('speakeasy')));
+      if (aHasSpeakeasy && !bHasSpeakeasy) return -1;
+      if (!aHasSpeakeasy && bHasSpeakeasy) return 1;
+      return 0;
+    });
+    
+    console.log(`Date Drinks mode: ${filteredPlaces.length} bars found after filtering`);
+  }
   
   console.log(`After filtering: ${filteredPlaces.length} of ${places.length} places remaining`);
   
@@ -2265,11 +2304,30 @@ function createPlaceCard(place, index) {
   let smartSnippet = '';
   const searchKeyword = window.lastSearchKeyword || '';
   
+  // Date bar keywords for special prioritization
+  const dateBarKeywords = ['intimate', 'cozy', 'speakeasy', 'dim lighting', 'great for couples', 'romantic', 'hidden', 'secret'];
+  
   // Check for editorial summary first
   if (place.editorial_summary && place.editorial_summary.overview) {
     smartSnippet = place.editorial_summary.overview;
   } 
-  // Check reviews for matching keyword
+  // For Date Drinks mode, prioritize date bar keywords in reviews
+  else if (window.isDateDrinksMode && place.reviews) {
+    for (const keyword of dateBarKeywords) {
+      const matchingReview = place.reviews.find(review => 
+        review.text && review.text.toLowerCase().includes(keyword)
+      );
+      if (matchingReview) {
+        const text = matchingReview.text;
+        const keywordIndex = text.toLowerCase().indexOf(keyword);
+        const start = Math.max(0, keywordIndex - 20);
+        const end = Math.min(text.length, keywordIndex + 90);
+        smartSnippet = (start > 0 ? '...' : '') + text.slice(start, end) + (end < text.length ? '...' : '');
+        break;
+      }
+    }
+  }
+  // Check reviews for matching search keyword
   else if (place.reviews && searchKeyword && searchKeyword.length > 2) {
     const keywordLower = searchKeyword.toLowerCase();
     const matchingReview = place.reviews.find(review => 
@@ -2289,6 +2347,12 @@ function createPlaceCard(place, index) {
   const snippetHTML = smartSnippet 
     ? `<p class="card-text smart-snippet"><i class="fas fa-quote-left"></i> ${escapeHTML(smartSnippet)}</p>`
     : `<p class="card-text">${escapeHTML(place.vicinity || place.formatted_address || '')}</p>`;
+  
+  // Check for Premium Date Spot badge ($$$ or $$$$ bars in Date Drinks mode)
+  let premiumDateBadge = '';
+  if (window.isDateDrinksMode && place.price_level >= 3) {
+    premiumDateBadge = '<span class="badge premium-date-badge ms-2"><i class="fas fa-gem"></i> Premium Date Spot</span>';
+  }
   
   // Create the modern card HTML with thumbnail
   const cardNumber = index + 1; // 1-based numbering to match map pins
@@ -2316,7 +2380,7 @@ function createPlaceCard(place, index) {
       `}
       
       <div class="card-body clickable-place" data-place-id="${place.place_id}">
-        <h5 class="card-title">${escapeHTML(place.name)}${openBadge}</h5>
+        <h5 class="card-title">${escapeHTML(place.name)}${openBadge}${premiumDateBadge}</h5>
         ${snippetHTML}
         
         <div class="rating">
