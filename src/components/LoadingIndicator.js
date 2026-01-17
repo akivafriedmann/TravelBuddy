@@ -1,12 +1,11 @@
 import React from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { styles as globalStyles } from '../styles/styles';
 
-const BRAND_COLOR = '#1B4D3E';
-
-const LoadingIndicator = ({ message = 'Finding great places...' }) => {
+const LoadingIndicator = ({ message = 'Loading...' }) => {
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color={BRAND_COLOR} />
+      <ActivityIndicator size="large" color="#2196F3" />
       <Text style={styles.loadingText}>{message}</Text>
     </View>
   );

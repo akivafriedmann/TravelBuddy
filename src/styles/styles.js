@@ -1,21 +1,19 @@
 import { StyleSheet } from 'react-native';
 
 export const colors = {
-  primary: '#1B4D3E',
-  primaryDark: '#143D31',
-  primaryLight: '#2A6B54',
-  accent: '#5B3B8C',
+  primary: '#2196F3',
+  primaryDark: '#1976D2',
+  primaryLight: '#BBDEFB',
+  accent: '#FF4081',
   textPrimary: '#212121',
   textSecondary: '#757575',
-  divider: '#E0E0E0',
-  background: '#F8F8F8',
+  divider: '#BDBDBD',
+  background: '#F5F5F5',
   error: '#F44336',
   success: '#4CAF50',
   warning: '#FFC107',
   white: '#FFFFFF',
   black: '#000000',
-  darkBg: '#121212',
-  darkCard: '#1E1E1E',
 };
 
 export const styles = StyleSheet.create({
@@ -37,9 +35,9 @@ export const styles = StyleSheet.create({
   },
   buttonPrimary: {
     backgroundColor: colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -52,22 +50,22 @@ export const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.divider,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     fontSize: 16,
     color: colors.textPrimary,
   },
   card: {
     backgroundColor: colors.white,
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 16,
     margin: 8,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 2,
+    elevation: 2,
   },
   row: {
     flexDirection: 'row',
@@ -104,6 +102,7 @@ export const styles = StyleSheet.create({
   },
 });
 
+// Font sizing
 export const typography = {
   largeTitle: {
     fontSize: 34,
@@ -130,26 +129,27 @@ export const typography = {
   },
 };
 
+// Commonly used shadow styles
 export const shadows = {
   small: {
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     elevation: 2,
   },
   medium: {
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
     elevation: 4,
   },
   large: {
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
     elevation: 6,
   },
 };
