@@ -3015,10 +3015,26 @@ function createPlaceCard(place, index) {
     }
   }
   
-  // Format snippet display
+  // Shorten address - only show first part before comma (e.g., "Keizersgracht 520" not full address)
+  const fullAddress = place.vicinity || place.formatted_address || '';
+  const shortAddress = fullAddress.includes(',') ? fullAddress.split(',')[0].trim() : fullAddress;
+  
+  // Get cuisine/category from types (first non-generic type)
+  const cuisineType = place.types?.find(t => 
+    !['point_of_interest', 'establishment', 'food', 'restaurant'].includes(t)
+  );
+  const cuisineLabel = cuisineType ? formatPlaceType(cuisineType) : '';
+  
+  // Build compact meta line: $$ • Italian • 1.2km
+  const metaParts = [];
+  if (priceLevel) metaParts.push(priceLevel);
+  if (cuisineLabel) metaParts.push(cuisineLabel);
+  const metaLine = metaParts.length > 0 ? `<p class="card-meta">${metaParts.join(' • ')}</p>` : '';
+  
+  // Format snippet display - use smart snippet if available, otherwise short address
   const snippetHTML = smartSnippet 
     ? `<p class="card-text smart-snippet"><i class="fas fa-quote-left"></i> ${escapeHTML(smartSnippet)}</p>`
-    : `<p class="card-text">${escapeHTML(place.vicinity || place.formatted_address || '')}</p>`;
+    : `<p class="card-text card-address">${escapeHTML(shortAddress)}</p>`;
   
   // Check for Premium Date Spot badge ($$$ or $$$$ bars in Date Drinks mode)
   let premiumDateBadge = '';
@@ -3053,6 +3069,7 @@ function createPlaceCard(place, index) {
       
       <div class="card-body clickable-place" data-place-id="${place.place_id}">
         <h5 class="card-title">${escapeHTML(place.name)}${openBadge}${premiumDateBadge}</h5>
+        ${metaLine}
         ${snippetHTML}
         
         <div class="rating">
