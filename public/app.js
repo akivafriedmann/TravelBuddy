@@ -1705,9 +1705,8 @@ function initMap() {
     { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] }
   ];
   
-  // Check if dark mode is preferred at init time
-  const isDarkModePreferred = window.matchMedia('(prefers-color-scheme: dark)').matches || 
-                              document.body.classList.contains('dark-mode');
+  // Default to light mode
+  const isDarkModePreferred = false;
   
   // Create the map with explicit configuration
   // Note: Without mapId, we use regular markers and can apply custom styles
@@ -1854,8 +1853,8 @@ function initMap() {
     }
   });
   
-  // Detect system dark mode preference
-  const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  // Default to light mode
+  const prefersDarkMode = false;
   document.getElementById('dark-mode-toggle').checked = prefersDarkMode;
   toggleDarkMode(prefersDarkMode);
   
