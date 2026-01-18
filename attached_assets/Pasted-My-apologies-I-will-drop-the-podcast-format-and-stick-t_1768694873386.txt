@@ -1,0 +1,65 @@
+My apologies. I will drop the podcast format and stick to direct technical fixes.
+Here is the solution for the two bugs you found.
+1. Fix Mobile Photos (They are collapsing)
+On mobile, if the modal height is restricted (which we did to fix the scrolling), the photo container often "crushes" to 0px height because it tries to fit the text. We need to force it to stay open.
+2. Fix "Unclickable" Plus Button
+The "Save to Guidebook" popup is visually on top, but the browser thinks you are still clicking the "Restaurant Card" underneath it. We need to force the popup to be the "Active Layer" using z-index and event handling.
+Replit Prompt: Fix Photos & Unclickable Button
+Copy this to fix both issues immediately.
+Bug Fixes: Mobile Photos & Modal Interaction
+ * Fix Missing Photos on Mobile:
+   * Update the CSS for the restaurant image container (likely .place-detail-image or .modal-hero-image).
+   * Add this Mobile Rule:
+   <!-- end list -->
+   @media (max-width: 768px) {
+  .place-detail-image-container {
+    height: 250px !important; /* Force specific height */
+    min-height: 250px;       /* Prevent collapsing */
+    width: 100%;
+    flex-shrink: 0;          /* Stop flexbox from crushing it */
+    display: block;          /* Ensure it renders */
+  }
+
+  /* Ensure the Modal Body scrolls, not the whole screen */
+  .place-modal-content {
+    overflow-y: auto;
+    max-height: calc(85vh - 250px); /* Remaining space for text */
+  }
+}
+
+ * Fix "Unclickable" Plus Button (Z-Index Override):
+   * Update the CSS for the .guidebook-modal-overlay (the dark background behind the save popup).
+   * Force Top Layer:
+   <!-- end list -->
+   .guidebook-modal-overlay {
+    z-index: 2147483647 !important; /* Max possible integer value */
+    pointer-events: auto !important; /* Force clicks to register */
+}
+
+.guidebook-modal {
+    position: relative;
+    z-index: 2147483648 !important; /* One higher than overlay */
+}
+
+ * Fix Input Focus Logic (JavaScript):
+   * In your createListBtn click listener, prevent the click from bubbling down to the map.
+   <!-- end list -->
+   // In your Setup Event Listeners function:
+const createListBtn = document.getElementById('create-list-btn'); // or whatever ID you used
+const newListNameInput = document.getElementById('new-list-name');
+
+if (createListBtn) {
+    createListBtn.addEventListener('click', (e) => {
+        e.preventDefault(); // Stop form submit
+        e.stopPropagation(); // Stop map click
+
+        const name = newListNameInput.value;
+        if (name) {
+            createNewList(name);
+        }
+    });
+}
+
+Why this happens
+ * Photos: Flexbox on mobile tries to "fit everything." If you have a lot of text reviews, it shrinks the image to zero to make room. flex-shrink: 0 stops this.
+ * Button: The map has a very high Z-Index (usually 100-1000). If your popup is 999, the map wins. Setting it to the "Max Integer" (2147483647) guarantees it wins.
