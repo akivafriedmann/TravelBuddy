@@ -1244,7 +1244,9 @@ function initListsModal() {
   }
   
   if (createListBtn && newListInput) {
-    createListBtn.addEventListener('click', function() {
+    createListBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
       const name = newListInput.value.trim();
       if (name) {
         createList(name);
@@ -1280,7 +1282,9 @@ function initListsModal() {
   const quickCreateBtn = document.getElementById('quick-create-list-btn');
   const quickCreateInput = document.getElementById('quick-create-list-name');
   if (quickCreateBtn && quickCreateInput) {
-    quickCreateBtn.addEventListener('click', function() {
+    quickCreateBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
       const name = quickCreateInput.value.trim();
       if (name && window.currentSavePlace) {
         const newList = createList(name);

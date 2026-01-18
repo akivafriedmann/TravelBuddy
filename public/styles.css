@@ -2971,15 +2971,27 @@ body.dark-mode .action-pill i {
     font-size: 13px;
   }
   
-  /* Hero image on mobile */
+  /* Hero image on mobile - prevent flexbox from crushing it */
   .modern-modal .hero-section {
-    height: 280px !important;
+    height: 250px !important;
+    min-height: 250px !important;
+    flex-shrink: 0 !important;
+    display: block !important;
+  }
+  
+  .modern-modal .hero-section .hero-carousel,
+  .modern-modal .hero-section .hero-carousel .carousel-inner,
+  .modern-modal .hero-section .hero-carousel .carousel-item {
+    height: 250px !important;
+    min-height: 250px !important;
   }
   
   .modern-modal .hero-section .hero-carousel .carousel-item img {
-    height: 280px !important;
-    min-height: 280px !important;
+    height: 250px !important;
+    min-height: 250px !important;
+    width: 100% !important;
     object-fit: cover !important;
+    flex-shrink: 0 !important;
   }
   
   /* Fix mobile modal cutoff - ensure content doesn't hide behind iPhone home bar */
@@ -3994,7 +4006,7 @@ body.dark-mode .guidebook-place-name {
   color: white;
 }
 
-/* Save to List Popup */
+/* Save to List Popup - use max z-index to guarantee it's on top */
 .save-to-list-popup {
   position: fixed;
   top: 50%;
@@ -4007,18 +4019,20 @@ body.dark-mode .guidebook-place-name {
   -webkit-backdrop-filter: blur(20px);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-  z-index: 9999;
+  z-index: 2147483647 !important;
   overflow: hidden;
+  pointer-events: auto !important;
 }
 
-/* Ensure inputs in popup are fully interactive */
+/* Ensure inputs and buttons in popup are fully interactive */
 .save-to-list-popup input,
+.save-to-list-popup button,
 .save-to-list-popup .popup-input {
   position: relative;
-  z-index: 10000;
+  z-index: 2147483647 !important;
   -webkit-user-select: text;
   user-select: text;
-  pointer-events: auto;
+  pointer-events: auto !important;
   touch-action: manipulation;
 }
 
