@@ -10,7 +10,8 @@ const cuisineHierarchy = {
   'European': ['Italian', 'French', 'Spanish', 'Greek', 'Tapas'],
   'Latin': ['Mexican', 'Tacos', 'Argentinian', 'Peruvian'],
   'American': ['Burgers', 'BBQ', 'Steakhouse', 'Diner'],
-  'Healthy': ['Vegan', 'Vegetarian', 'Salad', 'Juice Bar']
+  'Healthy': ['Vegan', 'Vegetarian', 'Salad', 'Juice Bar'],
+  'Brunch': ['Bottomless', 'Pancakes', 'Avocado Toast', 'Eggs Benny', 'Buffet', 'Bagels']
 };
 
 const dateNightKeywords = {
@@ -29,6 +30,15 @@ const cheapEatsKeywords = {
   'Fast Food': 'fast food quick bite',
   'Late Night': 'late night food cheap',
   'Under €15': 'budget restaurant good value'
+};
+
+const brunchKeywords = {
+  'Bottomless': 'bottomless brunch boozy unlimited drinks mimosa',
+  'Pancakes': 'best pancakes fluffy stack breakfast',
+  'Avocado Toast': 'best avocado toast specialty coffee',
+  'Eggs Benny': 'eggs benedict hollandaise brunch',
+  'Buffet': 'brunch buffet all you can eat',
+  'Bagels': 'fresh bagels cream cheese salmon lox'
 };
 
 // ==================== GOOGLE ANALYTICS HELPER ====================
@@ -2148,11 +2158,13 @@ function initMap() {
         if (wasActive) {
           loadNearbyPlaces(location, window.activeCuisineParentKeyword, searchRadius);
         } else {
-          // Check if this is a Date Night or Cheap Eats sub-category with custom keywords
+          // Check if this is a Date Night, Cheap Eats, or Brunch sub-category with custom keywords
           if (pillParent === 'Date Night' && dateNightKeywords[subCuisine]) {
             loadNearbyPlaces(location, dateNightKeywords[subCuisine], searchRadius);
           } else if (pillParent === 'Cheap Eats' && cheapEatsKeywords[subCuisine]) {
             loadNearbyPlaces(location, cheapEatsKeywords[subCuisine], searchRadius);
+          } else if (pillParent === 'Brunch' && brunchKeywords[subCuisine]) {
+            loadNearbyPlaces(location, brunchKeywords[subCuisine], searchRadius);
           } else {
             loadNearbyPlaces(location, subCuisine.toLowerCase() + ' restaurant', searchRadius);
           }
