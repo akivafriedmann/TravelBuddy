@@ -2962,9 +2962,8 @@ function createPlaceCard(place, index) {
     }
   }
   
-  // Shorten address - only show first part before comma (e.g., "Keizersgracht 520" not full address)
+  // Full address with postcode
   const fullAddress = place.vicinity || place.formatted_address || '';
-  const shortAddress = fullAddress.includes(',') ? fullAddress.split(',')[0].trim() : fullAddress;
   
   // Get cuisine/category from types (first non-generic type)
   const cuisineType = place.types?.find(t => 
@@ -2978,10 +2977,10 @@ function createPlaceCard(place, index) {
   if (cuisineLabel) metaParts.push(cuisineLabel);
   const metaLine = metaParts.length > 0 ? `<p class="card-meta">${metaParts.join(' • ')}</p>` : '';
   
-  // Format snippet display - use smart snippet if available, otherwise short address
+  // Format snippet display - use smart snippet if available, otherwise full address
   const snippetHTML = smartSnippet 
     ? `<p class="card-text smart-snippet"><i class="fas fa-quote-left"></i> ${escapeHTML(smartSnippet)}</p>`
-    : `<p class="card-text card-address">${escapeHTML(shortAddress)}</p>`;
+    : `<p class="card-text card-address">${escapeHTML(fullAddress)}</p>`;
   
   // Check for Premium Date Spot badge ($$$ or $$$$ bars in Date Drinks mode)
   let premiumDateBadge = '';
