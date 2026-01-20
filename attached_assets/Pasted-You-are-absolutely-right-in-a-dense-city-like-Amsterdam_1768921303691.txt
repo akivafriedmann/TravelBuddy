@@ -1,0 +1,77 @@
+You are absolutely right—in a dense city like Amsterdam, the postcode (e.g., "1017 CR") is often the only way to know which side of the canal a place is on. We will keep the data 100% intact but use Typography (font size and color) to make it fit better instead of deleting it.
+Here is the refined Mobile Polish Prompt. It shrinks the massive header to give your map more room, but keeps the full address visible and neatly formatted.
+Replit Prompt: Compact Mobile Header & Polished Cards
+Copy this to fix the "heavy" feel while keeping your location data precise.
+UI Update: Mobile Header Optimization & Card Typography
+ * Compact Header (CSS):
+   * In styles.css (or your CSS file), add this @media (max-width: 768px) block to drastically reduce wasted space on phones:
+   <!-- end list -->
+   @media (max-width: 768px) {
+  /* 1. Shrink the massive container */
+  .hero-section {
+    padding: 12px 10px !important; /* Reduce padding by 50% */
+    min-height: auto !important;
+  }
+
+  /* 2. Shrink Logo & Hide Subtitle */
+  .hero-content h1 {
+    font-size: 22px !important; /* Smaller logo */
+    margin-bottom: 5px !important;
+    display: inline-block;
+  }
+
+  .hero-content p {
+    display: none; /* Hide subtitle to save 40px of space */
+  }
+
+  /* 3. Streamline Search Bar */
+  .search-container {
+    margin-top: 5px;
+    padding: 0 !important; /* Remove extra box padding */
+    background: transparent; /* Remove white box background if present */
+  }
+
+  .search-input {
+    font-size: 14px; /* Prevent iOS zoom */
+    padding: 8px 12px;
+    height: 40px;
+  }
+
+  /* 4. Compact Icons */
+  .quick-actions {
+    margin-top: 10px;
+    gap: 10px;
+    justify-content: space-between; /* Spread them evenly */
+  }
+
+  .action-btn {
+    font-size: 11px;
+    padding: 5px;
+  }
+}
+
+ * Refine Address Typography (Keep Postcode):
+   * We won't cut the text, but we will make it "Visual Secondary" so it doesn't fight with the restaurant title.
+   * Add/Update this CSS rule for the address class (e.g., .place-address or .card-address):
+   <!-- end list -->
+   .place-card-address {
+    font-size: 0.85rem; /* Slightly smaller than title */
+    color: #666;        /* Grey instead of black */
+    line-height: 1.3;   /* Tighter spacing */
+    margin-top: 4px;
+    white-space: normal; /* Allow nice wrapping */
+}
+
+ * Fix "Sticky" Sort Button:
+   * On mobile, hide the "Sort by:" text label to prevent layout breaking, leaving just the dropdown menu.
+   * CSS:
+   <!-- end list -->
+   @media (max-width: 768px) {
+  .sort-container label { display: none; }
+  .sort-select { height: 35px; font-size: 12px; }
+}
+
+What this achieves
+ * More Map, Less Menu: By hiding the subtitle and shrinking the padding, you gain about 150 pixels of map space on an iPhone.
+ * Readable Addresses: The address stays full (Halvemaansteeg 10H, 1017 CR), but because it's slightly smaller and grey, it looks like "Meta Data" rather than clutter.
+ * Native Feel: The search bar and icons will feel tight and responsive, like the Uber Eats or Airbnb mobile header.

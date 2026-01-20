@@ -391,8 +391,8 @@ app.get('/api/tripadvisor', async (req, res) => {
     console.log(`TripAdvisor API request for: "${place_name}"`);
     
     // Headers required by TripAdvisor API for domain-restricted keys
-    // Use the production Replit app domain that's registered with TripAdvisor
-    const tripAdvisorDomain = 'ucrave.replit.app';
+    // Use the production domain that's registered with TripAdvisor
+    const tripAdvisorDomain = 'craving.life';
     console.log(`TripAdvisor using domain: ${tripAdvisorDomain}`);
     const tripAdvisorHeaders = {
       'Referer': `https://${tripAdvisorDomain}/`,
