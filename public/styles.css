@@ -4293,11 +4293,11 @@ body.dark-mode .popup-input {
   }
 
   /* 5. Fix Sort Button */
-  .sort-container label {
-    display: none;
+  .sort-controls label {
+    display: none !important;
   }
   
-  .sort-select {
+  .sort-controls .form-select {
     height: 35px;
     font-size: 12px;
   }
