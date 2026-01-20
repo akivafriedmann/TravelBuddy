@@ -4292,14 +4292,32 @@ body.dark-mode .popup-input {
     padding: 5px;
   }
 
-  /* 5. Fix Sort Button */
+  /* 5. Fix Sort Dropdown */
   .sort-controls label {
     display: none !important;
   }
   
-  .sort-controls .form-select {
-    height: 35px;
-    font-size: 12px;
+  .sort-controls .form-select,
+  .sort-controls select,
+  #sort-select {
+    height: 35px !important;
+    font-size: 12px !important;
+    padding: 4px 24px 4px 8px !important;
+    max-width: 140px !important;
+    min-width: 100px !important;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+  
+  .results-header {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  
+  .results-count {
+    font-size: 13px;
+    white-space: nowrap;
   }
 }
 
