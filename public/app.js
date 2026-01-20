@@ -2721,17 +2721,28 @@ function renderPlaces(places, origin, currentPlaceType, isDessertSearch = false,
     unwantedTypes: UNWANTED_TYPES
   });
   
-  // POST-PROCESS: For restaurant searches, ensure only food establishments are shown
-  // This is the final safety check to prevent briefcase shops, museums, etc. from appearing
+  // POST-PROCESS: For restaurant searches, ensure only proper restaurants are shown
+  // This filters out cafes, bars, and other food-adjacent places that aren't primarily restaurants
   if (currentPlaceType === 'restaurant') {
-    const FOOD_TYPES = ['restaurant', 'food', 'meal_delivery', 'meal_takeaway', 'cafe', 'bakery', 'bar'];
+    const RESTAURANT_TYPES = ['restaurant', 'food', 'meal_delivery', 'meal_takeaway'];
+    const EXCLUDED_PRIMARY_TYPES = ['bar', 'cafe', 'bakery', 'night_club'];
     const beforeCount = filteredPlaces.length;
     filteredPlaces = filteredPlaces.filter(place => {
       if (!place.types || place.types.length === 0) return false;
-      // Must have at least one food-related type
-      return place.types.some(t => FOOD_TYPES.includes(t));
+      
+      // Get the primary type (first in the array)
+      const primaryType = place.types[0];
+      
+      // Exclude if primary type is bar, cafe, bakery, or nightclub
+      if (EXCLUDED_PRIMARY_TYPES.includes(primaryType)) {
+        console.log(`Filtering out ${place.name} - primary type is ${primaryType}`);
+        return false;
+      }
+      
+      // Must have at least one restaurant-related type
+      return place.types.some(t => RESTAURANT_TYPES.includes(t));
     });
-    console.log(`Food type validation: ${filteredPlaces.length} of ${beforeCount} places are food establishments`);
+    console.log(`Restaurant type validation: ${filteredPlaces.length} of ${beforeCount} places are proper restaurants`);
   }
   
   // Date Drinks mode: Filter to only include bar types and exclude restaurants
