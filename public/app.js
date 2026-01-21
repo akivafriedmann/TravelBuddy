@@ -2303,11 +2303,22 @@ function initMap() {
   });
 }
 
-// Use the user's current location
+// Use the user's current location with high-precision GPS
 function useMyLocation() {
+  const btn = document.getElementById('use-location-button');
+  const originalContent = btn.innerHTML;
+  
+  // Show loading spinner on button
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Locating...';
+  btn.disabled = true;
+  
   if (navigator.geolocation) {
-    // Show a loading indicator
-    showLoading();
+    // High-precision GPS options for mobile
+    const options = {
+      enableHighAccuracy: true,  // Force GPS (critical for mobile)
+      timeout: 10000,            // Wait up to 10s before failing
+      maximumAge: 0              // Do not use cached/old location
+    };
     
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -2316,44 +2327,73 @@ function useMyLocation() {
           lng: position.coords.longitude,
         };
         
-        // Center the map on the user's location
-        window.map.setCenter(userLocation);
+        // Remove old user marker if exists
+        if (window.userMarker) {
+          window.userMarker.setMap(null);
+        }
         
-        // Add a marker at the user's location using AdvancedMarkerElement
-        createAdvancedMarker({
+        // Create new "Blue Dot" marker (You Are Here)
+        window.userMarker = new google.maps.Marker({
           position: userLocation,
           map: window.map,
-          title: "Your Location",
-          color: "#4285F4",
-          isUserLocation: true
+          title: "You are here",
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: "#4285F4",  // Google Blue
+            fillOpacity: 1,
+            strokeColor: "white",
+            strokeWeight: 3
+          },
+          zIndex: 1000  // Keep on top
         });
+        
+        // Smart zoom: Pan to location and set walking distance zoom
+        window.map.panTo(userLocation);
+        window.map.setZoom(15);  // Walking distance level
+        
+        // Restore button
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
         
         // Load nearby places (use current radius, clear keyword for new location)
         loadNearbyPlaces(userLocation, '', searchRadius);
       },
       (error) => {
         console.error("Error getting user location:", error);
-        useDefaultLocation("We couldn't get your location: " + error.message);
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+        
+        // Mobile-friendly error messages
+        let errorMsg = "Please enable Location Services in your browser settings to find spots near you.";
+        if (error.code === error.PERMISSION_DENIED) {
+          errorMsg = "Location access denied. Please enable Location Services in your browser settings.";
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          errorMsg = "Location unavailable. Please check your device's GPS settings.";
+        } else if (error.code === error.TIMEOUT) {
+          errorMsg = "Location request timed out. Please try again.";
+        }
+        
+        useDefaultLocation(errorMsg);
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000,
-      }
+      options
     );
   } else {
+    btn.innerHTML = originalContent;
+    btn.disabled = false;
     useDefaultLocation("Geolocation is not supported by your browser");
   }
   
   function useDefaultLocation(reason) {
     console.warn(reason);
-    alert(reason + ". Using default location (Amsterdam).");
+    alert(reason + " Using default location (Amsterdam).");
     
     // Default location (Amsterdam)
     const defaultLocation = { lat: 52.3676, lng: 4.9041 };
     
     // Center the map on the default location
     window.map.setCenter(defaultLocation);
+    window.map.setZoom(15);
     
     // Load nearby places for the default location
     loadNearbyPlaces(defaultLocation, '', searchRadius);
