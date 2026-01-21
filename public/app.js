@@ -11,7 +11,8 @@ const cuisineHierarchy = {
   'Latin': ['Mexican', 'Tacos', 'Argentinian', 'Peruvian'],
   'American': ['Burgers', 'BBQ', 'Steakhouse', 'Diner'],
   'Healthy': ['Vegan', 'Vegetarian', 'Salad', 'Juice Bar'],
-  'Brunch': ['Bottomless', 'Pancakes', 'Avocado Toast', 'Eggs Benny', 'Buffet', 'Bagels']
+  'Brunch': ['Bottomless', 'Pancakes', 'Avocado Toast', 'Eggs Benny', 'Buffet', 'Bagels'],
+  'Lunch': ['Business', 'Terrace', 'Classic', 'Fine Dining', 'Healthy']
 };
 
 const dateNightKeywords = {
@@ -39,6 +40,14 @@ const brunchKeywords = {
   'Eggs Benny': 'eggs benedict hollandaise brunch',
   'Buffet': 'brunch buffet all you can eat',
   'Bagels': 'fresh bagels cream cheese salmon lox'
+};
+
+const lunchKeywords = {
+  'Business': 'business lunch quiet upscale restaurant',
+  'Terrace': 'lunch restaurant terrace outdoor seating',
+  'Classic': 'classic bistro lunch steak tartare club sandwich',
+  'Fine Dining': 'michelin lunch tasting menu fine dining',
+  'Healthy': 'upscale healthy lunch organic salad'
 };
 
 // ==================== GOOGLE ANALYTICS HELPER ====================
@@ -2165,6 +2174,8 @@ function initMap() {
             loadNearbyPlaces(location, cheapEatsKeywords[subCuisine], searchRadius);
           } else if (pillParent === 'Brunch' && brunchKeywords[subCuisine]) {
             loadNearbyPlaces(location, brunchKeywords[subCuisine], searchRadius);
+          } else if (pillParent === 'Lunch' && lunchKeywords[subCuisine]) {
+            loadNearbyPlaces(location, lunchKeywords[subCuisine], searchRadius);
           } else {
             loadNearbyPlaces(location, subCuisine.toLowerCase() + ' restaurant', searchRadius);
           }

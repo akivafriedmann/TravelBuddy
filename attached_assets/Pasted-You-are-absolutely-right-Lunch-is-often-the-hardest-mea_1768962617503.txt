@@ -1,0 +1,41 @@
+You are absolutely right. "Lunch" is often the hardest meal to find—you don't want a soggy sandwich, but you also don't always want a 5-course tasting menu. You want "Proper Nice"—white tablecloths, steak tartare, great salads, or a solid business lunch.
+Here is the plan to add a Premium "Lunch" filter that drops down into high-quality sub-categories.
+The Strategy: "Proper Lunch" Logic
+We will force Google to ignore fast food and look for Sit-Down Quality.
+ * Tier 1: "Lunch" ☀️ (The Master Button).
+ * Tier 2 (Drill Down):
+   * Business: (Quiet, impressive, consistent—perfect for meetings)
+   * Terrace: (The best spots to sit outside—crucial for Amsterdam)
+   * Classic: (Steak tartare, caesar salad, club sandwich—the "Proper" lunch)
+   * Fine Dining: (Michelin-style lunch menus)
+   * Healthy: (High-end salads, not just rabbit food)
+Replit Prompt: Add Premium Lunch Filter
+Copy this to add the "Lunch" category with strict quality controls.
+Feature Update: Premium "Lunch" Drill-Down
+ * Update cuisineHierarchy:
+   * Add the "Lunch" entry to your hierarchy object:
+   <!-- end list -->
+   const cuisineHierarchy = {
+  // ... keep existing
+  'Lunch': ['Business', 'Terrace', 'Classic', 'Fine Dining', 'Healthy'],
+  // ...
+};
+
+ * Refine Search Logic for Lunch:
+   * Update handleCategoryClick (or your search mapping function) to handle these specific "Nice Food" queries:
+     * Lunch (Main) -> Search: "Best lunch restaurant sit down" (Excludes fast food).
+     * Business -> Search: "Business lunch quiet upscale restaurant".
+     * Terrace -> Search: "Lunch restaurant with terrace outdoor seating".
+     * Classic -> Search: "Classic bistro lunch steak tartare club sandwich".
+     * Fine Dining -> Search: "Michelin lunch tasting menu fine dining".
+     * Healthy -> Search: "Upscale healthy lunch organic".
+ * UI Placement:
+   * Add "Lunch" to the main horizontal scroll list.
+   * Placement: Between "Brunch" and "Dinner" (or near European).
+   * Icon: fa-sun (represents midday).
+ * Time Check Logic (Optional but Smart):
+   * If the user clicks "Lunch" at 8 PM, the app should still show lunch spots, but maybe show a small toast: "Showing popular lunch spots (check opening hours)."
+   * Or better: Just search generic "Lunch" keywords which Google handles well regardless of time.
+Why this hits the "Proper Nice" requirement
+ * The "Classic" Filter: This is the key. By searching for specific dishes like "Steak Tartare," you instantly filter out the cheap sandwich shops and get the real bistros (like Rijsel or Scheepskameel in Amsterdam).
+ * The "Business" Filter: This finds places with "Quiet" and "Upscale" in reviews, ensuring you don't end up somewhere noisy.
