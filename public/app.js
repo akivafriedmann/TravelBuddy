@@ -114,6 +114,49 @@ document.addEventListener('DOMContentLoaded', function() {
       modal.show();
     });
   }
+
+
+  // Concierge modal handler
+  const conciergeBtn = document.getElementById('concierge-btn');
+  if (conciergeBtn) {
+    conciergeBtn.addEventListener('click', function () {
+      trackEvent('open_concierge_modal');
+      const modal = new bootstrap.Modal(document.getElementById('concierge-modal'));
+      modal.show();
+    });
+  }
+
+  const conciergeForm = document.getElementById('concierge-form');
+  if (conciergeForm) {
+    conciergeForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const payload = {
+        email: document.getElementById('concierge-email')?.value?.trim(),
+        city: document.getElementById('concierge-city')?.value?.trim(),
+        vibe: document.getElementById('concierge-vibe')?.value?.trim(),
+        budget: document.getElementById('concierge-budget')?.value?.trim(),
+        createdAt: new Date().toISOString()
+      };
+      try {
+        const key = 'crave_concierge_leads';
+        const leads = JSON.parse(localStorage.getItem(key) || '[]');
+        leads.push(payload);
+        localStorage.setItem(key, JSON.stringify(leads));
+      } catch (_) {}
+
+      trackEvent('generate_lead', { content_type: 'concierge', city: payload.city || 'unknown' });
+
+      const subject = encodeURIComponent(`Crave Concierge Request — ${payload.city || 'City'}`);
+      const body = encodeURIComponent(`Email: ${payload.email}
+City: ${payload.city}
+Vibe: ${payload.vibe || '-'}
+Budget: ${payload.budget || '-'}
+Source: craving.life concierge modal`);
+      window.location.href = `mailto:hello@craving.life?subject=${subject}&body=${body}`;
+      alert('Request captured. Your email app will open to send details.');
+      conciergeForm.reset();
+    });
+  }
   
   // Track clicks on essentials links
   document.getElementById('esim-link')?.addEventListener('click', function() {
