@@ -27,7 +27,7 @@ waitForPort = 5000
 
 [deployment]
 run = ["node", "proxy-server.js"]
-deploymentTarget = "autoscale"
+deploymentTarget = "vm"
 
 [[ports]]
 localPort = 5000
